@@ -133,7 +133,9 @@ export class ConformalBeadGenerator {
       cumulativeDistances.push(totalLength);
     }
 
-    const baseOffset = settings.surfaceOffset ?? 0.003;
+    const seq = settings.strokeSequenceIndex ?? 0;
+    const seqElevation = (seq % 1000) * 0.00015;
+    const baseOffset = (settings.surfaceOffset ?? 0.0045) + seqElevation;
     const taperLength = Math.max(0.01, settings.taperLength ?? 0.05);
 
     // Compute continuous Bishop Rotation Minimizing Frames (RMF) using Double Reflection Method
@@ -312,36 +314,63 @@ export class ConformalBeadGenerator {
     const normals: THREE.Vector3[] = [];
     const binormals: THREE.Vector3[] = [];
 
-    // Continuous surface-aligned frame construction
+    // Continuous surface-aligned frame construction via Bishop Parallel Transport
     for (let i = 0; i < n; i++) {
       const t = tangents[i];
       const targetNorm = initialNormals[i] || _scratchV1.set(0, 1, 0);
 
-      // Project surface normal orthogonal to curve tangent
-      const norm = _vecPool.get().copy(targetNorm);
-      norm.sub(_scratchV1.copy(t).multiplyScalar(t.dot(norm)));
+      const norm = _vecPool.get();
+      const isSurfaceSample = initialNormals[i] && initialNormals[i].lengthSq() > 0.5;
 
-      if (norm.lengthSq() < 1e-4) {
-        // Degenerate: tangent is parallel to surface normal.
-        // Fallback to previous frame normal projected onto tangent plane
-        if (i > 0 && normals[i - 1]) {
-          norm.copy(normals[i - 1]).sub(_scratchV1.copy(t).multiplyScalar(t.dot(normals[i - 1])));
+      if (isSurfaceSample) {
+        // Surface conformal: frame normal directly tracks the 3D model's outward surface normal
+        const surfN = initialNormals[i];
+        norm.copy(surfN).sub(_scratchV1.copy(t).multiplyScalar(t.dot(surfN)));
+        if (norm.lengthSq() < 1e-4) {
+          if (i > 0 && normals[i - 1]) {
+            norm.copy(normals[i - 1]).sub(_scratchV1.copy(t).multiplyScalar(t.dot(normals[i - 1])));
+          }
+          if (norm.lengthSq() < 1e-4) {
+            norm.crossVectors(t, _scratchV1.set(0, 1, 0));
+            if (norm.lengthSq() < 1e-4) {
+              norm.crossVectors(t, _scratchV1.set(0, 0, 1));
+            }
+          }
         }
+        norm.normalize();
+        if (norm.dot(surfN) < 0) {
+          norm.negate();
+        }
+      } else if (i === 0) {
+        // Frame 0 in free 3D space: Initialize orthonormal normal perpendicular to tangent t
+        norm.copy(targetNorm).sub(_scratchV1.copy(t).multiplyScalar(t.dot(targetNorm)));
         if (norm.lengthSq() < 1e-4) {
           norm.crossVectors(t, _scratchV1.set(0, 1, 0));
           if (norm.lengthSq() < 1e-4) {
-            norm.crossVectors(t, _scratchV1.set(1, 0, 0));
+            norm.crossVectors(t, _scratchV1.set(0, 0, 1));
           }
         }
-      }
-      norm.normalize();
+        norm.normalize();
+        if (targetNorm.lengthSq() > 0.1 && norm.dot(targetNorm) < 0) {
+          norm.negate();
+        }
+      } else {
+        // Frames 1..n-1 in free 3D space: Bishop Parallel Transport along curve
+        const prevT = tangents[i - 1];
+        const prevN = normals[i - 1];
+        const rotAxis = _scratchV1.crossVectors(prevT, t);
+        const rotAxisLenSq = rotAxis.lengthSq();
 
-      // Ensure normal always points outward, aligned with surface normal (never into the mesh or canvas)
-      if (norm.dot(targetNorm) < 0) {
-        norm.negate();
+        if (rotAxisLenSq < 1e-8) {
+          norm.copy(prevN);
+        } else {
+          const angle = Math.atan2(Math.sqrt(rotAxisLenSq), Math.max(-1, Math.min(1, prevT.dot(t))));
+          rotAxis.normalize();
+          norm.copy(prevN).applyAxisAngle(rotAxis, angle).normalize();
+        }
       }
 
-      // Compute binormal as tangent cross surface normal (lateral axis across stroke width)
+      // Compute binormal as tangent cross normal (lateral axis across stroke ribbon width)
       const binorm = _vecPool.get().crossVectors(t, norm).normalize();
 
       // Smooth phase continuity: prevent sudden 180-degree flipping between consecutive samples
@@ -486,7 +515,7 @@ export class ConformalBeadGenerator {
       }
 
       const pressureScale = settings.pressureSensitivity ? Math.max(0.2, pressures[i]) : 1.0;
-      const widthMultiplier = Math.max(0.5, Math.min(10.0, settings.brushWidthMultiplier ?? (settings.brushShape === 'wide_flat' ? 3.0 : 1.0)));
+      const widthMultiplier = Math.max(0.5, Math.min(25.0, settings.brushWidthMultiplier ?? (settings.brushShape === 'wide_flat' ? 3.0 : 1.0)));
       const width = settings.size * pressureScale * taper * 1.5 * widthMultiplier;
 
       // Spatial Jitter offset along Bishop frame axes
@@ -499,7 +528,11 @@ export class ConformalBeadGenerator {
         if (jitterAxis === 'binormal' || jitterAxis === 'omnidirectional') _scratchJitter.addScaledVector(binormal, noiseBinorm);
       }
 
-      _scratchCenter.copy(pos).addScaledVector(normal, baseOffset).add(_scratchJitter);
+      // Dynamic curvature clearance lift for flat ribbons on convex models so outer edges never submerge
+      const curvatureLift = Math.max(0, width * 0.05);
+      const effectiveBaseOffset = baseOffset + curvatureLift;
+
+      _scratchCenter.copy(pos).addScaledVector(normal, effectiveBaseOffset).add(_scratchJitter);
       const left = _scratchV1.copy(_scratchCenter).addScaledVector(binormal, -width);
       const right = _scratchV2.copy(_scratchCenter).addScaledVector(binormal, width);
 
@@ -523,7 +556,7 @@ export class ConformalBeadGenerator {
     }
 
     // Add smooth rounded start and end caps for clean brush tip appearance (zero arrowhead artifacts)
-    const isRoundCap = !settings.brushShape || settings.brushShape === 'round' || settings.brushShape === 'wide_flat';
+    const isRoundCap = settings.brushShape === 'round' || settings.brushShape === 'wide_flat';
     if (isRoundCap && numPoints >= 2) {
       const startWidth = settings.size * (settings.pressureSensitivity ? Math.max(0.2, pressures[0]) : 1.0) * 1.5 * (settings.brushWidthMultiplier ?? (settings.brushShape === 'wide_flat' ? 3.0 : 1.0));
       const endWidth = settings.size * (settings.pressureSensitivity ? Math.max(0.2, pressures[numPoints - 1]) : 1.0) * 1.5 * (settings.brushWidthMultiplier ?? (settings.brushShape === 'wide_flat' ? 3.0 : 1.0));
@@ -574,7 +607,7 @@ export class ConformalBeadGenerator {
       }
 
       const pressureScale = settings.pressureSensitivity ? Math.max(0.2, pressures[i]) : 1.0;
-      const widthMultiplier = Math.max(0.5, Math.min(10.0, settings.brushWidthMultiplier ?? (settings.brushShape === 'wide_flat' ? 3.0 : 1.0)));
+      const widthMultiplier = Math.max(0.5, Math.min(25.0, settings.brushWidthMultiplier ?? (settings.brushShape === 'wide_flat' ? 3.0 : 1.0)));
       const baseRadius = settings.size * pressureScale * taper;
       const width = baseRadius * aspectRatio * 0.7 * widthMultiplier;
       const height = baseRadius * 0.35;
@@ -770,7 +803,7 @@ export class ConformalBeadGenerator {
     leftIdx: number,
     rightIdx: number
   ): void {
-    const segments = 6;
+    const segments = 8;
     const centerIdx = vertices.length / 3;
     _scratchCenter.copy(centerPos).addScaledVector(normal, baseOffset);
     vertices.push(_scratchCenter.x, _scratchCenter.y, _scratchCenter.z);
@@ -781,12 +814,16 @@ export class ConformalBeadGenerator {
 
     for (let k = 1; k < segments; k++) {
       const frac = k / segments;
-      const angle = -Math.PI * 0.5 + Math.PI * frac;
-      const cosA = Math.cos(angle);
-      const sinA = Math.sin(angle);
+      const angle = frac * Math.PI;
 
-      const latOffset = sinA * width;
-      const longOffset = (isStart ? -1 : 1) * cosA * width;
+      // Start cap sweeps smoothly from left (-binormal) to right (+binormal) bulging backward (-tangent)
+      // End cap sweeps smoothly from right (+binormal) to left (-binormal) bulging forward (+tangent)
+      const latOffset = isStart
+        ? -Math.cos(angle) * width
+        : Math.cos(angle) * width;
+      const longOffset = isStart
+        ? -Math.sin(angle) * width
+        : Math.sin(angle) * width;
 
       _scratchPos.copy(_scratchCenter)
         .addScaledVector(binormal, latOffset)
@@ -795,7 +832,7 @@ export class ConformalBeadGenerator {
       const vIdx = vertices.length / 3;
       vertices.push(_scratchPos.x, _scratchPos.y, _scratchPos.z);
       geomNormals.push(normal.x, normal.y, normal.z);
-      uvs.push((sinA + 1) * 0.5, isStart ? 0.0 : 1.0);
+      uvs.push(isStart ? frac : 1.0 - frac, isStart ? 0.0 : 1.0);
       arcIndices.push(vIdx);
     }
     arcIndices.push(isStart ? rightIdx : leftIdx);
@@ -975,6 +1012,17 @@ export class ConformalBeadGenerator {
       const normB = points[idxB].normal;
       const interpNorm = _vecPool.get().copy(normA).lerp(normB, frac).normalize();
       const pos = _vecPool.get().copy(rawPoints[i]);
+
+      // Convex model curvature compensation:
+      // A straight 3D spline chord between surface points dips beneath convex surfaces (like a chord through a circle).
+      // If the stroke was drawn on a model surface, arch the chord out along the surface normal.
+      const isSurfA = points[idxA].isSurfaceHit !== false;
+      const isSurfB = points[idxB].isSurfaceHit !== false;
+      if (isSurfA && isSurfB && frac > 0.001 && frac < 0.999) {
+        const chordDist = points[idxA].position.distanceTo(points[idxB].position);
+        const sagittaLift = Math.min(0.015, chordDist * 0.075) * 4.0 * frac * (1.0 - frac);
+        pos.addScaledVector(interpNorm, sagittaLift);
+      }
 
       sampledPositions.push(pos);
       sampledNormals.push(interpNorm);

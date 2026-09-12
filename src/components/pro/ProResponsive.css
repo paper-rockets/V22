@@ -60,8 +60,8 @@
   left: 50%;
   bottom: max(7px, env(safe-area-inset-bottom));
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  width: min(calc(100% - 16px), 468px);
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  width: min(calc(100% - 16px), 536px);
   min-height: 62px;
   padding: 4px;
   gap: 2px;
@@ -169,6 +169,7 @@
 }
 
 .paperrocket-studio-shelf--compact { width: min(calc(100% - 16px), 220px) !important; }
+.paperrocket-studio-shelf--straight { width: min(calc(100% - 16px), 264px) !important; }
 .paperrocket-studio-shelf--brush { width: min(calc(100% - 16px), 360px) !important; }
 
 .paperrocket-context-panel {

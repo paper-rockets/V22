@@ -11,7 +11,7 @@ import {
   Palette,
   X,
   RotateCcw,
-  Sparkles,
+  Circle,
   Trash2,
 } from 'lucide-react';
 
@@ -166,7 +166,7 @@ export const ModelDisplayPanel: React.FC<ModelDisplayPanelProps> = ({
                 : 'bg-neutral-950/40 border-neutral-800 text-neutral-400 hover:text-white'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-neutral-700 dark:text-zinc-300" />
+            <Circle className="w-3.5 h-3.5 text-neutral-700 dark:text-zinc-300" />
             <span>Plain White Canvas</span>
           </button>
         </div>

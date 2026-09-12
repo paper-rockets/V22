@@ -10,7 +10,7 @@ import {
   Trash2,
   Check,
   Clock,
-  Sparkles,
+  Image,
   Loader2,
   RotateCcw,
 } from 'lucide-react';
@@ -168,8 +168,8 @@ export const ProjectSessionModal: React.FC<ProjectSessionModalProps> = ({
               <FolderArchive className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold leading-tight">Project Sessions</h2>
-              <p className="text-xs text-neutral-400">Save and load with complete undo history</p>
+              <h2 className="text-base font-bold leading-tight">Projects</h2>
+              <p className="text-xs text-neutral-400">Save and open projects with your layers and edit history</p>
             </div>
           </div>
           <button
@@ -200,21 +200,21 @@ export const ProjectSessionModal: React.FC<ProjectSessionModalProps> = ({
 
         {/* Scrollable Body */}
         <div className="flex-1 overflow-y-auto p-4 space-y-4">
-          {/* 1. Quick Save Current Session */}
+          {/* 1. Save Project */}
           <div
             className={`p-4 rounded-2xl border space-y-3 ${
               isLight ? 'bg-neutral-50 border-neutral-200' : 'bg-white/[0.03] border-white/10'
             }`}
           >
             <div className="text-xs font-bold uppercase tracking-wider text-neutral-400">
-              Save Current Workspace
+              Save Project
             </div>
             <div className="flex gap-2">
               <input
                 type="text"
                 value={sessionName}
                 onChange={(e) => setSessionName(e.target.value)}
-                placeholder="Session Name (e.g. Concept 1)"
+                placeholder="Project Name (e.g. Concept 1)"
                 className={`flex-1 px-3.5 py-2.5 rounded-xl text-sm font-medium border outline-none transition-all ${
                   isLight
                     ? 'bg-white border-neutral-300 focus:border-neutral-900 text-neutral-900'
@@ -239,7 +239,7 @@ export const ProjectSessionModal: React.FC<ProjectSessionModalProps> = ({
                 ) : (
                   <Save className="w-4 h-4" />
                 )}
-                <span>{saving ? 'Saving…' : 'Save Session'}</span>
+                <span>{saving ? 'Saving…' : 'Save Project'}</span>
               </button>
             </div>
 
@@ -259,25 +259,25 @@ export const ProjectSessionModal: React.FC<ProjectSessionModalProps> = ({
                 ) : (
                   <FolderDown className="w-4 h-4" />
                 )}
-                <span>{savingToFolder ? 'Saving to folder…' : 'Save Session to Chosen Folder…'}</span>
+                <span>{savingToFolder ? 'Saving to folder…' : 'Save to Device Folder…'}</span>
               </button>
             )}
 
             <p className="text-[11px] text-neutral-400">
-              Saves all raw 3D curves, layers, and full undo/redo history into your device storage or chosen folder.
+              Preserves your 3D strokes, layers, and edit history in your app storage or chosen folder.
             </p>
           </div>
 
-          {/* 2. Saved Sessions List */}
+          {/* 2. Recent Projects List */}
           <div className="space-y-3">
             <div className="text-xs font-bold uppercase tracking-wider text-neutral-400">
-              Saved Sessions ({sessions.length})
+              Recent Projects ({sessions.length})
             </div>
 
             {loading ? (
               <div className="py-8 flex items-center justify-center gap-2 text-xs text-neutral-400">
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Loading saved sessions…</span>
+                <span>Loading recent projects…</span>
               </div>
             ) : sessions.length === 0 ? (
               <div
@@ -285,7 +285,7 @@ export const ProjectSessionModal: React.FC<ProjectSessionModalProps> = ({
                   isLight ? 'border-neutral-200 bg-neutral-50/50' : 'border-white/10 bg-white/[0.02]'
                 }`}
               >
-                No saved sessions yet. Type a name above and click "Save Session".
+                No saved projects yet. Type a name above and click "Save Project".
               </div>
             ) : (
               <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
@@ -318,7 +318,7 @@ export const ProjectSessionModal: React.FC<ProjectSessionModalProps> = ({
                               isLight ? 'bg-neutral-100 text-neutral-500' : 'bg-white/5 text-neutral-400'
                             }`}
                           >
-                            <Sparkles className="w-5 h-5" />
+                            <Image className="w-5 h-5" />
                           </div>
                         )}
                         <div className="min-w-0">
@@ -347,12 +347,12 @@ export const ProjectSessionModal: React.FC<ProjectSessionModalProps> = ({
                           }`}
                         >
                           <RotateCcw className="w-3.5 h-3.5" />
-                          <span>Load</span>
+                          <span>Open</span>
                         </button>
                         <button
                           type="button"
                           onClick={(e) => void handleDelete(s.id, e)}
-                          title="Delete saved session"
+                          title="Delete saved project"
                           className={`min-h-[38px] w-9 grid place-items-center rounded-xl text-neutral-400 hover:text-rose-500 transition-colors cursor-pointer ${
                             isLight ? 'hover:bg-neutral-100' : 'hover:bg-white/10'
                           }`}
@@ -367,10 +367,10 @@ export const ProjectSessionModal: React.FC<ProjectSessionModalProps> = ({
             )}
           </div>
 
-          {/* 3. Physical File (.remix3d) Transfer */}
+          {/* 3. Backup & Transfer (.remix3d) */}
           <div className="pt-2 border-t border-dashed border-neutral-200 dark:border-white/10 space-y-3">
             <div className="text-xs font-bold uppercase tracking-wider text-neutral-400">
-              Physical Project File (.remix3d)
+              Backup & Transfer (.remix3d)
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <button
@@ -386,7 +386,7 @@ export const ProjectSessionModal: React.FC<ProjectSessionModalProps> = ({
                 }`}
               >
                 <Download className="w-4 h-4" />
-                <span>Export File</span>
+                <span>Export Project File</span>
               </button>
 
               {onSaveToFolder && (
@@ -419,7 +419,7 @@ export const ProjectSessionModal: React.FC<ProjectSessionModalProps> = ({
                 }`}
               >
                 <Upload className="w-4 h-4" />
-                <span>Open File</span>
+                <span>Open Project File</span>
               </button>
               <input
                 ref={fileInputRef}
@@ -430,7 +430,7 @@ export const ProjectSessionModal: React.FC<ProjectSessionModalProps> = ({
               />
             </div>
             <p className="text-[11px] text-neutral-400">
-              Download a backup file to your computer or phone to transfer your project to another device.
+              Download a backup file to transfer between devices, or open an existing .remix3d project file.
             </p>
           </div>
         </div>

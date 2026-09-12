@@ -196,12 +196,20 @@ canvas {
   padding-top: 10px !important;
 }
 
-.paperrocket-toggle {
+.paperrocket-toggle,
+.pr-surface .paperrocket-toggle,
+html.light .pr-surface .paperrocket-toggle,
+html:not(.light) .pr-surface .paperrocket-toggle {
   min-width: 44px !important;
   width: 44px !important;
   height: 44px !important;
   min-height: 44px !important;
   background: transparent !important;
+  background-color: transparent !important;
+  border: none !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
+  padding: 0 !important;
 }
 
 .paperrocket-toggle::before {
@@ -220,10 +228,12 @@ canvas {
 }
 
 .paperrocket-toggle > span {
+  position: absolute;
   top: 13px !important;
   z-index: 1;
   width: 18px !important;
   height: 18px !important;
+  background-color: #ffffff !important;
 }
 
 .paperrocket-toggle[data-state="on"] > span {
@@ -524,23 +534,23 @@ html.light .pr-surface :is(h1,h2,h3,h4,h5,p,span,label,a,li,dt,dd,button),
 
 /* 4 · Buttons: quiet ghost by default, accent tint when active.
        This mirrors the exact convention the whole app already uses. */
-.pr-surface button{ border-radius:9px !important; box-shadow:none !important; }
+.pr-surface button:not(.paperrocket-toggle){ border-radius:9px !important; box-shadow:none !important; }
 
 /* dark theme — inactive buttons */
-html:not(.light) .pr-surface button:is(
+html:not(.light) .pr-surface button:not(.paperrocket-toggle):is(
   [class*="bg-black/"],[class*="bg-neutral-"],[class*="bg-zinc-"],[class*="bg-stone-"],[class*="bg-gray-"]
 ):not([class~="bg-white"]):not([class*="bg-sky-"]):not([class*="bg-blue-"]):not([class*="bg-emerald-"]):not([class*="bg-red-"]){
   background:transparent !important;
   border-color:rgb(255 255 255 / .14) !important;
 }
 /* dark theme — active button */
-html:not(.light) .pr-surface button[class~="bg-white"]{
+html:not(.light) .pr-surface button:not(.paperrocket-toggle)[class~="bg-white"]{
   color:rgb(224 247 255) !important;
   background:rgb(56 189 248 / .14) !important;
   border-color:rgb(56 189 248 / .72) !important;
 }
 /* light theme — inactive buttons */
-html.light .pr-surface button:is(
+html.light .pr-surface button:not(.paperrocket-toggle):is(
   [class*="bg-white"],[class*="bg-neutral-"],[class*="bg-zinc-"],[class*="bg-stone-"],[class*="bg-gray-"]
 ):not([class~="bg-neutral-900"]):not([class*="bg-sky-"]):not([class*="bg-blue-"]):not([class*="bg-emerald-"]):not([class*="bg-red-"]){
   color:rgb(55 65 81) !important;
@@ -548,7 +558,7 @@ html.light .pr-surface button:is(
   border-color:rgb(17 24 39 / .15) !important;
 }
 /* light theme — active button */
-html.light .pr-surface button[class~="bg-neutral-900"]{
+html.light .pr-surface button:not(.paperrocket-toggle)[class~="bg-neutral-900"]{
   color: #ffffff !important;
   background: #171717 !important;
   border-color: #171717 !important;

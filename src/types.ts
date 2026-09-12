@@ -290,9 +290,11 @@ export interface BrushSettings {
   chiselAngle: number; // 0 to 180 degrees
   aspectRatio: number; // width to thickness ratio (e.g. 3.5)
   brushShape?: 'round' | 'wide_flat' | 'chisel' | 'square' | 'line';
-  brushWidthMultiplier?: number; // 1.0 to 10.0 for wide straight lines & thick ribbon strokes
+  brushWidthMultiplier?: number; // 1.0 to 25.0 for wide architectural lines & thick ribbon strokes
   brushAngle?: number; // 0 to 180 degrees stamp rotation
   straightLineMode?: boolean; // locks stroke to straight line from start to current point
+  magneticEndpointSnapping?: boolean; // magnetically connects start and end to nearby existing stroke endpoints/corners
+  adaptableCorners?: boolean; // auto-straightens multi-segment right angles / stair steps
   brushPresetId?: string; // Identifier of equipped preset (e.g. 'spatial_pipe', 'streamline_ink', etc.)
   // Raycasting & Surface Snapping Parameters
   raycastSampleDensity?: 'standard' | 'high' | 'ultra'; // Sub-step raycast resolution (16, 32, 48)

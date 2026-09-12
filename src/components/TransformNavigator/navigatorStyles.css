@@ -115,12 +115,7 @@
 }
 
 #nv.nv-dim {
-  opacity: 0.18;
-  transition: opacity 0.12s ease;
-}
-
-#nv:not(.nv-dim) {
-  transition: opacity 0.3s ease 0.2s;
+  opacity: 1;
 }
 
 /* ── the gizmo itself: no panel, no background ── */

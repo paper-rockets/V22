@@ -38,6 +38,8 @@ import {
   ShapeSnappingEngine,
   ShapeSnapResult,
   SnapOptions,
+  fitStraightLine,
+  fitPolylineOrStraightLine,
 } from './shapeSnapping';
 import { refitStrokePoints, RefitOptions } from './strokeFitting';
 
@@ -316,6 +318,8 @@ export class StudioEngine {
   private quickShapeInitialAngle: number = 0.0;
   /** Where the pen really was, before the Steady Stroke tether held it back. */
   private lastRawScreen: { x: number; y: number; pressure: number } | null = null;
+  /** Magnetic snap anchor for the active stroke start point */
+  private activeStrokeSnappedStart: THREE.Vector3 | null = null;
 
   // Brush Visual Projection Decal
   private cursorDecal: THREE.Mesh;
@@ -909,8 +913,8 @@ export class StudioEngine {
       return;
     }
 
-    // Detach drawing plane if clearing scene OR if it was just the empty starting canvas
-    if (loadMode === 'clear' || (this.drawingPlaneMesh && this.strokes.size === 0)) {
+    // Detach starter drawing plane whenever loading a 3D model or clearing scene
+    if (loadMode === 'clear' || this.drawingPlaneMesh) {
       const existingPlane = this.modelRoot.getObjectByName('DrawingPlaneCanvas');
       if (existingPlane) {
         this.modelRoot.remove(existingPlane);
@@ -1758,7 +1762,7 @@ export class StudioEngine {
     }
 
     // Apply surface elevation bias for 3D models to eradicate z-fighting
-    const surfaceOffset = settings?.surfaceOffset ?? 0.002;
+    const surfaceOffset = settings?.surfaceOffset ?? 0.0045;
     _worldPointScratch.copy(hit.point).addScaledVector(worldNormal, surfaceOffset);
 
     // Transform into local modelRoot coordinate space
@@ -1889,7 +1893,57 @@ export class StudioEngine {
     const right = new THREE.Vector3();
     const up = new THREE.Vector3();
     this.camera.matrixWorld.extractBasis(right, up, new THREE.Vector3());
-    return { screenRight: right, screenUp: up };
+    return {
+      screenRight: right,
+      screenUp: up,
+      isometricSnapping: true,
+    };
+  }
+
+  /**
+   * Find nearest endpoint or corner vertex among existing strokes.
+   * Enables magnetic latching for stair steps, walls, and architectural frames.
+   */
+  public findNearestStrokeEndpoint(
+    point: THREE.Vector3,
+    maxDistance: number = 0.12,
+    layerId?: string
+  ): THREE.Vector3 | null {
+    if (this.strokes.size === 0) return null;
+
+    let nearest: THREE.Vector3 | null = null;
+    let minDistanceSq = maxDistance * maxDistance;
+
+    const targetLayer = layerId || this.activeLayerId;
+    const ptScreen = point.clone().project(this.camera);
+
+    for (const { descriptor } of this.strokes.values()) {
+      if (descriptor.layerId !== targetLayer) continue;
+      const pts = descriptor.points;
+      if (!pts || pts.length < 2) continue;
+
+      // Candidate vertices to test: Start, End, and potential corner points
+      const candidates: THREE.Vector3[] = [pts[0].position, pts[pts.length - 1].position];
+      if (pts.length > 8) {
+        candidates.push(pts[Math.floor(pts.length * 0.33)].position);
+        candidates.push(pts[Math.floor(pts.length * 0.5)].position);
+        candidates.push(pts[Math.floor(pts.length * 0.66)].position);
+      }
+
+      for (const cand of candidates) {
+        const d3dSq = point.distanceToSquared(cand);
+        if (d3dSq < minDistanceSq) {
+          const candScreen = cand.clone().project(this.camera);
+          const screenDist = Math.hypot(ptScreen.x - candScreen.x, ptScreen.y - candScreen.y);
+          if (screenDist < 0.08 || d3dSq < 0.0036) {
+            minDistanceSq = d3dSq;
+            nearest = cand;
+          }
+        }
+      }
+    }
+
+    return nearest ? nearest.clone() : null;
   }
 
   /**
@@ -1984,10 +2038,25 @@ export class StudioEngine {
       return;
     }
 
+    this.strokeSequenceIndex = (this.strokeSequenceIndex + 1) % 20000;
+    settings.strokeSequenceIndex = this.strokeSequenceIndex;
+
+    let startPointPos = rayResult.point.clone();
+    this.activeStrokeSnappedStart = null;
+
+    if (settings.straightLineMode || settings.magneticEndpointSnapping !== false) {
+      const snapTarget = this.findNearestStrokeEndpoint(startPointPos, 0.12);
+      if (snapTarget) {
+        startPointPos.copy(snapTarget);
+        this.activeStrokeSnappedStart = snapTarget.clone();
+        haptics.trigger('snap');
+      }
+    }
+
     const firstPoint: StrokePoint = {
-      position: rayResult.point.clone(),
+      position: startPointPos,
       normal: rayResult.normal.clone(),
-      surfaceOffset: settings.surfaceOffset || 0.002,
+      surfaceOffset: settings.surfaceOffset || 0.0045,
       pressure: smoothed.pressure,
       isSurfaceHit: !isSpatial,
       uv: rayResult.uv ? rayResult.uv.clone() : undefined,
@@ -2093,14 +2162,35 @@ export class StudioEngine {
 
     // Dwell detection: holding still at the end of a stroke, at a level that
     // recognises shapes, offers the shape before the pen is even lifted.
-    if (stab.predictiveOn && stab.recognizeShapes && !this.quickShapeActive && this.activePoints.length >= 5) {
+    const isDwellEligible =
+      ((stab.predictiveOn && stab.recognizeShapes) || settings.straightLineMode) &&
+      !this.quickShapeActive &&
+      this.activePoints.length >= 4;
+
+    if (isDwellEligible) {
       if (this.holdToSnapTimer) {
         clearTimeout(this.holdToSnapTimer);
       }
       const anchorX = targetX;
       const anchorY = targetY;
       this.holdToSnapTimer = setTimeout(() => {
-        if (this.isDrawing && this.activePoints.length >= 5 && !this.quickShapeActive) {
+        if (this.isDrawing && this.activePoints.length >= 4 && !this.quickShapeActive) {
+          if (settings.straightLineMode) {
+            const snapOpts = this.getSnapOptions(settings.angleSnapping !== false);
+            const snappedPoints = fitPolylineOrStraightLine(
+              this.activePoints,
+              0.40,
+              {
+                ...snapOpts,
+                snapStartTo: this.activeStrokeSnappedStart || undefined,
+              }
+            );
+            this.activePoints = snappedPoints;
+            this.updateActiveStrokeGeometry(settings, symmetry);
+            haptics.trigger('snap');
+            return;
+          }
+
           // Same two stages as on release: tidy the path, then read its intent.
           const tidied = refitStrokePoints(
             this.activePoints,
@@ -2186,11 +2276,9 @@ export class StudioEngine {
       }
 
       // AIR GAP DETECTION: Ray missed model in free air (only in surface mode).
-      // Use a tolerant streak of 6 misses so rapid stylus sweeps across curved geometry or
-      // borders do not fracture the stroke into dozens of broken, disconnected pieces.
       if (!rayResult || !rayResult.hit) {
         missStreak++;
-        if (missStreak >= 6) {
+        if (missStreak >= 2) {
           if (this.activePoints.length > 0) {
             // Commit active segment so stroke does NOT bridge through empty air
             this.commitActiveSegment(settings, tool, true, symmetry);
@@ -2201,8 +2289,7 @@ export class StudioEngine {
         continue;
       }
 
-      missStreak = 0;
-
+      const prevHitMesh = this.lastHitMesh;
       if (rayResult.mesh) {
         this.lastHitMesh = rayResult.mesh;
       }
@@ -2220,15 +2307,24 @@ export class StudioEngine {
 
       // Discontinuity detection:
       // 1. Returning from empty air
-      // 2. Large 3D spatial jump across depth occlusion / silhouette
-      // 3. Sharp normal flip (> 150° angle, dot < -0.85)
+      // 2. Jumping between a 3D model and the 2D background canvas plane
+      // 3. Large 3D spatial jump across depth occlusion / silhouette
+      // 4. Sharp normal flip (> 135° angle, dot < -0.7)
       if (this.lastCapturePoint) {
         const dist3D = this.lastCapturePoint.position.distanceTo(newPoint.position);
         const normalDot = this.lastCapturePoint.normal.dot(newPoint.normal);
 
+        const meshChanged = prevHitMesh !== null && rayResult.mesh !== null && prevHitMesh !== rayResult.mesh;
+        const hitDrawingPlaneJump = meshChanged && (
+          rayResult.mesh?.name === 'DrawingPlaneCanvas' ||
+          prevHitMesh?.name === 'DrawingPlaneCanvas' ||
+          rayResult.mesh === this.drawingPlaneMesh ||
+          prevHitMesh === this.drawingPlaneMesh
+        );
+
         const gapToleranceMultiplier = settings.airGapTolerance ? settings.airGapTolerance * 2 : 1.0;
-        const maxJump = Math.max(0.65, (settings.size || 0.035) * 14.0 * gapToleranceMultiplier);
-        const isDiscontinuous = this.isOverAir || dist3D > maxJump || normalDot < -0.85;
+        const maxJump = Math.max(0.12, (settings.size || 0.035) * 8.0 * gapToleranceMultiplier);
+        const isDiscontinuous = this.isOverAir || hitDrawingPlaneJump || dist3D > maxJump || normalDot < -0.7;
 
         if (isDiscontinuous) {
           if (this.activePoints.length > 0) {
@@ -2349,7 +2445,7 @@ export class StudioEngine {
 
     this.activePoints = [];
     this.activeStrokeMeshes = [];
-    this.strokeSequenceIndex = (this.strokeSequenceIndex + 1) % 20000;
+    this.activeStrokeSnappedStart = null;
   }
 
   /**
@@ -2479,24 +2575,35 @@ export class StudioEngine {
       this.updateActiveStrokeGeometry(settings, symmetry);
     }
 
-    // Straight Line / Ruler Mode Constraint
+    // Straight Line / Ruler / Step Mode Constraint with PCA, 90° Corner Recognition & Magnetic Snapping
     if (settings.straightLineMode && this.activePoints.length >= 2) {
-      const pStart = this.activePoints[0];
-      const pEnd = this.activePoints[this.activePoints.length - 1];
-      const count = Math.max(12, this.activePoints.length);
-      const straightPoints: StrokePoint[] = [];
-      for (let i = 0; i < count; i++) {
-        const t = i / (count - 1);
-        straightPoints.push({
-          position: new THREE.Vector3().lerpVectors(pStart.position, pEnd.position, t),
-          normal: new THREE.Vector3().lerpVectors(pStart.normal, pEnd.normal, t).normalize(),
-          surfaceOffset: pStart.surfaceOffset,
-          pressure: pStart.pressure * (1 - t) + pEnd.pressure * t,
-          isSurfaceHit: pStart.isSurfaceHit,
-          time: performance.now(),
-        });
+      const snapOpts = this.getSnapOptions(settings.angleSnapping !== false);
+
+      let snapEndTo: THREE.Vector3 | undefined;
+      if (settings.magneticEndpointSnapping !== false) {
+        const lastPt = this.activePoints[this.activePoints.length - 1].position;
+        const nearestEnd = this.findNearestStrokeEndpoint(lastPt, 0.12);
+        if (
+          nearestEnd &&
+          (!this.activeStrokeSnappedStart ||
+            nearestEnd.distanceToSquared(this.activeStrokeSnappedStart) > 0.0004 ||
+            this.activePoints.length > 20)
+        ) {
+          snapEndTo = nearestEnd;
+          haptics.trigger('snap');
+        }
       }
-      this.activePoints = straightPoints;
+
+      const snappedPoints = fitPolylineOrStraightLine(
+        this.activePoints,
+        0.40,
+        {
+          ...snapOpts,
+          snapStartTo: this.activeStrokeSnappedStart || undefined,
+          snapEndTo,
+        }
+      );
+      this.activePoints = snappedPoints;
       this.updateActiveStrokeGeometry(settings, symmetry);
     }
 
@@ -2974,16 +3081,16 @@ export class StudioEngine {
     texture.colorSpace = THREE.SRGBColorSpace;
     texture.needsUpdate = true;
 
-    // 3:4 vertical drawing canvas with 50% opacity - upgraded to lit MeshStandardMaterial
+    // 3:4 vertical drawing canvas - solid, clean white artist canvas surface
     const planeMat = new THREE.MeshStandardMaterial({
       map: texture,
       color: 0xffffff,
       roughness: 0.85,
       metalness: 0.05,
       side: THREE.DoubleSide,
-      transparent: true,
-      opacity: 0.5,
-      depthWrite: false,
+      transparent: false,
+      opacity: 1.0,
+      depthWrite: true,
     });
     MaterialCache.configureModelMaterial(planeMat);
 

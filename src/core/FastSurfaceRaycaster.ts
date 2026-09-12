@@ -291,6 +291,11 @@ export class FastSurfaceRaycaster {
       this._scratchLocalRay.origin.copy(worldRay.origin).applyMatrix4(this._scratchInvWorldMatrix);
       this._scratchLocalRay.direction.copy(worldRay.direction).transformDirection(this._scratchInvWorldMatrix);
 
+      // Fast early rejection: if local ray does not intersect geometry bounding box, skip entirely
+      if (geometry.boundingBox && !this._scratchLocalRay.intersectsBox(geometry.boundingBox)) {
+        continue;
+      }
+
       // Direct evaluation in mesh local space using boundsTree.raycastFirst
       if (geometry.boundsTree) {
         const matOrSide = THREE.DoubleSide;
@@ -474,6 +479,14 @@ export class FastSurfaceRaycaster {
     if (Math.abs(denom) > 1e-12) {
       v = (d11 * d20 - d01 * d21) / denom;
       w = (d00 * d21 - d01 * d20) / denom;
+      // Clamp to ensure numerical precision on boundary edges doesn't extrapolate wild normals
+      v = Math.max(0, Math.min(1, v));
+      w = Math.max(0, Math.min(1, w));
+      if (v + w > 1.0) {
+        const s = v + w;
+        v /= s;
+        w /= s;
+      }
       u = 1.0 - v - w;
     }
 

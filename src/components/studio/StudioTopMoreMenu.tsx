@@ -10,13 +10,12 @@ import {
   Save,
   Settings,
   Square,
-  Sun,
   User,
   X,
+  Sun,
 } from 'lucide-react';
-import { FrameTool } from 'iconoir-react';
 
-const CanvasSheetIcon = FrameTool;
+const CanvasSheetIcon = Grid;
 
 interface StudioTopMoreMenuProps {
   open: boolean;

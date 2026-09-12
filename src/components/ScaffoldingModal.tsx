@@ -25,7 +25,7 @@ import {
   X,
   Car,
   Maximize2,
-  Sparkles,
+  Cylinder,
   Shield,
   Activity,
   Check,
@@ -81,7 +81,7 @@ const PROXIES: Array<{
     type: 'capsule',
     label: 'Organic Capsule',
     desc: 'Smooth curved capsule scaffold for organic sculpts',
-    icon: Sparkles,
+    icon: Cylinder,
   },
 ];
 

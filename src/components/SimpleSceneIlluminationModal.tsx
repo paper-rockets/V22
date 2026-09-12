@@ -42,9 +42,6 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
   const [intensity, setIntensity] = useState<number>(() => initialEngineState?.intensity ?? 1.6);
   const [softness, setSoftness] = useState<number>(() => initialEngineState?.softness ?? 0.65);
   const [lightColor, setLightColor] = useState<string>(() => initialEngineState?.color || '#fff6ea');
-  const [modelMode, setModelMode] = useState<'clay' | 'texture'>(() => {
-    return (engine?.getModelDisplayMode?.() as 'clay' | 'texture') || 'clay';
-  });
   const [shadowFloor, setShadowFloor] = useState<boolean>(() => initialEngineState?.shadowFloor ?? true);
   const [showGrid, setShowGrid] = useState<boolean>(() => initialEngineState?.showGrid ?? false);
 
@@ -76,7 +73,6 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
       dir?: { x: number; y: number; z: number };
       shadowFloor?: boolean;
       showGrid?: boolean;
-      modelMode?: 'clay' | 'texture';
     }) => {
       if (!engine) return;
 
@@ -101,9 +97,6 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
       if (opts.showGrid !== undefined) {
         engine.setStudioGridVisible(opts.showGrid);
       }
-      if (opts.modelMode !== undefined) {
-        engine.setModelDisplayMode(opts.modelMode);
-      }
       engine.markDirty();
     },
     [engine]
@@ -124,8 +117,6 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
         const radius = 54;
         setPuckPos({ x: state.direction.x * radius * 0.7, y: -state.direction.y * radius * 0.7 });
       }
-      const currentModelMode = (engine.getModelDisplayMode?.() as 'clay' | 'texture') || 'clay';
-      setModelMode(currentModelMode);
     }
   }, [isOpen, engine]);
 
@@ -165,10 +156,9 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
         dir: { x, y, z },
         shadowFloor,
         showGrid,
-        modelMode,
       });
     },
-    [engine, intensity, softness, lightColor, shadowFloor, showGrid, modelMode, applyLighting]
+    [engine, intensity, softness, lightColor, shadowFloor, showGrid, applyLighting]
   );
 
   const handleDomePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
@@ -309,22 +299,6 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
       dir: pDir,
       shadowFloor,
       showGrid,
-      modelMode,
-    });
-  };
-
-  const handleToggleModelFinish = () => {
-    haptics.trigger('light');
-    const nextMode = modelMode === 'clay' ? 'texture' : 'clay';
-    setModelMode(nextMode);
-    applyLighting({
-      intensity,
-      softness,
-      color: lightColor,
-      dir: lightDirRef.current,
-      shadowFloor,
-      showGrid,
-      modelMode: nextMode,
     });
   };
 
@@ -425,7 +399,6 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
                     dir: lightDirRef.current,
                     shadowFloor,
                     showGrid,
-                    modelMode,
                   });
                 }}
                 className={`w-6 h-6 rounded-lg border transition-all cursor-pointer flex items-center justify-center active:scale-95 ${
@@ -441,7 +414,7 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
                 aria-label={t.name}
               >
                 <div
-                  className={`w-3 h-3 rounded-full ${t.bgClass} border ${
+                  className={`w-3.5 h-3.5 rounded-full ${t.bgClass} border ${
                     isLight ? 'border-neutral-300' : 'border-neutral-600'
                   } shadow-sm`}
                 />
@@ -506,7 +479,6 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
                   dir: lightDirRef.current,
                   shadowFloor,
                   showGrid,
-                  modelMode,
                 });
               }}
               className={`w-full h-1.5 rounded cursor-pointer accent-sky-400 ${
@@ -537,7 +509,6 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
                   dir: lightDirRef.current,
                   shadowFloor,
                   showGrid,
-                  modelMode,
                 });
               }}
               className={`w-full h-1.5 rounded cursor-pointer accent-amber-500 ${
@@ -564,7 +535,6 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
                       dir: lightDirRef.current,
                       shadowFloor,
                       showGrid,
-                      modelMode,
                     });
                   }}
                   className={`w-7 h-7 rounded-lg border transition-all cursor-pointer flex items-center justify-center active:scale-95 ${
@@ -589,8 +559,8 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
             </div>
           </div>
 
-          {/* 3 Quick Toggles: Floor Shadow, Floor Grid, Model Finish */}
-          <div className="grid grid-cols-3 gap-1 sm:gap-1.5 pt-0.5 sm:pt-1">
+          {/* 2 Quick Toggles: Floor Shadow, Floor Grid */}
+          <div className="grid grid-cols-2 gap-1 sm:gap-1.5 pt-0.5 sm:pt-1">
             {/* Shadow Floor */}
             <button
               type="button"
@@ -605,7 +575,6 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
                   dir: lightDirRef.current,
                   shadowFloor: next,
                   showGrid,
-                  modelMode,
                 });
               }}
               className={`h-7 sm:h-8 px-1 rounded-lg border text-[10px] sm:text-[11px] font-medium flex items-center justify-center gap-0.5 sm:gap-1 transition-all cursor-pointer active:scale-95 ${
@@ -636,7 +605,6 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
                   dir: lightDirRef.current,
                   shadowFloor,
                   showGrid: nextGrid,
-                  modelMode,
                 });
               }}
               className={`h-7 sm:h-8 px-1 rounded-lg border text-[10px] sm:text-[11px] font-medium flex items-center justify-center gap-0.5 sm:gap-1 transition-all cursor-pointer active:scale-95 ${
@@ -651,24 +619,6 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
             >
               <span>Grid</span>
               <span className="text-[9px] opacity-75 font-mono">{showGrid ? 'ON' : 'OFF'}</span>
-            </button>
-
-            {/* Model Clay Finish */}
-            <button
-              type="button"
-              onClick={handleToggleModelFinish}
-              className={`h-7 sm:h-8 px-1 rounded-lg border text-[10px] sm:text-[11px] font-medium flex items-center justify-center gap-0.5 sm:gap-1 transition-all cursor-pointer active:scale-95 ${
-                modelMode === 'clay'
-                  ? isLight
-                    ? 'border-amber-500 bg-amber-50 text-amber-900 font-semibold'
-                    : 'border-amber-400/80 bg-amber-400/15 text-amber-300 font-semibold'
-                  : isLight
-                  ? 'border-neutral-200 bg-neutral-100 text-neutral-700 hover:bg-neutral-200/70'
-                  : 'border-neutral-800 bg-neutral-900/60 text-neutral-400 hover:bg-neutral-800'
-              }`}
-            >
-              <span>Finish</span>
-              <span className="text-[9px] opacity-75 font-mono">{modelMode === 'clay' ? 'Clay' : 'Tex'}</span>
             </button>
           </div>
         </div>

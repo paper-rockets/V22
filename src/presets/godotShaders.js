@@ -267,10 +267,9 @@ void main() {
 
     v_normal = normalize(normalMatrix * normal);
     gl_Position = projectionMatrix * modelViewMatrix * vec4(dispPos, 1.0);
-},,
+},
 
-,
-    , 
+, 
     ,\n    `,
     fragmentShader: `precision mediump float;
 uniform vec3 u_tint;
@@ -282,12 +281,10 @@ void main() {
     vec3 baseColor = mix(vec3(0.08, 0.22, 0.05), u_tint, height);
     float diff = max(dot(v_normal, normalize(vec3(0.4, 0.8, 0.3))), 0.0) * 0.5 + 0.5;
     gl_FragColor = vec4(baseColor * diff, 1.0);
-},,
+},
 
 ,
-,
-    , 
-,
+    ,
 `,
     uniforms: {
       u_tint: { type: 'color', label: 'Foliage Tint', value: '#6bc928' },
@@ -296,102 +293,7 @@ void main() {
       u_wave_size: { type: 'range', label: 'Wavelength', value: 3.5, min: 1.0, max: 10.0, step: 0.5 }
     }
   },
-  {
-    id: 'godot_water_3d',
-    name: 'Godot: 3D Stylized Water',
-    category: '🌿 Godot Water & Grass',
-    type: 'shader',
-    description: 'GDQuest 3D water with refraction distortion, depth gradient, and shoreline foam.',
-    generate: (ctx, w, h) => {
-      const grad = ctx.createRadialGradient(w*0.35, h*0.35, 10, w*0.5, h*0.5, w*0.5);
-      grad.addColorStop(0, '#a8f5ff');
-      grad.addColorStop(0.3, '#32b4e8');
-      grad.addColorStop(0.7, '#0e58a8');
-      grad.addColorStop(1, '#05224e');
-      ctx.fillStyle = grad;
-      ctx.beginPath(); ctx.arc(w/2, h/2, w/2, 0, Math.PI*2); ctx.fill();
-    },
-    vertexShader: `precision mediump float;
-uniform float u_time;
-uniform float u_wave_height;
-uniform float u_wave_speed;
-
-varying vec2 v_uv;
-varying vec3 v_normal;
-varying vec3 v_view_pos;
-
-void main() {
-    v_uv = uv;
-    vec3 pos = position;
-    float w1 = sin(pos.x * 5.0 + u_time * u_wave_speed * 2.0) * cos(pos.z * 5.0 + u_time * u_wave_speed * 1.5);
-    pos.y += w1 * u_wave_height;
-    
-    vec4 mv = modelViewMatrix * vec4(pos, 1.0);
-    v_view_pos = -mv.xyz;
-    v_normal = normalize(normalMatrix * normal);
-    gl_Position = projectionMatrix * mv;
-},,
-
-,
-    , 
-    ,\n    `,
-    fragmentShader: `precision mediump float;
-uniform float u_time;
-uniform vec3 u_deep_color;
-uniform vec3 u_shallow_color;
-uniform vec3 u_foam_color;
-uniform float u_foam_amount;
-uniform float u_refraction_speed;
-
-varying vec2 v_uv;
-varying vec3 v_normal;
-varying vec3 v_view_pos;
-
-float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
-float noise(vec2 p) {
-    vec2 i = floor(p), f = fract(p);
-    f = f * f * (3.0 - 2.0 * f);
-    return mix(mix(hash(i), hash(i + vec2(1.0, 0.0)), f.x),
-               mix(hash(i + vec2(0.0, 1.0)), hash(i + vec2(1.0, 1.0)), f.x), f.y);
-}
-
-void main() {
-    vec2 refUv1 = v_uv * 12.0 + vec2(u_time * u_refraction_speed * 0.8, u_time * u_refraction_speed * 0.5);
-    vec2 refUv2 = v_uv * 16.0 - vec2(u_time * u_refraction_speed * 0.6, u_time * u_refraction_speed * 0.9);
-    float n = (noise(refUv1) + noise(refUv2)) * 0.5;
-
-    vec3 viewDir = normalize(v_view_pos);
-    float fresnel = pow(1.0 - max(dot(viewDir, normalize(v_normal)), 0.0), 3.0);
-
-    vec3 waterColor = mix(u_shallow_color, u_deep_color, 1.0 - fresnel * 0.6);
-    
-    float foam = smoothstep(0.65 - u_foam_amount * 0.15, 0.85, n);
-    vec3 finalColor = mix(waterColor, u_foam_color, foam * 0.85);
-
-    vec3 lightDir = normalize(vec3(0.5, 0.8, 0.3));
-    vec3 halfVec = normalize(lightDir + viewDir);
-    float spec = pow(max(dot(v_normal, halfVec), 0.0), 64.0) * 1.2;
-    finalColor += vec3(spec);
-
-    gl_FragColor = vec4(finalColor, 0.92);
-},,
-
-,
-,
-    , 
-,
-`,
-    uniforms: {
-      u_shallow_color: { type: 'color', label: 'Shallow Color', value: '#38d9d2' },
-      u_deep_color: { type: 'color', label: 'Deep Abyss Color', value: '#0a3670' },
-      u_foam_color: { type: 'color', label: 'Foam Tint', value: '#ffffff' },
-      u_wave_height: { type: 'range', label: 'Wave Elevation', value: 0.08, min: 0.0, max: 0.3, step: 0.01 },
-      u_wave_speed: { type: 'range', label: 'Wave Motion Speed', value: 1.0, min: 0.1, max: 3.0, step: 0.1 },
-      u_refraction_speed: { type: 'range', label: 'Refraction Flow', value: 0.25, min: 0.05, max: 1.0, step: 0.05 },
-      u_foam_amount: { type: 'range', label: 'Crest Foam Intensity', value: 1.5, min: 0.0, max: 3.0, step: 0.1 }
-    }
-  },
-  {
+    {
     id: 'godot_waterfall',
     name: 'Godot: 3D Stylized Waterfall',
     category: '🌿 Godot Water & Grass',
@@ -436,10 +338,9 @@ void main() {
     v_view_pos = -mv.xyz;
     v_normal = normalize(normalMatrix * normal);
     gl_Position = projectionMatrix * mv;
-},,
+},
 
-,
-    , 
+, 
     ,\n    `,
     fragmentShader: `precision mediump float;
 uniform float u_time;
@@ -482,12 +383,10 @@ void main() {
     finalCol += u_foam_color * (fresnel * 0.35);
 
     gl_FragColor = vec4(finalCol, 0.95);
-},,
+},
 
 ,
-,
-    , 
-,
+    ,
 `,
     uniforms: {
       u_deep_color: { type: 'color', label: 'Waterfall Abyss', value: '#004d99' },
@@ -499,108 +398,7 @@ void main() {
       u_displacement: { type: 'range', label: 'Surface Jiggle', value: 0.06, min: 0.0, max: 0.2, step: 0.01 }
     }
   },
-  {
-    id: 'godot_absorption_water',
-    name: 'Godot: Absorption Water (Beer Law)',
-    category: '🌿 Godot Water & Grass',
-    type: 'shader',
-    description: 'Physical Beer-Lambert exponential depth light absorption with procedural caustics.',
-    generate: (ctx, w, h) => {
-      const grad = ctx.createRadialGradient(w*0.5, h*0.5, 10, w*0.5, h*0.5, w*0.5);
-      grad.addColorStop(0, '#42f5e9');
-      grad.addColorStop(0.4, '#1b9cd9');
-      grad.addColorStop(0.8, '#0b397b');
-      grad.addColorStop(1, '#02122d');
-      ctx.fillStyle = grad;
-      ctx.beginPath(); ctx.arc(w/2, h/2, w/2, 0, Math.PI*2); ctx.fill();
-    },
-    vertexShader: `precision mediump float;
-uniform float u_time;
-varying vec2 v_uv;
-varying vec3 v_normal;
-varying vec3 v_view_pos;
-varying vec3 v_world_pos;
-
-void main() {
-    v_uv = uv;
-    vec4 worldPos = modelMatrix * vec4(position, 1.0);
-    v_world_pos = worldPos.xyz;
-    vec4 mv = modelViewMatrix * vec4(position, 1.0);
-    v_view_pos = -mv.xyz;
-    v_normal = normalize(normalMatrix * normal);
-    gl_Position = projectionMatrix * mv;
-},,
-
-,
-    , 
-    ,\n    `,
-    fragmentShader: `precision mediump float;
-uniform float u_time;
-uniform vec3 u_absorption_color;
-uniform vec3 u_shallow_color;
-uniform float u_absorption_strength;
-uniform float u_caustics_strength;
-
-varying vec2 v_uv;
-varying vec3 v_normal;
-varying vec3 v_view_pos;
-varying vec3 v_world_pos;
-
-vec2 hash2(vec2 p) {
-    p = vec2(dot(p, vec2(127.1, 311.7)), dot(p, vec2(269.5, 183.3)));
-    return fract(sin(p) * 43758.5453);
-}
-float voronoi(vec2 p) {
-    vec2 i = floor(p), f = fract(p);
-    float md = 8.0;
-    for (int y = -1; y <= 1; y++) {
-        for (int x = -1; x <= 1; x++) {
-            vec2 g = vec2(float(x), float(y));
-            vec2 o = hash2(i + g);
-            o = 0.5 + 0.5 * sin(u_time * 2.0 + 6.2831 * o);
-            md = min(md, length(g + o - f));
-        }
-    }
-    return md;
-}
-
-void main() {
-    vec3 viewDir = normalize(v_view_pos);
-    float fresnel = pow(1.0 - max(dot(viewDir, normalize(v_normal)), 0.0), 3.0);
-
-    float fakeDepth = (1.0 - fresnel) * 4.0;
-    vec3 transmission = exp(-u_absorption_color * (fakeDepth * u_absorption_strength));
-    vec3 waterColor = mix(u_shallow_color, vec3(0.01, 0.06, 0.18), 1.0 - transmission.r);
-
-    vec2 cUv1 = v_uv * 16.0 + vec2(u_time * 0.15, u_time * 0.1);
-    vec2 cUv2 = v_uv * 20.0 - vec2(u_time * 0.12, u_time * 0.18);
-    float c1 = voronoi(cUv1);
-    float c2 = voronoi(cUv2);
-    float caustics = pow(1.0 - min(c1, c2), 3.0) * u_caustics_strength;
-
-    vec3 finalColor = waterColor + vec3(caustics * 0.7) * transmission;
-    
-    vec3 light = normalize(vec3(0.6, 0.7, 0.4));
-    vec3 halfV = normalize(light + viewDir);
-    float spec = pow(max(dot(v_normal, halfV), 0.0), 96.0) * 1.5;
-    finalColor += vec3(spec);
-
-    gl_FragColor = vec4(finalColor, 0.94);
-},,
-
-,
-,
-    , 
-,
-`,
-    uniforms: {
-      u_absorption_color: { type: 'color', label: 'Absorption Tint', value: '#ff5900' },
-      u_shallow_color: { type: 'color', label: 'Shallow Waters', value: '#36ebd9' },
-      u_absorption_strength: { type: 'range', label: 'Extinction Density', value: 0.6, min: 0.1, max: 2.0, step: 0.05 },
-      u_caustics_strength: { type: 'range', label: 'Caustics Sparkle', value: 0.8, min: 0.0, max: 2.0, step: 0.1 }
-    }
-  },
-  {
+    {
     id: 'godot_stylized_toon_water',
     name: 'Godot: Stylized Toon Water',
     category: '🌿 Godot Water & Grass',
@@ -629,10 +427,9 @@ void main() {
     v_view_pos = -mv.xyz;
     v_normal = normalize(normalMatrix * normal);
     gl_Position = projectionMatrix * mv;
-},,
+},
 
-,
-    , 
+, 
     ,\n    `,
     fragmentShader: `precision mediump float;
 uniform float u_time;
@@ -669,12 +466,10 @@ void main() {
     col = mix(col, u_foam_color, foam);
 
     gl_FragColor = vec4(col, 0.9);
-},,
+},
 
 ,
-,
-    , 
-,
+    ,
 `,
     uniforms: {
       u_surface_color: { type: 'color', label: 'Sunlit Surface', value: '#2892d7' },
@@ -738,10 +533,9 @@ void main() {
     v_normal = normalize(normalMatrix * cross(binormal, tangent));
 
     gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-},,
+},
 
-,
-    , 
+, 
     ,\n    `,
     fragmentShader: `precision mediump float;
 uniform float u_time;
@@ -766,12 +560,10 @@ void main() {
     col += vec3(spec);
 
     gl_FragColor = vec4(col, 0.95);
-},,
+},
 
 ,
-,
-    , 
-,
+    ,
 `,
     uniforms: {
       u_deep_color: { type: 'color', label: 'Deep Ocean Trench', value: '#082136' },
@@ -807,10 +599,9 @@ void main() {
     v_view_pos = -mv.xyz;
     v_normal = normalize(normalMatrix * normal);
     gl_Position = projectionMatrix * mv;
-},,
+},
 
-,
-    , 
+, 
     ,\n    `,
     fragmentShader: `precision mediump float;
 uniform float u_time;
@@ -847,12 +638,10 @@ void main() {
     col = mix(col, u_foam_color, isFoam);
 
     gl_FragColor = vec4(col, 0.92);
-},,
+},
 
 ,
-,
-    , 
-,
+    ,
 `,
     uniforms: {
       u_surface_color: { type: 'color', label: 'Surface Aquamarine', value: '#30a5ff' },
@@ -887,10 +676,9 @@ void main() {
     v_view_pos = -mv.xyz;
     v_normal = normalize(normalMatrix * normal);
     gl_Position = projectionMatrix * mv;
-},,
+},
 
-,
-    , 
+, 
     ,\n    `,
     fragmentShader: `precision mediump float;
 uniform float u_time;
@@ -923,12 +711,10 @@ void main() {
     finalCol += vec3(fresnel * 0.4);
 
     gl_FragColor = vec4(finalCol, 0.88);
-},,
+},
 
 ,
-,
-    , 
-,
+    ,
 `,
     uniforms: {
       u_glass_tint: { type: 'color', label: 'Liquid Glass Tint', value: '#d4edff' },

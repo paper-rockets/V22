@@ -57,8 +57,399 @@ export interface SnapOptions {
    */
   screenRight?: THREE.Vector3;
   screenUp?: THREE.Vector3;
+  /** Active 3D construction or guide plane normal for planar alignment */
+  planeNormal?: THREE.Vector3;
+  /** Enable 30-degree isometric axis alignment (Feather 3D isometric angles) */
+  isometricSnapping?: boolean;
   /** Set false to fit only lines and curves, leaving corners and loops alone. */
   recognizePolygons?: boolean;
+}
+
+export interface LineFit3DResult {
+  start: THREE.Vector3;
+  end: THREE.Vector3;
+  direction: THREE.Vector3;
+  centroid: THREE.Vector3;
+  rmsError: number;
+  normalizedError: number;
+  length: number;
+  isSnappedToAxis: boolean;
+  snappedAxisName?: string;
+}
+
+/**
+ * 3D Principal Component Analysis (PCA) / Dominant Direction Line Fitting
+ * Computes centroid and 3x3 covariance matrix of deviations, then extracts
+ * the dominant eigenvector using power iteration and projects endpoints.
+ * Snaps to world axes (+-X, +-Y, +-Z) or screen isometric/cardinal angles if within threshold.
+ */
+export function fitStraightLine3D_PCA(
+  points: THREE.Vector3[],
+  options: SnapOptions = {}
+): LineFit3DResult | null {
+  const n = points.length;
+  if (n < 2) return null;
+
+  // 1. Centroid
+  const centroid = new THREE.Vector3();
+  for (let i = 0; i < n; i++) {
+    centroid.add(points[i]);
+  }
+  centroid.divideScalar(n);
+
+  // 2. 3D Covariance Matrix of point deviations
+  let cxx = 0, cyy = 0, czz = 0;
+  let cxy = 0, cxz = 0, cyz = 0;
+
+  for (let i = 0; i < n; i++) {
+    const dx = points[i].x - centroid.x;
+    const dy = points[i].y - centroid.y;
+    const dz = points[i].z - centroid.z;
+
+    cxx += dx * dx;
+    cyy += dy * dy;
+    czz += dz * dz;
+    cxy += dx * dy;
+    cxz += dx * dz;
+    cyz += dy * dz;
+  }
+  cxx /= n; cyy /= n; czz /= n;
+  cxy /= n; cxz /= n; cyz /= n;
+
+  // 3. Dominant Eigenvector via Power Iteration
+  const chordDir = new THREE.Vector3().subVectors(points[n - 1], points[0]);
+  let dominantDir = chordDir.clone();
+  if (dominantDir.lengthSq() < 1e-8) {
+    dominantDir.set(1, 0, 0);
+  } else {
+    dominantDir.normalize();
+  }
+
+  for (let iter = 0; iter < 20; iter++) {
+    const nx = cxx * dominantDir.x + cxy * dominantDir.y + cxz * dominantDir.z;
+    const ny = cxy * dominantDir.x + cyy * dominantDir.y + cyz * dominantDir.z;
+    const nz = cxz * dominantDir.x + cyz * dominantDir.y + czz * dominantDir.z;
+    dominantDir.set(nx, ny, nz);
+    const len = dominantDir.length();
+    if (len > 1e-8) {
+      dominantDir.divideScalar(len);
+    } else {
+      break;
+    }
+  }
+
+  // Ensure dominant direction flows along drawn stroke direction
+  if (dominantDir.dot(chordDir) < 0) {
+    dominantDir.negate();
+  }
+
+  // 4. Project points onto dominant direction and measure perpendicular deviations
+  let minT = Infinity;
+  let maxT = -Infinity;
+  let sumSqDist = 0;
+
+  for (let i = 0; i < n; i++) {
+    const dev = new THREE.Vector3().subVectors(points[i], centroid);
+    const t = dev.dot(dominantDir);
+    if (t < minT) minT = t;
+    if (t > maxT) maxT = t;
+
+    const perpDistSq = dev.lengthSq() - t * t;
+    sumSqDist += Math.max(0, perpDistSq);
+  }
+
+  const length = Math.max(1e-6, maxT - minT);
+  const rmsError = Math.sqrt(sumSqDist / n);
+  const normalizedError = rmsError / length;
+
+  // 5. Orthogonal & Planar / Isometric Snapping
+  let isSnappedToAxis = false;
+  let snappedAxisName: string | undefined;
+  const snapThresholdAngle = THREE.MathUtils.degToRad(12);
+
+  // Check world principal axes (+-X, +-Y, +-Z)
+  const worldAxes = [
+    { name: 'X axis', vec: new THREE.Vector3(1, 0, 0) },
+    { name: 'Y axis', vec: new THREE.Vector3(0, 1, 0) },
+    { name: 'Z axis', vec: new THREE.Vector3(0, 0, 1) },
+  ];
+
+  for (const ax of worldAxes) {
+    const dot = dominantDir.dot(ax.vec);
+    const angle = Math.acos(THREE.MathUtils.clamp(Math.abs(dot), -1, 1));
+    if (angle < snapThresholdAngle) {
+      dominantDir.copy(ax.vec).multiplyScalar(dot >= 0 ? 1 : -1);
+      isSnappedToAxis = true;
+      snappedAxisName = ax.name;
+      break;
+    }
+  }
+
+  // Check screen isometric angles (30°, 90°, 150°...) and cardinal angles
+  if (options.screenRight && options.screenUp && !isSnappedToAxis) {
+    const sx = dominantDir.dot(options.screenRight);
+    const sy = dominantDir.dot(options.screenUp);
+    const screenAngle = Math.atan2(sy, sx);
+
+    // 30 degree steps (isometric grid) vs 45 degree steps (cardinal)
+    const step30 = Math.PI / 6;
+    const step45 = Math.PI / 4;
+
+    const snapped30 = Math.round(screenAngle / step30) * step30;
+    const delta30 = Math.abs(Math.atan2(Math.sin(snapped30 - screenAngle), Math.cos(snapped30 - screenAngle)));
+
+    const snapped45 = Math.round(screenAngle / step45) * step45;
+    const delta45 = Math.abs(Math.atan2(Math.sin(snapped45 - screenAngle), Math.cos(snapped45 - screenAngle)));
+
+    const bestTarget = delta30 <= delta45 ? { angle: snapped30, delta: delta30, name: 'Isometric angle' } : { angle: snapped45, delta: delta45, name: 'Cardinal angle' };
+
+    if (bestTarget.delta < snapThresholdAngle) {
+      const cosA = Math.cos(bestTarget.angle);
+      const sinA = Math.sin(bestTarget.angle);
+      dominantDir.copy(options.screenRight).multiplyScalar(cosA).addScaledVector(options.screenUp, sinA).normalize();
+      isSnappedToAxis = true;
+      snappedAxisName = bestTarget.name;
+    }
+  }
+
+  const halfLen = length * 0.5;
+  const start = new THREE.Vector3().copy(centroid).addScaledVector(dominantDir, -halfLen);
+  const end = new THREE.Vector3().copy(centroid).addScaledVector(dominantDir, halfLen);
+
+  return {
+    start,
+    end,
+    direction: dominantDir,
+    centroid,
+    rmsError,
+    normalizedError,
+    length,
+    isSnappedToAxis,
+    snappedAxisName,
+  };
+}
+
+/**
+ * Fits a series of stroke points to a straight line using PCA and returns
+ * collinear resampled stroke points if within error threshold.
+ */
+export function fitStraightLine(
+  points: StrokePoint[],
+  errorThreshold: number = 0.08,
+  options: SnapOptions = {}
+): StrokePoint[] {
+  if (points.length < 2) return points;
+  const positions = points.map((p) => p.position);
+  const fit = fitStraightLine3D_PCA(positions, options);
+  if (!fit || fit.normalizedError > errorThreshold) {
+    return points;
+  }
+
+  const count = Math.max(points.length, 16);
+  const result: StrokePoint[] = [];
+  const p0 = points[0];
+  const pEnd = points[points.length - 1];
+
+  for (let i = 0; i < count; i++) {
+    const t = i / (count - 1);
+    result.push({
+      position: new THREE.Vector3().lerpVectors(fit.start, fit.end, t),
+      normal: new THREE.Vector3().lerpVectors(p0.normal, pEnd.normal, t).normalize(),
+      surfaceOffset: p0.surfaceOffset * (1 - t) + pEnd.surfaceOffset * t,
+      pressure: p0.pressure * (1 - t) + pEnd.pressure * t,
+      isSurfaceHit: p0.isSurfaceHit,
+      time: performance.now(),
+    });
+  }
+  return result;
+}
+
+export interface PolylineFitOptions extends SnapOptions {
+  snapStartTo?: THREE.Vector3;
+  snapEndTo?: THREE.Vector3;
+}
+
+/**
+ * Fits a stroke into either a single straight line or a multi-segment orthogonal/isometric
+ * stepped polyline (e.g. 90-degree stair treads and risers, wall corners, frames) with
+ * optional magnetic snapping at the start and end points.
+ */
+export function fitPolylineOrStraightLine(
+  points: StrokePoint[],
+  errorThreshold: number = 0.35,
+  options: PolylineFitOptions = {}
+): StrokePoint[] {
+  if (points.length < 2) return points;
+
+  const positions = points.map((p) => p.position);
+  const n = positions.length;
+
+  // 1. Detect sharp corner vertices (e.g. 90-degree right angle stair steps / wall turns)
+  // thresholdRad: Math.PI / 4.5 (~40 deg), spanRatio: 0.06
+  const rawCornerIndices = n >= 8 ? detectCorners(positions, Math.PI / 4.5, 0.06) : [];
+
+  // Filter corner indices to ensure each segment has enough samples and non-trivial distance
+  const validCornerIndices: number[] = [];
+  let lastIdx = 0;
+  for (const cIdx of rawCornerIndices) {
+    if (cIdx - lastIdx >= 3 && n - 1 - cIdx >= 3) {
+      const segDist = positions[lastIdx].distanceTo(positions[cIdx]);
+      if (segDist > 0.01) {
+        validCornerIndices.push(cIdx);
+        lastIdx = cIdx;
+      }
+    }
+  }
+
+  // If no valid corner indices, perform single straight line PCA fit
+  if (validCornerIndices.length === 0) {
+    const fit = fitStraightLine3D_PCA(positions, options);
+    if (!fit || fit.normalizedError > errorThreshold) {
+      return points;
+    }
+
+    const startPos = options.snapStartTo ? options.snapStartTo.clone() : fit.start;
+    const endPos = options.snapEndTo ? options.snapEndTo.clone() : fit.end;
+
+    const count = Math.max(points.length, 16);
+    const result: StrokePoint[] = [];
+    const p0 = points[0];
+    const pEnd = points[points.length - 1];
+
+    for (let i = 0; i < count; i++) {
+      const t = i / (count - 1);
+      result.push({
+        position: new THREE.Vector3().lerpVectors(startPos, endPos, t),
+        normal: new THREE.Vector3().lerpVectors(p0.normal, pEnd.normal, t).normalize(),
+        surfaceOffset: p0.surfaceOffset * (1 - t) + pEnd.surfaceOffset * t,
+        pressure: p0.pressure * (1 - t) + pEnd.pressure * t,
+        isSurfaceHit: p0.isSurfaceHit,
+        time: performance.now(),
+      });
+    }
+    return result;
+  }
+
+  // 2. We have 1 or more corners: partition stroke into segments
+  const partitionIndices = [0, ...validCornerIndices, n - 1];
+  interface SegmentData {
+    startIdx: number;
+    endIdx: number;
+    positions: THREE.Vector3[];
+    fit: LineFit3DResult | null;
+  }
+
+  const segments: SegmentData[] = [];
+  for (let s = 0; s < partitionIndices.length - 1; s++) {
+    const sStart = partitionIndices[s];
+    const sEnd = partitionIndices[s + 1];
+    const subPositions = positions.slice(sStart, sEnd + 1);
+    const fit = fitStraightLine3D_PCA(subPositions, options);
+    segments.push({
+      startIdx: sStart,
+      endIdx: sEnd,
+      positions: subPositions,
+      fit,
+    });
+  }
+
+  // Verify that adjacent segments actually turn a significant angle (not parallel)
+  const isAngleTurn = segments.every((seg, idx) => {
+    if (idx === 0) return true;
+    const prevSeg = segments[idx - 1];
+    if (!seg.fit || !prevSeg.fit) return false;
+    const dot = Math.abs(seg.fit.direction.dot(prevSeg.fit.direction));
+    return dot < 0.88; // at least ~28-90 degree turn
+  });
+
+  if (!isAngleTurn) {
+    // If adjacent segments are almost collinear, fall back to single line fit
+    return fitStraightLine(points, errorThreshold, options);
+  }
+
+  // 3. Construct continuous connected polyline vertices [V0, V1, ..., Vm]
+  const vertices: THREE.Vector3[] = [];
+
+  // V0: Starting vertex
+  const v0 = options.snapStartTo
+    ? options.snapStartTo.clone()
+    : segments[0].fit
+    ? segments[0].fit.start.clone()
+    : positions[0].clone();
+  vertices.push(v0);
+
+  // Compute intermediate corner vertices
+  for (let k = 0; k < segments.length - 1; k++) {
+    const segA = segments[k];
+    const rawCornerPos = positions[segA.endIdx];
+    const prevV = vertices[k];
+    const dirA = segA.fit ? segA.fit.direction : new THREE.Vector3().subVectors(rawCornerPos, prevV).normalize();
+
+    // Project along dominant direction of segment A
+    const toCorner = new THREE.Vector3().subVectors(rawCornerPos, prevV);
+    const distA = Math.max(0.005, toCorner.dot(dirA));
+    const cornerV = new THREE.Vector3().copy(prevV).addScaledVector(dirA, distA);
+    vertices.push(cornerV);
+  }
+
+  // Final vertex
+  const lastSeg = segments[segments.length - 1];
+  const lastCornerV = vertices[vertices.length - 1];
+  const rawEndPos = positions[positions.length - 1];
+
+  let finalV: THREE.Vector3;
+  if (options.snapEndTo) {
+    finalV = options.snapEndTo.clone();
+  } else {
+    const lastDir = lastSeg.fit ? lastSeg.fit.direction : new THREE.Vector3().subVectors(rawEndPos, lastCornerV).normalize();
+    const toEnd = new THREE.Vector3().subVectors(rawEndPos, lastCornerV);
+    const distEnd = Math.max(0.005, toEnd.dot(lastDir));
+    finalV = new THREE.Vector3().copy(lastCornerV).addScaledVector(lastDir, distEnd);
+  }
+  vertices.push(finalV);
+
+  // 4. Interpolate points along all segments to generate clean stroke geometry
+  const numSegments = vertices.length - 1;
+  const targetTotal = Math.max(points.length, numSegments * 16);
+  const ptsPerSeg = Math.max(8, Math.floor(targetTotal / numSegments));
+
+  const resultPoints: StrokePoint[] = [];
+
+  for (let s = 0; s < numSegments; s++) {
+    const vA = vertices[s];
+    const vB = vertices[s + 1];
+    const segInfo = segments[s];
+    const pStartRef = points[segInfo.startIdx] || points[0];
+    const pEndRef = points[segInfo.endIdx] || points[points.length - 1];
+
+    const isLast = s === numSegments - 1;
+    const steps = isLast ? ptsPerSeg : ptsPerSeg - 1;
+
+    for (let step = 0; step < steps; step++) {
+      const t = step / (ptsPerSeg - 1);
+      resultPoints.push({
+        position: new THREE.Vector3().lerpVectors(vA, vB, t),
+        normal: new THREE.Vector3().lerpVectors(pStartRef.normal, pEndRef.normal, t).normalize(),
+        surfaceOffset: pStartRef.surfaceOffset * (1 - t) + pEndRef.surfaceOffset * t,
+        pressure: pStartRef.pressure * (1 - t) + pEndRef.pressure * t,
+        isSurfaceHit: pStartRef.isSurfaceHit,
+        time: performance.now(),
+      });
+    }
+  }
+
+  // Ensure last point is exactly final vertex
+  const pFinalRef = points[points.length - 1];
+  resultPoints.push({
+    position: finalV.clone(),
+    normal: pFinalRef.normal.clone(),
+    surfaceOffset: pFinalRef.surfaceOffset,
+    pressure: pFinalRef.pressure,
+    isSurfaceHit: pFinalRef.isSurfaceHit,
+    time: performance.now(),
+  });
+
+  return resultPoints;
 }
 
 interface Candidate {
@@ -217,6 +608,10 @@ export class ShapeSnappingEngine {
     const chord = start.distanceTo(end);
     if (chord < scale * 0.5) return null; // ends too close together to be a line
 
+    // Try 3D PCA line fitting first to get dominant eigenvector and axis snap
+    const positions3D = points.map((p) => p.position);
+    const pca = fitStraightLine3D_PCA(positions3D, options);
+
     let maxDeviation = 0;
     for (const p of flat) {
       maxDeviation = Math.max(maxDeviation, this.pointToSegment2D(p, start, end));
@@ -226,33 +621,53 @@ export class ShapeSnappingEngine {
       const d = this.pointToSegment2D(p, start, end);
       sumSq += d * d;
     }
-    // Scored by root-mean-square like every other candidate, so the comparison
-    // is fair, but rejected outright if any single excursion is gross.
-    const normalizedError = Math.sqrt(sumSq / flat.length) / Math.max(chord, 1e-9);
-    if (maxDeviation / Math.max(chord, 1e-9) > 0.16) return null;
+
+    let normalizedError = Math.sqrt(sumSq / flat.length) / Math.max(chord, 1e-9);
+    if (pca && pca.normalizedError < normalizedError) {
+      normalizedError = pca.normalizedError;
+    }
+
+    if (maxDeviation / Math.max(chord, 1e-9) > 0.18 && (!pca || pca.normalizedError > 0.10)) return null;
 
     let a = start.clone();
     let b = end.clone();
+    let axisDescription = 'Straight Line';
 
-    // Nudge onto the nearest cardinal or diagonal when it is already close --
-    // those are the angles a person aims for, and missing by two degrees reads
-    // as a mistake rather than a choice.
-    const basis = this.screenBasisInPlane(plane, options);
-    if (basis) {
-      const dir = b.clone().sub(a);
-      const angle = Math.atan2(dir.dot(basis.up), dir.dot(basis.right));
-      const step = Math.PI / 4;
-      const snappedAngle = Math.round(angle / step) * step;
-      const delta = Math.atan2(Math.sin(snappedAngle - angle), Math.cos(snappedAngle - angle));
-      if (Math.abs(delta) < THREE.MathUtils.degToRad(7)) {
-        const mid = a.clone().add(b).multiplyScalar(0.5);
-        const half = dir.length() / 2;
-        const snappedDir = basis.right
-          .clone()
-          .multiplyScalar(Math.cos(snappedAngle))
-          .add(basis.up.clone().multiplyScalar(Math.sin(snappedAngle)));
-        a = mid.clone().addScaledVector(snappedDir, -half);
-        b = mid.clone().addScaledVector(snappedDir, half);
+    if (pca && pca.isSnappedToAxis) {
+      // Map PCA snapped 3D points onto stroke plane
+      a = this.toPlane(plane, pca.start);
+      b = this.toPlane(plane, pca.end);
+      if (pca.snappedAxisName) {
+        axisDescription = `Aligned Line (${pca.snappedAxisName})`;
+      }
+    } else {
+      // Nudge onto the nearest cardinal or diagonal or isometric angle when close
+      const basis = this.screenBasisInPlane(plane, options);
+      if (basis) {
+        const dir = b.clone().sub(a);
+        const angle = Math.atan2(dir.dot(basis.up), dir.dot(basis.right));
+
+        // Test both isometric (30 deg) and cardinal (45 deg) steps
+        const step30 = Math.PI / 6;
+        const step45 = Math.PI / 4;
+        const snapped30 = Math.round(angle / step30) * step30;
+        const delta30 = Math.abs(Math.atan2(Math.sin(snapped30 - angle), Math.cos(snapped30 - angle)));
+        const snapped45 = Math.round(angle / step45) * step45;
+        const delta45 = Math.abs(Math.atan2(Math.sin(snapped45 - angle), Math.cos(snapped45 - angle)));
+
+        const bestSnap = delta30 <= delta45 ? { angle: snapped30, delta: delta30, name: 'Isometric angle' } : { angle: snapped45, delta: delta45, name: 'Cardinal angle' };
+
+        if (bestSnap.delta < THREE.MathUtils.degToRad(12)) {
+          const mid = a.clone().add(b).multiplyScalar(0.5);
+          const half = dir.length() / 2;
+          const snappedDir = basis.right
+            .clone()
+            .multiplyScalar(Math.cos(bestSnap.angle))
+            .add(basis.up.clone().multiplyScalar(Math.sin(bestSnap.angle)));
+          a = mid.clone().addScaledVector(snappedDir, -half);
+          b = mid.clone().addScaledVector(snappedDir, half);
+          axisDescription = `Aligned Line (${bestSnap.name})`;
+        }
       }
     }
 
@@ -274,7 +689,7 @@ export class ShapeSnappingEngine {
         snappedPoints: snapped,
         center: this.fromPlane(plane, a.clone().add(b).multiplyScalar(0.5)),
         length: chord,
-        description: 'Straight Line',
+        description: axisDescription,
       },
     };
   }

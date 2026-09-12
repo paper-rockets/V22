@@ -10,7 +10,7 @@ import {
   MoveVertical,
   CheckCircle2,
   AlertCircle,
-  Sparkles,
+  Info,
   Layers,
   Compass,
 } from 'lucide-react';
@@ -51,15 +51,15 @@ export const ARViewerModal: React.FC<ARViewerModalProps> = ({
           const supported = await (navigator as any).xr.isSessionSupported('immersive-ar');
           setArState((prev) => ({ ...prev, isSupported: supported }));
           if (supported) {
-            setStatusMsg('WebXR Immersive-AR Ready: Hit-testing enabled');
+            setStatusMsg('WebXR Ready: Surface placement enabled');
           } else {
-            setStatusMsg('WebXR Hardware not detected. Simulated Desktop AR available.');
+            setStatusMsg("Full AR isn't available on this device. Preview mode is available.");
           }
         } catch (e) {
-          setStatusMsg('WebXR inspection complete. Desktop AR mode ready.');
+          setStatusMsg('Preview mode ready.');
         }
       } else {
-        setStatusMsg('Desktop Browser: Using Studio Realistic AR Floor Grid Simulator.');
+        setStatusMsg('Preview mode: Using studio AR floor simulator.');
       }
     };
     checkXR();
@@ -68,7 +68,7 @@ export const ARViewerModal: React.FC<ARViewerModalProps> = ({
   const handleStartRealAR = async () => {
     if (!engine) return;
     try {
-      setStatusMsg('Requesting WebXR session with Hit-Test...');
+      setStatusMsg('Connecting AR session...');
       const success = await engine.startWebXRSession();
       if (success) {
         setArState((prev) => ({ ...prev, isActive: true, hasHitTest: true }));
@@ -76,13 +76,13 @@ export const ARViewerModal: React.FC<ARViewerModalProps> = ({
       } else {
         setIsSimulatedAR(true);
         engine.enableSimulatedARMode(true);
-        setStatusMsg('Simulated AR Mode active: 1 Unit = 1.0 Meter Real-world Scale');
+        setStatusMsg('Preview Mode active: 1 unit = 1 m scale');
       }
     } catch (err: any) {
       console.warn('WebXR session error:', err);
       setIsSimulatedAR(true);
       engine.enableSimulatedARMode(true);
-      setStatusMsg('Simulated AR Environment activated.');
+      setStatusMsg('Preview mode activated.');
     }
   };
 
@@ -112,6 +112,7 @@ export const ARViewerModal: React.FC<ARViewerModalProps> = ({
           <button
             onClick={handleStopAR}
             className={`p-1 rounded-lg transition-colors ${t.btnGhost}`}
+            title="Close"
           >
             <X className="w-4 h-4" />
           </button>
@@ -120,9 +121,9 @@ export const ARViewerModal: React.FC<ARViewerModalProps> = ({
         <div className="p-5 space-y-4">
           {/* Status Capsule */}
           <div className={`p-3 rounded-xl border flex items-start gap-2.5 ${t.innerCard}`}>
-            <Sparkles className={`w-4 h-4 shrink-0 mt-0.5 ${isLight ? 'text-neutral-700' : 'text-neutral-300'}`} />
+            <Info className={`w-4 h-4 shrink-0 mt-0.5 ${isLight ? 'text-neutral-700' : 'text-neutral-300'}`} />
             <div className="text-xs space-y-0.5">
-              <div className={`font-semibold ${t.textPrimary}`}>AR Environment Status</div>
+              <div className={`font-semibold ${t.textPrimary}`}>AR Status</div>
               <div className={t.textSecondary}>{statusMsg}</div>
             </div>
           </div>
@@ -130,21 +131,21 @@ export const ARViewerModal: React.FC<ARViewerModalProps> = ({
           {/* Scale & Feature Highlights */}
           <div className="grid grid-cols-2 gap-2 text-xs">
             <div className={`p-3 rounded-xl border ${t.innerCardMuted}`}>
-              <span className={`font-bold uppercase text-[10px] ${t.textMuted}`}>Real-World Scale</span>
-              <div className={`font-mono text-sm font-bold ${t.textPrimary} mt-0.5`}>1 Unit = 1.00 m</div>
+              <span className={`font-bold uppercase text-[10px] ${t.textMuted}`}>Model Scale</span>
+              <div className={`font-mono text-sm font-bold ${t.textPrimary} mt-0.5`}>1 unit = 1 m</div>
             </div>
             <div className={`p-3 rounded-xl border ${t.innerCardMuted}`}>
-              <span className={`font-bold uppercase text-[10px] ${t.textMuted}`}>Hit-Test Anchor</span>
-              <div className={`font-mono text-sm font-bold ${t.textPrimary} mt-0.5`}>Floor Centroid</div>
+              <span className={`font-bold uppercase text-[10px] ${t.textMuted}`}>Placement</span>
+              <div className={`font-mono text-sm font-bold ${t.textPrimary} mt-0.5`}>Floor</div>
             </div>
           </div>
 
-          {/* Y-Axis Levitation Gestures Slider */}
+          {/* Height above floor */}
           <div>
             <div className="flex items-center justify-between text-xs mb-1.5">
               <div className={`flex items-center gap-1.5 font-medium ${t.textPrimary}`}>
                 <MoveVertical className={`w-3.5 h-3.5 ${isLight ? 'text-neutral-700' : 'text-neutral-300'}`} />
-                <span>Room Y-Axis Levitation (Floor Offset)</span>
+                <span>Height above floor</span>
               </div>
               <span className={`font-mono text-xs font-bold ${isLight ? 'text-neutral-900' : 'text-neutral-100'}`}>
                 {(elevation * 100).toFixed(0)} cm
@@ -162,9 +163,9 @@ export const ARViewerModal: React.FC<ARViewerModalProps> = ({
               }`}
             />
             <div className={`flex justify-between text-[10px] font-mono mt-1 ${t.textMuted}`}>
-              <span>-150 cm (Floor Sink)</span>
-              <span>0 cm (Floor Level)</span>
-              <span>+200 cm (Floating)</span>
+              <span>-150 cm</span>
+              <span>0 cm (Floor)</span>
+              <span>+200 cm</span>
             </div>
           </div>
 
@@ -174,7 +175,7 @@ export const ARViewerModal: React.FC<ARViewerModalProps> = ({
               onClick={handleStopAR}
               className={`flex-1 py-2 px-3 rounded-xl text-xs font-semibold transition-all ${t.btnSecondary}`}
             >
-              Exit Session
+              Cancel
             </button>
             <button
               onClick={handleStartRealAR}

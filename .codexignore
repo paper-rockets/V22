@@ -1,0 +1,29 @@
+# Codex Ignore Rules for e:\X\AiStudio Workflow\V21
+
+# Dependencies and build output
+node_modules/
+dist/
+build/
+coverage/
+
+# Automated test scripts and screenshot generators (saves 8,100+ lines from scans)
+scripts/
+
+# Screenshots and media assets
+screenshots/
+ALL_SCREENSHOTS/
+audit-feedback/
+*.png
+*.jpg
+*.jpeg
+*.webp
+*.wasm
+
+# Documentation and historical audit logs (saves ~60KB of markdown text per prompt)
+APP_AUDIT_PROTOCOL.md
+AUDIT_FEEDBACK.md
+MOBILE_FIRST_IMPLEMENTATION_PLAN.md
+TECHNICAL_ISSUES.md
+PRODUCT.md
+DESIGN.md
+README.md

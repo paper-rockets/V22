@@ -35,6 +35,11 @@ export const GuideControlBar: React.FC<GuideControlBarProps> = ({
 
   const isLight = theme === 'light';
   const isGuideScopeActive = targetScope === 'guide';
+  const [isDrawingOnGuide, setIsDrawingOnGuide] = React.useState(false);
+
+  React.useEffect(() => {
+    setIsDrawingOnGuide(false);
+  }, [activeGuide?.id]);
 
   const handleToggleMoveStretch = () => {
     haptics.trigger('light');
@@ -63,10 +68,13 @@ export const GuideControlBar: React.FC<GuideControlBarProps> = ({
       engine.currentDrawingMode = 'surface';
     }
     setTool('brush');
-    if (isGizmoActive && isGuideScopeActive) {
-      onToggleGizmo();
-    }
+    setIsDrawingOnGuide(true);
     onGuideDone?.();
+  };
+
+  const handleExitDrawingMode = () => {
+    haptics.trigger('light');
+    setIsDrawingOnGuide(false);
   };
 
   const handleDelete = () => {
@@ -82,11 +90,49 @@ export const GuideControlBar: React.FC<GuideControlBarProps> = ({
     }
   };
 
+  if (isDrawingOnGuide) {
+    return (
+      <div
+        id="paperrocket-guide-control-bar"
+        data-guide-control-bar="true"
+        className={`fixed left-1/2 -translate-x-1/2 bottom-[calc(76px+env(safe-area-inset-bottom))] z-40 flex items-center gap-2 px-3 py-1.5 rounded-full border shadow-lg backdrop-blur-md select-none animate-in fade-in duration-150 ${
+          isLight
+            ? 'bg-white/95 border-black/10 text-neutral-800 shadow-[0_4px_16px_rgba(0,0,0,0.1)]'
+            : 'bg-[#181a1f]/95 border-white/15 text-neutral-100 shadow-[0_6px_20px_rgba(0,0,0,0.4)]'
+        }`}
+      >
+        <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+        <span className="text-[11px] font-semibold truncate max-w-[150px]">
+          Drawing on {activeGuide.name}
+        </span>
+        <button
+          type="button"
+          onClick={handleExitDrawingMode}
+          className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border border-emerald-500/30 transition-colors"
+          title="Exit draw on guide and return to guide controls"
+        >
+          Exit
+        </button>
+        <button
+          type="button"
+          onClick={handleDismissBar}
+          title="Deselect guide"
+          aria-label="Deselect guide"
+          className={`p-1 rounded-md transition-colors opacity-60 hover:opacity-100 ${
+            isLight ? 'text-neutral-700' : 'text-neutral-300'
+          }`}
+        >
+          <X className="w-3.5 h-3.5" />
+        </button>
+      </div>
+    );
+  }
+
   return (
     <div
       id="paperrocket-guide-control-bar"
       data-guide-control-bar="true"
-      className={`fixed left-1/2 -translate-x-1/2 bottom-[82px] z-40 max-w-[calc(100vw-24px)] flex items-center gap-1.5 p-1.5 rounded-2xl border shadow-xl backdrop-blur-md select-none animate-in fade-in slide-in-from-bottom-2 duration-150 ${
+      className={`fixed left-1/2 -translate-x-1/2 bottom-[calc(82px+env(safe-area-inset-bottom))] z-40 max-w-[calc(100vw-24px)] flex items-center gap-1.5 p-1.5 rounded-2xl border shadow-xl backdrop-blur-md select-none animate-in fade-in slide-in-from-bottom-2 duration-150 ${
         isLight
           ? 'bg-white/95 border-black/10 text-neutral-800 shadow-[0_8px_30px_rgba(0,0,0,0.12)]'
           : 'bg-[#181a1f]/95 border-white/15 text-neutral-100 shadow-[0_12px_36px_rgba(0,0,0,0.5)]'
@@ -180,7 +226,8 @@ export const GuideControlBar: React.FC<GuideControlBarProps> = ({
         className={`h-9 w-8 min-h-[36px] p-0 rounded-xl flex items-center justify-center transition-colors opacity-60 hover:opacity-100 ${
           isLight ? 'text-neutral-700' : 'text-neutral-300'
         }`}
-        title="Hide guide controls"
+        title="Deselect guide"
+        aria-label="Deselect guide"
       >
         <X className="w-3.5 h-3.5" />
       </button>

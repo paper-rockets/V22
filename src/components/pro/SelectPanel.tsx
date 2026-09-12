@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Plus, Minus } from 'lucide-react';
+import { ChevronDown, ChevronRight, Plus, Minus, CircleDot } from 'lucide-react';
 import {
   IcPointer as MousePointer2,
   IcLasso as CircleDashed,
@@ -11,7 +11,6 @@ import {
   IcUnlock as Unlock,
   IcEye as Eye,
   IcEyeOff as EyeOff,
-  IcSparkle as Sparkles,
   IcCompass as Compass,
 } from './StudioIcons';
 import { StudioEngine } from '../../core/studioEngine';
@@ -177,7 +176,7 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
       {/* 2. TARGET SCOPE */}
       <div className={cardClass}>
         <div className="flex items-center justify-between">
-          <div className={subHeadingClass}>Target Scope</div>
+          <div className={subHeadingClass}>Select From</div>
           <button
             type="button"
             onClick={handleResetTransform}
@@ -195,11 +194,11 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
 
         <div className="grid grid-cols-2 gap-1.5">
           {[
-            { id: 'active_layer' as const, label: 'Active Layer' },
+            { id: 'active_layer' as const, label: 'Layer' },
             { id: 'model' as const, label: 'Model' },
-            { id: 'strokes' as const, label: 'All Curves' },
-            { id: 'guide' as const, label: '3D Guide' },
-            { id: 'all' as const, label: 'All Objects' },
+            { id: 'strokes' as const, label: 'Curves' },
+            { id: 'guide' as const, label: 'Guides' },
+            { id: 'all' as const, label: 'Everything' },
           ].map((scope) => (
             <button
               key={scope.id}
@@ -297,7 +296,7 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
             }`}
           >
             <div className="flex items-center gap-1.5">
-              <Sparkles className="w-3.5 h-3.5" />
+              <CircleDot className="w-3.5 h-3.5" />
               <span>Soft Selection Falloff</span>
             </div>
             <span className="text-[10px] font-mono opacity-80">{softSelection ? 'On' : 'Off'}</span>

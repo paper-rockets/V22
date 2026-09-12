@@ -7,7 +7,6 @@ import {
   X,
   Check,
   RotateCcw,
-  Sparkles,
   Zap,
   Activity,
   Layers,

@@ -154,7 +154,6 @@ export class LightingController {
         break;
       case 'clay_neutral':
         this.setStudioLightingMode('studio');
-        this.onSetModelDisplayMode?.('clay');
         break;
     }
   }

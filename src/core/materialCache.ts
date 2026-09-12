@@ -67,8 +67,12 @@ export class MaterialCache {
     const shaderKey = settings.customShader?.id || settings.customShader?.name || effect;
     const matcapKey = settings.matcapUrl ? settings.matcapUrl.slice(0, 32) : (settings.matcapTexture ? 'has_tex' : 'no_matcap');
 
+    const seq = settings.strokeSequenceIndex ?? 0;
+    const seqTier = seq % 500;
+    const polyOffset = -3.0 - seqTier * 0.04;
+
     // Strict isolation key
-    const key = `${matType}|${shaderKey}|${matcapKey}|${validColor}|o${effectiveOpacity.toFixed(3)}|r${(settings.roughness ?? 0.35).toFixed(2)}|m${(settings.metalness ?? 0.15).toFixed(2)}|e${(settings.emissiveIntensity ?? 0).toFixed(2)}|${modeKey}|${stencilKey}|p_${patType}_${patScale}_${patInt}_${patAng}_${patContr}|b_${layerBlendMode}`;
+    const key = `${matType}|${shaderKey}|${matcapKey}|${validColor}|o${effectiveOpacity.toFixed(3)}|r${(settings.roughness ?? 0.35).toFixed(2)}|m${(settings.metalness ?? 0.15).toFixed(2)}|e${(settings.emissiveIntensity ?? 0).toFixed(2)}|${modeKey}|${stencilKey}|sq${seqTier}|p_${patType}_${patScale}_${patInt}_${patAng}_${patContr}|b_${layerBlendMode}`;
 
     if (this.cache.has(key)) {
       return this.cache.get(key)!;
@@ -105,8 +109,8 @@ export class MaterialCache {
         depthTest: true,
         depthWrite: false,
         polygonOffset: true,
-        polygonOffsetFactor: -3.0,
-        polygonOffsetUnits: -3.0,
+        polygonOffsetFactor: polyOffset,
+        polygonOffsetUnits: polyOffset,
         toneMapped: false,
       });
     } else if (matType === 'matcap') {
@@ -147,8 +151,8 @@ export class MaterialCache {
         depthTest: true,
         depthWrite: false,
         polygonOffset: true,
-        polygonOffsetFactor: -3.0,
-        polygonOffsetUnits: -3.0,
+        polygonOffsetFactor: polyOffset,
+        polygonOffsetUnits: polyOffset,
       });
     } else if (matType === 'animated_fx') {
       // 4. Animated FX Shader Material (Custom GLSL or standard 27 presets)
@@ -216,8 +220,8 @@ export class MaterialCache {
           depthTest: true,
           side: strokeSide,
           polygonOffset: true,
-          polygonOffsetFactor: -3.0,
-          polygonOffsetUnits: -3.0,
+          polygonOffsetFactor: polyOffset,
+          polygonOffsetUnits: polyOffset,
         });
         globalShaderRegistry.register(shaderMat);
         material = shaderMat;
@@ -245,8 +249,8 @@ export class MaterialCache {
           depthTest: true,
           side: strokeSide,
           polygonOffset: true,
-          polygonOffsetFactor: -3.0,
-          polygonOffsetUnits: -3.0,
+          polygonOffsetFactor: polyOffset,
+          polygonOffsetUnits: polyOffset,
           toneMapped: true,
         });
 
@@ -270,8 +274,8 @@ export class MaterialCache {
           depthTest: true,
           depthWrite: false,
           polygonOffset: true,
-          polygonOffsetFactor: -3.0,
-          polygonOffsetUnits: -3.0,
+          polygonOffsetFactor: polyOffset,
+          polygonOffsetUnits: polyOffset,
         });
       } else {
         material = new THREE.MeshStandardMaterial({
@@ -284,8 +288,8 @@ export class MaterialCache {
           depthTest: true,
           depthWrite: false,
           polygonOffset: true,
-          polygonOffsetFactor: -3.0,
-          polygonOffsetUnits: -3.0,
+          polygonOffsetFactor: polyOffset,
+          polygonOffsetUnits: polyOffset,
           envMapIntensity: 1.0,
         });
       }
@@ -299,8 +303,8 @@ export class MaterialCache {
         depthTest: true,
         depthWrite: false,
         polygonOffset: true,
-        polygonOffsetFactor: -3.0,
-        polygonOffsetUnits: -3.0,
+        polygonOffsetFactor: polyOffset,
+        polygonOffsetUnits: polyOffset,
         toneMapped: true,
       });
     }

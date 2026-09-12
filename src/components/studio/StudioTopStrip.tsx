@@ -1,6 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
-  Box,
   FolderOpen,
   Grid,
   Maximize2,
@@ -11,12 +10,11 @@ import {
   Ruler,
   Save,
   Settings,
-  Square,
-  Sun,
   Undo2,
   User,
+  Box,
+  Sun,
 } from 'lucide-react';
-import { FrameTool } from 'iconoir-react';
 import { toggleSheet } from './panelStore';
 import { StudioTopMoreMenu } from './StudioTopMoreMenu';
 
@@ -39,7 +37,7 @@ interface StudioTopStripProps {
   onTogglePlane?: () => void;
 }
 
-const CanvasSheetIcon = FrameTool;
+const CanvasSheetIcon = Grid;
 
 export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
   projectName,

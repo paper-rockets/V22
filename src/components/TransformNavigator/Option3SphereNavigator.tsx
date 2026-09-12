@@ -1494,27 +1494,19 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
     };
   }, [drawGizmo, applyCamera, applyObject, idleHint, say, engine, place]);
 
-  // Stepping aside while drawing on main canvas
+  // Keep gizmo active and fully visible when painting, close dropdown menu when tapping outside
   useEffect(() => {
     const onDocDown = (e: PointerEvent) => {
       if (nvRef.current && !nvRef.current.contains(e.target as Node)) {
-        nvRef.current.classList.add('nv-dim');
         setMenu(false);
       } else if (e.target === canvasRef.current) {
         setMenu(false);
       }
     };
-    const onDocUp = () => {
-      nvRef.current?.classList.remove('nv-dim');
-    };
     document.addEventListener('pointerdown', onDocDown, true);
-    document.addEventListener('pointerup', onDocUp, true);
-    document.addEventListener('pointercancel', onDocUp, true);
 
     return () => {
       document.removeEventListener('pointerdown', onDocDown, true);
-      document.removeEventListener('pointerup', onDocUp, true);
-      document.removeEventListener('pointercancel', onDocUp, true);
     };
   }, [setMenu]);
 

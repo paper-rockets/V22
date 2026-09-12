@@ -17,7 +17,6 @@ import {
   Download,
   Glasses,
   Image,
-  Sparkles,
   Smartphone,
   Check,
   ChevronRight,
@@ -25,6 +24,7 @@ import {
   FolderArchive,
   PanelLeft,
   EyeOff,
+  SunMedium,
 } from 'lucide-react';
 import { StudioSheet } from './StudioSheet';
 import { closeSheet } from './panelStore';
@@ -122,7 +122,6 @@ const Toggle: React.FC<{ on: boolean; onChange: (v: boolean) => void; label: str
   on,
   onChange,
   label,
-  isLight = false,
 }) => (
   <button
     type="button"
@@ -134,15 +133,9 @@ const Toggle: React.FC<{ on: boolean; onChange: (v: boolean) => void; label: str
       haptics.trigger('light');
       onChange(!on);
     }}
-    className={`paperrocket-toggle w-12 h-7 rounded-full transition-colors cursor-pointer relative min-h-[28px] ${
-      on ? (isLight ? 'bg-neutral-900' : 'bg-white') : (isLight ? 'bg-neutral-300' : 'bg-neutral-700')
-    }`}
+    className="paperrocket-toggle cursor-pointer relative bg-transparent border-0 outline-none p-0"
   >
-    <span
-      className={`absolute top-1 w-5 h-5 rounded-full shadow transition-all duration-150 ${
-        on ? (isLight ? 'left-6 bg-white' : 'left-6 bg-zinc-950') : 'left-1 bg-white'
-      }`}
-    />
+    <span className="absolute rounded-full shadow transition-all duration-150 bg-white" />
   </button>
 );
 
@@ -504,18 +497,18 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
           )}
 
           {onOpenIllumination && (
-            <Row icon={Sun} label="Studio Lighting" hint="Scene illumination, soft shadows, and studio presets" isLight={isLight}>
+            <Row icon={SunMedium} label="Studio Lighting" hint="Scene illumination, soft shadows, and studio presets" isLight={isLight}>
               <button type="button" onClick={onOpenIllumination} className={actionBtn}>
-                <Sun className="w-4 h-4 text-amber-400" />
+                <SunMedium className="w-4 h-4 text-amber-400" />
                 <span>Studio Illumination</span>
               </button>
             </Row>
           )}
 
           {onOpenRenderSettings && (
-            <Row icon={Sparkles} label="Picture Quality" hint="Visual fidelity, glow, and viewport rendering" isLight={isLight}>
+            <Row icon={Sliders} label="Picture Quality" hint="Visual fidelity, glow, and viewport rendering" isLight={isLight}>
               <button type="button" onClick={onOpenRenderSettings} className={actionBtn}>
-                <Sparkles className="w-4 h-4" />
+                <Sliders className="w-4 h-4" />
                 <span>Picture Quality</span>
               </button>
             </Row>

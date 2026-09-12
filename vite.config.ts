@@ -3,6 +3,42 @@ import react from '@vitejs/plugin-react';
 import basicSsl from '@vitejs/plugin-basic-ssl';
 import path from 'path';
 import { defineConfig } from 'vite';
+import { deletePresetsFromFiles } from './src/presets/presetRemover.js';
+
+function presetApiPlugin() {
+  return {
+    name: 'preset-api-plugin',
+    configureServer(server: any) {
+      server.middlewares.use((req: any, res: any, next: any) => {
+        if (req.url === '/api/delete-presets' && req.method === 'POST') {
+          let body = '';
+          req.on('data', (chunk: any) => { body += chunk; });
+          req.on('end', () => {
+            try {
+              const { ids } = JSON.parse(body);
+              if (!Array.isArray(ids) || ids.length === 0) {
+                res.statusCode = 400;
+                res.setHeader('Content-Type', 'application/json');
+                res.end(JSON.stringify({ error: 'No preset IDs provided.' }));
+                return;
+              }
+              const presetsDir = path.resolve(__dirname, 'src/presets');
+              const result = deletePresetsFromFiles(presetsDir, ids);
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ success: true, ...result }));
+            } catch (err: any) {
+              res.statusCode = 500;
+              res.setHeader('Content-Type', 'application/json');
+              res.end(JSON.stringify({ error: err.message }));
+            }
+          });
+          return;
+        }
+        next();
+      });
+    },
+  };
+}
 
 export default defineConfig(({ mode }) => {
   const isHttps = process.env.HTTPS === 'true' || process.argv.includes('--https');
@@ -12,12 +48,12 @@ export default defineConfig(({ mode }) => {
     plugins: [
       react(),
       tailwindcss(),
+      presetApiPlugin(),
       ...(isHttps ? [basicSsl()] : []),
     ],
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
-        'lucide-react': path.resolve(__dirname, 'src/icons/iconoirLucideAdapter.tsx'),
       },
     },
     build: {
@@ -29,6 +65,7 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
+          shaders: path.resolve(__dirname, 'shaders.html'),
         },
         output: {
           /**

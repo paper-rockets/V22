@@ -10,7 +10,6 @@ import {
   Check,
   X,
   Layers,
-  Sparkles,
   RotateCw,
   Activity,
   Maximize2,
@@ -322,7 +321,7 @@ export const BentGuideModal: React.FC<BentGuideModalProps> = ({
           onClick={handleCreateFromActiveStroke}
           className={`w-full py-1.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all ${t.btnSecondary}`}
         >
-          <Sparkles className={`w-3.5 h-3.5 ${isLight ? 'text-neutral-700 dark:text-zinc-300' : 'text-neutral-700 dark:text-zinc-300'}`} />
+          <Spline className={`w-3.5 h-3.5 ${isLight ? 'text-neutral-700 dark:text-zinc-300' : 'text-neutral-700 dark:text-zinc-300'}`} />
           <span>Convert Last Drawn Curve to Guide</span>
         </button>
       </div>

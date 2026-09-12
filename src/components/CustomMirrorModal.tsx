@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { CustomMirrorPlane, NumpadTarget } from '../types';
 import {
   Compass,
@@ -10,6 +10,9 @@ import {
   Move,
   RotateCw,
   Camera,
+  ChevronDown,
+  ChevronRight,
+  FlipHorizontal2,
 } from 'lucide-react';
 import { StudioEngine } from '../core/studioEngine';
 import { getThemeClasses } from '../utils/themeStyles';
@@ -43,6 +46,7 @@ export const CustomMirrorModal: React.FC<CustomMirrorModalProps> = ({
 
   const t = getThemeClasses(theme);
   const isLight = theme === 'light';
+  const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
 
   // Support both legacy mirrorConfig and newer config props
   const currentOrigin = config
@@ -115,7 +119,7 @@ export const CustomMirrorModal: React.FC<CustomMirrorModalProps> = ({
       {/* Header */}
       <div className={`flex items-center justify-between pb-2 border-b ${isLight ? 'border-black/10' : 'border-neutral-800'}`}>
         <div className="flex items-center gap-2">
-          <Compass className={`w-4 h-4 ${isLight ? 'text-neutral-900 dark:text-zinc-200' : 'text-neutral-700 dark:text-zinc-300'}`} />
+          <FlipHorizontal2 className={`w-4 h-4 ${isLight ? 'text-neutral-900 dark:text-zinc-200' : 'text-neutral-700 dark:text-zinc-300'}`} />
           <span className={`text-xs font-bold uppercase tracking-wider ${t.textPrimary}`}>
             Mirror
           </span>
@@ -150,131 +154,195 @@ export const CustomMirrorModal: React.FC<CustomMirrorModalProps> = ({
         </button>
       </div>
 
-      {/* Origin Coordinates (P0) */}
+      {/* Quick Axis Selection */}
       <div className="space-y-1.5">
         <span className={`text-[11px] font-bold uppercase tracking-wider ${t.textSecondary}`}>
-          Plane Origin (P₀)
+          Mirror Axis
         </span>
-        <div className="grid grid-cols-3 gap-1.5 font-mono text-xs">
-          {(['x', 'y', 'z'] as const).map((axis, idx) => {
-            const val = axis === 'x' ? currentOrigin.x : axis === 'y' ? currentOrigin.y : currentOrigin.z;
+        <div className="grid grid-cols-4 gap-1.5">
+          {(['x', 'y', 'z'] as const).map((axis) => {
+            const isAxisActive =
+              isEnabled &&
+              ((axis === 'x' && Math.abs(currentNormal.x) > 0.9) ||
+               (axis === 'y' && Math.abs(currentNormal.y) > 0.9) ||
+               (axis === 'z' && Math.abs(currentNormal.z) > 0.9));
             return (
               <button
                 key={axis}
-                onClick={() =>
-                  onOpenNumpad?.({
-                    id: `mirror_origin_${axis}`,
-                    title: `Mirror Origin ${axis.toUpperCase()}`,
-                    value: val,
-                    min: -5.0,
-                    max: 5.0,
-                    step: 0.05,
-                    unit: 'm',
-                    onConfirm: (newVal) => {
-                      if (config && onConfigChange) {
-                        const newOrigin: [number, number, number] = [
-                          idx === 0 ? newVal : config.planeOrigin[0],
-                          idx === 1 ? newVal : config.planeOrigin[1],
-                          idx === 2 ? newVal : config.planeOrigin[2],
-                        ];
-                        onConfigChange({ ...config, planeOrigin: newOrigin });
-                        engine?.updateCustomMirrorPlane(newOrigin, config.planeNormal);
-                      } else if (propSetMirrorConfig) {
-                        const next = { ...currentOrigin, [axis]: newVal };
-                        propSetMirrorConfig((prev) => ({ ...prev, origin: next }));
-                        engine?.setCustomMirrorPlane(next, currentNormal, isEnabled);
-                      }
-                    },
-                  })
-                }
-                className={`p-1.5 rounded-lg border flex items-center justify-between transition-colors ${
-                  isLight
-                    ? 'bg-neutral-50 hover:bg-neutral-100 border-black/10 text-neutral-800'
-                    : 'bg-neutral-900 hover:bg-neutral-800 border-neutral-800 text-neutral-300'
+                onClick={() => {
+                  const normal: [number, number, number] = axis === 'x' ? [1, 0, 0] : axis === 'y' ? [0, 1, 0] : [0, 0, 1];
+                  const origin: [number, number, number] = [0, 0, 0];
+                  if (config && onConfigChange) {
+                    onConfigChange({ planeOrigin: origin, planeNormal: normal, visible: true });
+                    engine?.updateCustomMirrorPlane(origin, normal);
+                  } else if (propSetMirrorConfig) {
+                    propSetMirrorConfig((prev) => ({
+                      ...prev,
+                      origin: { x: origin[0], y: origin[1], z: origin[2] },
+                      normal: { x: normal[0], y: normal[1], z: normal[2] },
+                      enabled: true,
+                      visible: true,
+                    }));
+                    engine?.setCustomMirrorPlane({ x: origin[0], y: origin[1], z: origin[2] }, { x: normal[0], y: normal[1], z: normal[2] }, true);
+                  }
+                }}
+                className={`py-1.5 px-2 rounded-xl text-xs font-bold uppercase transition-all flex items-center justify-center ${
+                  isAxisActive
+                    ? isLight
+                      ? 'bg-neutral-900 text-white shadow-xs'
+                      : 'bg-white text-zinc-950 shadow-xs'
+                    : isLight
+                    ? 'bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-black/10'
+                    : 'bg-white/5 hover:bg-white/10 text-neutral-200 border border-white/10'
                 }`}
               >
-                <span className={`font-bold uppercase ${t.textMuted}`}>{axis}:</span>
-                <span className={`font-bold ${isLight ? 'text-neutral-900 dark:text-zinc-200' : 'text-neutral-800 dark:text-zinc-300'}`}>
-                  {val.toFixed(2)}
-                </span>
+                {axis}
               </button>
             );
           })}
+          <button
+            onClick={handleAlignToCamera}
+            className={`py-1.5 px-1 rounded-xl text-xs font-semibold flex items-center justify-center gap-1 transition-all ${
+              isLight
+                ? 'bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-black/10'
+                : 'bg-white/5 hover:bg-white/10 text-neutral-200 border border-white/10'
+            }`}
+            title="Align mirror plane to camera view"
+          >
+            <Camera className="w-3 h-3" />
+            <span>View</span>
+          </button>
         </div>
       </div>
 
-      {/* Normal Direction (n) */}
-      <div className="space-y-1.5">
-        <span className={`text-[11px] font-bold uppercase tracking-wider ${t.textSecondary}`}>
-          Plane Normal Vector (n̂)
-        </span>
-        <div className="grid grid-cols-3 gap-1.5 font-mono text-xs">
-          {(['x', 'y', 'z'] as const).map((axis, idx) => {
-            const val = axis === 'x' ? currentNormal.x : axis === 'y' ? currentNormal.y : currentNormal.z;
-            return (
-              <button
-                key={axis}
-                onClick={() =>
-                  onOpenNumpad?.({
-                    id: `mirror_norm_${axis}`,
-                    title: `Mirror Normal ${axis.toUpperCase()}`,
-                    value: val,
-                    min: -1.0,
-                    max: 1.0,
-                    step: 0.1,
-                    unit: '',
-                    onConfirm: (newVal) => {
-                      if (config && onConfigChange) {
-                        const newNorm: [number, number, number] = [
-                          idx === 0 ? newVal : config.planeNormal[0],
-                          idx === 1 ? newVal : config.planeNormal[1],
-                          idx === 2 ? newVal : config.planeNormal[2],
-                        ];
-                        onConfigChange({ ...config, planeNormal: newNorm });
-                        engine?.updateCustomMirrorPlane(config.planeOrigin, newNorm);
-                      } else if (propSetMirrorConfig) {
-                        const next = { ...currentNormal, [axis]: newVal };
-                        propSetMirrorConfig((prev) => ({ ...prev, normal: next }));
-                        engine?.setCustomMirrorPlane(currentOrigin, next, isEnabled);
+      {/* Advanced Plane Controls Toggle */}
+      <div className="pt-2 border-t border-black/10 dark:border-white/10 space-y-2">
+        <button
+          type="button"
+          onClick={() => setShowAdvanced((prev) => !prev)}
+          className={`w-full py-1 text-[11px] font-semibold flex items-center justify-between transition-colors ${t.textSecondary} hover:text-white cursor-pointer`}
+        >
+          <span>Advanced Plane Controls</span>
+          {showAdvanced ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+        </button>
+
+        {showAdvanced && (
+          <div className="space-y-3 pt-1 animate-in fade-in duration-100">
+            {/* Origin Position */}
+            <div className="space-y-1.5">
+              <span className={`text-[10px] font-bold uppercase tracking-wider ${t.textMuted}`}>
+                Origin Position
+              </span>
+              <div className="grid grid-cols-3 gap-1.5 font-mono text-xs">
+                {(['x', 'y', 'z'] as const).map((axis, idx) => {
+                  const val = axis === 'x' ? currentOrigin.x : axis === 'y' ? currentOrigin.y : currentOrigin.z;
+                  return (
+                    <button
+                      key={axis}
+                      onClick={() =>
+                        onOpenNumpad?.({
+                          id: `mirror_origin_${axis}`,
+                          title: `Mirror Origin ${axis.toUpperCase()}`,
+                          value: val,
+                          min: -5.0,
+                          max: 5.0,
+                          step: 0.05,
+                          unit: 'm',
+                          onConfirm: (newVal) => {
+                            if (config && onConfigChange) {
+                              const newOrigin: [number, number, number] = [
+                                idx === 0 ? newVal : config.planeOrigin[0],
+                                idx === 1 ? newVal : config.planeOrigin[1],
+                                idx === 2 ? newVal : config.planeOrigin[2],
+                              ];
+                              onConfigChange({ ...config, planeOrigin: newOrigin });
+                              engine?.updateCustomMirrorPlane(newOrigin, config.planeNormal);
+                            } else if (propSetMirrorConfig) {
+                              const next = { ...currentOrigin, [axis]: newVal };
+                              propSetMirrorConfig((prev) => ({ ...prev, origin: next }));
+                              engine?.setCustomMirrorPlane(next, currentNormal, isEnabled);
+                            }
+                          },
+                        })
                       }
-                    },
-                  })
-                }
-                className={`p-1.5 rounded-lg border flex items-center justify-between transition-colors ${
-                  isLight
-                    ? 'bg-neutral-50 hover:bg-neutral-100 border-black/10 text-neutral-800'
-                    : 'bg-neutral-900 hover:bg-neutral-800 border-neutral-800 text-neutral-300'
-                }`}
-              >
-                <span className={`font-bold uppercase ${t.textMuted}`}>{axis}:</span>
-                <span className={`font-bold ${isLight ? 'text-neutral-900 dark:text-zinc-200' : 'text-neutral-800 dark:text-zinc-300'}`}>{val.toFixed(2)}</span>
-              </button>
-            );
-          })}
-        </div>
-      </div>
+                      className={`p-1.5 rounded-lg border flex items-center justify-between transition-colors ${
+                        isLight
+                          ? 'bg-neutral-50 hover:bg-neutral-100 border-black/10 text-neutral-800'
+                          : 'bg-neutral-900 hover:bg-neutral-800 border-neutral-800 text-neutral-300'
+                      }`}
+                    >
+                      <span className={`font-bold uppercase ${t.textMuted}`}>{axis}:</span>
+                      <span className={`font-bold ${isLight ? 'text-neutral-900 dark:text-zinc-200' : 'text-neutral-800 dark:text-zinc-300'}`}>
+                        {val.toFixed(2)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
 
-      {/* Quick Orientations */}
-      <div className={`pt-2 border-t grid grid-cols-2 gap-2 ${isLight ? 'border-black/10' : 'border-neutral-800'}`}>
-        <button
-          onClick={handleAlignToCamera}
-          className={`py-1.5 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${
-            isLight
-              ? 'bg-neutral-100 dark:bg-white/5 hover:bg-neutral-100 dark:bg-white/10 text-neutral-900 dark:text-neutral-200 border border-black/10 dark:border-white/10'
-              : 'bg-black/30 dark:bg-white/5/60 hover:bg-neutral-800 dark:bg-white/10/80 border border-neutral-700 dark:border-neutral-300/60 text-neutral-800 dark:text-zinc-200'
-          }`}
-          title="Align mirror plane perpendicular to current camera view"
-        >
-          <Camera className="w-3.5 h-3.5" />
-          <span>Align to View</span>
-        </button>
-        <button
-          onClick={handleResetToCenter}
-          className={`py-1.5 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${t.btnSecondary}`}
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-          <span>Center YZ</span>
-        </button>
+            {/* Direction Vector */}
+            <div className="space-y-1.5">
+              <span className={`text-[10px] font-bold uppercase tracking-wider ${t.textMuted}`}>
+                Direction Vector
+              </span>
+              <div className="grid grid-cols-3 gap-1.5 font-mono text-xs">
+                {(['x', 'y', 'z'] as const).map((axis, idx) => {
+                  const val = axis === 'x' ? currentNormal.x : axis === 'y' ? currentNormal.y : currentNormal.z;
+                  return (
+                    <button
+                      key={axis}
+                      onClick={() =>
+                        onOpenNumpad?.({
+                          id: `mirror_norm_${axis}`,
+                          title: `Mirror Normal ${axis.toUpperCase()}`,
+                          value: val,
+                          min: -1.0,
+                          max: 1.0,
+                          step: 0.1,
+                          unit: '',
+                          onConfirm: (newVal) => {
+                            if (config && onConfigChange) {
+                              const newNorm: [number, number, number] = [
+                                idx === 0 ? newVal : config.planeNormal[0],
+                                idx === 1 ? newVal : config.planeNormal[1],
+                                idx === 2 ? newVal : config.planeNormal[2],
+                              ];
+                              onConfigChange({ ...config, planeNormal: newNorm });
+                              engine?.updateCustomMirrorPlane(config.planeOrigin, newNorm);
+                            } else if (propSetMirrorConfig) {
+                              const next = { ...currentNormal, [axis]: newVal };
+                              propSetMirrorConfig((prev) => ({ ...prev, normal: next }));
+                              engine?.setCustomMirrorPlane(currentOrigin, next, isEnabled);
+                            }
+                          },
+                        })
+                      }
+                      className={`p-1.5 rounded-lg border flex items-center justify-between transition-colors ${
+                        isLight
+                          ? 'bg-neutral-50 hover:bg-neutral-100 border-black/10 text-neutral-800'
+                          : 'bg-neutral-900 hover:bg-neutral-800 border-neutral-800 text-neutral-300'
+                      }`}
+                    >
+                      <span className={`font-bold uppercase ${t.textMuted}`}>{axis}:</span>
+                      <span className={`font-bold ${isLight ? 'text-neutral-900 dark:text-zinc-200' : 'text-neutral-800 dark:text-zinc-300'}`}>
+                        {val.toFixed(2)}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <button
+              onClick={handleResetToCenter}
+              className={`w-full py-1.5 px-2 rounded-xl text-xs font-semibold flex items-center justify-center gap-1.5 transition-all ${t.btnSecondary}`}
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Center to Origin</span>
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

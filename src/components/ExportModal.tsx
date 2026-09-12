@@ -183,7 +183,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
 
         {/* Export Options */}
         <div className="space-y-3 my-5">
-          {/* GLB Option */}
+          {/* GLB Option - Recommended */}
           <div
             onClick={handleExportGLB}
             className={`flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer group ${
@@ -199,13 +199,18 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                 <Box className="w-5 h-5" />
               </div>
               <div className="flex flex-col text-left">
-                <span className={`text-sm font-semibold transition-colors ${
-                  isLight ? 'text-neutral-900 group-hover:text-neutral-900' : 'text-neutral-100 group-hover:text-white'
-                }`}>
-                  Combined 3D GLB Binary
-                </span>
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm font-semibold transition-colors ${
+                    isLight ? 'text-neutral-900 group-hover:text-neutral-900' : 'text-neutral-100 group-hover:text-white'
+                  }`}>
+                    3D Model (GLB)
+                  </span>
+                  <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-sky-500/15 text-sky-400 border border-sky-500/30">
+                    Recommended
+                  </span>
+                </div>
                 <span className={`text-xs ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
-                  Full 3D model with integrated conformal stroke geometries
+                  Full 3D model with integrated stroke geometries
                 </span>
               </div>
             </div>
@@ -227,15 +232,15 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           >
             <div className="flex items-center gap-3">
               <div className={`p-2.5 rounded-xl transition-all ${
-                isLight ? 'bg-neutral-900 dark:bg-white/10 text-neutral-900 dark:text-zinc-200 group-hover:bg-neutral-900 dark:bg-white group-hover:text-white' : 'bg-neutral-900 dark:bg-white/20 text-neutral-700 dark:text-zinc-300 group-hover:bg-neutral-900 dark:bg-white group-hover:text-white'
+                isLight ? 'bg-black/5 text-neutral-900 group-hover:bg-neutral-900 group-hover:text-white' : 'bg-white/10 text-white group-hover:bg-white group-hover:text-zinc-950'
               }`}>
                 <Box className="w-5 h-5" />
               </div>
               <div className="flex flex-col text-left">
                 <span className={`text-sm font-semibold transition-colors ${
-                  isLight ? 'text-neutral-900 group-hover:text-neutral-900 dark:text-zinc-200' : 'text-neutral-100 group-hover:text-neutral-700 dark:text-zinc-300'
+                  isLight ? 'text-neutral-900 group-hover:text-neutral-900' : 'text-neutral-100 group-hover:text-white'
                 }`}>
-                  Wavefront OBJ Mesh
+                  OBJ Model
                 </span>
                 <span className={`text-xs ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
                   Standard OBJ geometry compatible with Blender, Maya, and Unity
@@ -260,18 +265,18 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           >
             <div className="flex items-center gap-3">
               <div className={`p-2.5 rounded-xl transition-all ${
-                isLight ? 'bg-neutral-900 dark:bg-white/10 text-neutral-900 dark:text-zinc-200 group-hover:bg-neutral-900 dark:bg-white group-hover:text-white' : 'bg-neutral-900 dark:bg-white/20 text-neutral-700 dark:text-zinc-300 group-hover:bg-neutral-900 dark:bg-white group-hover:text-white'
+                isLight ? 'bg-black/5 text-neutral-900 group-hover:bg-neutral-900 group-hover:text-white' : 'bg-white/10 text-white group-hover:bg-white group-hover:text-zinc-950'
               }`}>
                 <Image className="w-5 h-5" />
               </div>
               <div className="flex flex-col text-left">
                 <span className={`text-sm font-semibold transition-colors ${
-                  isLight ? 'text-neutral-900 group-hover:text-neutral-900 dark:text-zinc-200' : 'text-neutral-100 group-hover:text-neutral-700 dark:text-zinc-300'
+                  isLight ? 'text-neutral-900 group-hover:text-neutral-900' : 'text-neutral-100 group-hover:text-white'
                 }`}>
-                  2K UV Texture Map PNG
+                  Texture Image · 2K PNG
                 </span>
                 <span className={`text-xs ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
-                  2048x2048 dynamic UV painted surface texture map
+                  2048 × 2048 UV painted surface texture map
                 </span>
               </div>
             </div>
@@ -282,7 +287,40 @@ export const ExportModal: React.FC<ExportModalProps> = ({
             )}
           </div>
 
-          {/* Save to In-App Library with Auto Preview */}
+          {/* Screenshot */}
+          <div
+            onClick={handleCaptureSnapshot}
+            className={`flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer group ${
+              isLight
+                ? 'bg-[#f4f0e9]/80 hover:bg-[#ede8e0] border-black/10'
+                : 'bg-neutral-950/50 hover:bg-neutral-800/60 border-neutral-800'
+            }`}
+          >
+            <div className="flex items-center gap-3">
+              <div className={`p-2.5 rounded-xl transition-all ${
+                isLight ? 'bg-black/5 text-neutral-900 group-hover:bg-neutral-900 group-hover:text-white' : 'bg-white/10 text-white group-hover:bg-white group-hover:text-zinc-950'
+              }`}>
+                <Camera className="w-5 h-5" />
+              </div>
+              <div className="flex flex-col text-left">
+                <span className={`text-sm font-semibold transition-colors ${
+                  isLight ? 'text-neutral-900 group-hover:text-neutral-900' : 'text-neutral-100 group-hover:text-white'
+                }`}>
+                  Screenshot
+                </span>
+                <span className={`text-xs ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
+                  High-resolution rendered PNG image of current view
+                </span>
+              </div>
+            </div>
+            {exporting === 'snapshot' ? (
+              <Loader2 className="w-5 h-5 animate-spin text-neutral-700 dark:text-zinc-300" />
+            ) : (
+              <Download className={`w-4 h-4 transition-colors ${isLight ? 'text-neutral-400 group-hover:text-neutral-900' : 'text-neutral-500 group-hover:text-neutral-200'}`} />
+            )}
+          </div>
+
+          {/* Save to In-App Library */}
           <div
             onClick={handleSaveToLibrary}
             className={`flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer group ${
@@ -304,44 +342,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   Save to In-App Library
                 </span>
                 <span className={`text-xs ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
-                  Auto-captures preview thumbnail and saves painted model into your library
+                  Store painted model inside your local app collection
                 </span>
               </div>
             </div>
             {exporting === 'storage' ? (
-              <Loader2 className="w-5 h-5 animate-spin text-neutral-700 dark:text-zinc-300" />
-            ) : (
-              <Download className={`w-4 h-4 transition-colors ${isLight ? 'text-neutral-400 group-hover:text-neutral-900' : 'text-neutral-500 group-hover:text-neutral-200'}`} />
-            )}
-          </div>
-
-          {/* Studio Render Snapshot */}
-          <div
-            onClick={handleCaptureSnapshot}
-            className={`flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer group ${
-              isLight
-                ? 'bg-[#f4f0e9]/80 hover:bg-[#ede8e0] border-black/10'
-                : 'bg-neutral-950/50 hover:bg-neutral-800/60 border-neutral-800'
-            }`}
-          >
-            <div className="flex items-center gap-3">
-              <div className={`p-2.5 rounded-xl transition-all ${
-                isLight ? 'bg-neutral-900 dark:bg-white/10 text-neutral-900 dark:text-zinc-200 group-hover:bg-neutral-900 dark:bg-white group-hover:text-white' : 'bg-neutral-900 dark:bg-white/20 text-neutral-700 dark:text-zinc-300 group-hover:bg-neutral-900 dark:bg-white group-hover:text-white'
-              }`}>
-                <Camera className="w-5 h-5" />
-              </div>
-              <div className="flex flex-col text-left">
-                <span className={`text-sm font-semibold transition-colors ${
-                  isLight ? 'text-neutral-900 group-hover:text-neutral-900 dark:text-zinc-200' : 'text-neutral-100 group-hover:text-neutral-700 dark:text-zinc-300'
-                }`}>
-                  Studio HD Screenshot
-                </span>
-                <span className={`text-xs ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
-                  High-resolution rendered PNG of current viewport
-                </span>
-              </div>
-            </div>
-            {exporting === 'snapshot' ? (
               <Loader2 className="w-5 h-5 animate-spin text-neutral-700 dark:text-zinc-300" />
             ) : (
               <Download className={`w-4 h-4 transition-colors ${isLight ? 'text-neutral-400 group-hover:text-neutral-900' : 'text-neutral-500 group-hover:text-neutral-200'}`} />

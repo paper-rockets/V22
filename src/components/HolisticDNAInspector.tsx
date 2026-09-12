@@ -6,7 +6,7 @@ import {
   Zap,
   Sliders,
   Layers,
-  Sparkles,
+  Atom,
   Palette,
   Droplet,
   Flame,
@@ -111,7 +111,7 @@ export const HolisticDNAInspector: React.FC<HolisticDNAInspectorProps> = ({
           {/* Material Shader */}
           <div className="p-2.5 rounded-xl bg-neutral-950/40 border border-white/5 flex items-center gap-2">
             <div className="p-1.5 rounded-md bg-neutral-900 dark:bg-white/10 text-neutral-700 dark:text-zinc-300">
-              <Sparkles className="w-3.5 h-3.5" />
+              <Atom className="w-3.5 h-3.5" />
             </div>
             <div>
               <div className="text-[10px] text-neutral-400">Material Shader</div>

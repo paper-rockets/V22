@@ -25,7 +25,6 @@ import {
   ZoomOut,
   PenTool,
   Move,
-  Sparkles,
   Touchpad,
   Box,
   Layers,
@@ -409,16 +408,10 @@ export const Viewport: React.FC<ViewportProps> = ({
   useEffect(() => {
     const onNavActive = (e: CustomEvent<{ active: boolean }>) => {
       if (e.detail?.active) {
-        if (isPointerDown.current) {
-          isPointerDown.current = false;
-          engineRef.current?.cancelStroke();
-        }
+        // Drop background viewport camera touch orbit gestures while navigator is being used,
+        // but preserve active pen / brush drawing so the user can paint freely.
         touchPointersRef.current.clear();
         setIsOrbiting(false);
-        isPenDrawingRef.current = false;
-        activeDrawingPointerIdRef.current = null;
-        engineRef.current?.hideCursor();
-        if (cursorSvgRef.current) cursorSvgRef.current.style.display = 'none';
       }
     };
     window.addEventListener('NAVIGATOR_ACTIVE', onNavActive as EventListener);
@@ -436,7 +429,7 @@ export const Viewport: React.FC<ViewportProps> = ({
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (isRadialMenuOpen) return;
     e.preventDefault();
-    if ((window as any).__NAVIGATOR_ACTIVE__) return;
+    if ((window as any).__NAVIGATOR_ACTIVE__ && e.pointerType !== 'pen') return;
     refreshRect();
     const engine = engineRef.current;
     if (!engine) return;
@@ -789,7 +782,7 @@ export const Viewport: React.FC<ViewportProps> = ({
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
-    if ((window as any).__NAVIGATOR_ACTIVE__) return;
+    if ((window as any).__NAVIGATOR_ACTIVE__ && e.pointerType !== 'pen') return;
     const engine = engineRef.current;
     if (!engine) return;
 

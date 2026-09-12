@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { PostProcessSettings, RenderMode, GPUInfo, PathTracingProgressInfo } from '../types';
 import {
-  Sparkles,
+  Sliders,
   Sun,
   Flame,
   Camera,
@@ -9,7 +9,6 @@ import {
   Grid,
   X,
   Layers,
-  Wand2,
   Tv,
   RefreshCw,
   Check,
@@ -71,7 +70,7 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
       {/* Header */}
       <div className={`flex items-center justify-between pb-3 border-b ${isLight ? 'border-black/10' : 'border-neutral-800'}`}>
         <div className={`flex items-center gap-2 font-semibold text-sm ${isLight ? 'text-neutral-900' : 'text-neutral-200'}`}>
-          <Wand2 className="w-4 h-4 text-neutral-700 dark:text-zinc-300" />
+          <Sliders className="w-4 h-4 text-neutral-700 dark:text-zinc-300" />
           <span>Picture Quality</span>
         </div>
         <button
@@ -319,7 +318,7 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
         }`}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 font-semibold text-neutral-700 dark:text-zinc-300">
-              <Sparkles className="w-3.5 h-3.5" />
+              <Layers className="w-3.5 h-3.5" />
               <span>Toon / Cel Shading</span>
             </div>
             <input

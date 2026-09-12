@@ -19,7 +19,6 @@ import {
   ArrowDown,
   ChevronRight,
   ChevronDown,
-  Sparkles,
   Sun,
   Moon,
   Zap,

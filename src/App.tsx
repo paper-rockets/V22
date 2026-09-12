@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useCallback, lazy, Suspense, useMemo } from 'react';
 import * as THREE from 'three';
 import {
   ToolType,
@@ -57,52 +57,9 @@ import {
   AutoSaveMetaInfo,
 } from './utils/storagePermission';
 
-const ProjectSessionModal = lazy(() =>
-  import('./components/ProjectSessionModal').then((m) => ({ default: m.ProjectSessionModal }))
-);
-
-/**
- * Deferred UI.
- *
- * These panels and modals are closed on load, but eagerly importing them pulled
- * their entire dependency graph (extra Three.js scenes, jszip, QR encoding, the
- * shader preset tables) into the initial bundle. Parsing that costs real time on
- * a mobile CPU before the first frame can render. Each now loads the first time
- * the user opens it, and stays cached afterwards.
- */
-const RenderSettingsPanel = lazy(() =>
-  import('./components/RenderSettingsPanel').then((m) => ({ default: m.RenderSettingsPanel }))
-);
-const ModelLibraryModal = lazy(() =>
-  import('./components/ModelLibraryModal').then((m) => ({ default: m.ModelLibraryModal }))
-);
-const ExportModal = lazy(() => import('./components/ExportModal').then((m) => ({ default: m.ExportModal })));
-const SimpleSceneIlluminationModal = lazy(() =>
-  import('./components/SimpleSceneIlluminationModal').then((m) => ({ default: m.SimpleSceneIlluminationModal }))
-);
-const IlluminationStudioModal = lazy(() =>
-  import('./components/IlluminationStudioModal').then((m) => ({ default: m.IlluminationStudioModal }))
-);
-const CurveDecimateModal = lazy(() =>
-  import('./components/CurveDecimateModal').then((m) => ({ default: m.CurveDecimateModal }))
-);
-const CustomMirrorModal = lazy(() =>
-  import('./components/CustomMirrorModal').then((m) => ({ default: m.CustomMirrorModal }))
-);
-const BentGuideModal = lazy(() => import('./components/BentGuideModal').then((m) => ({ default: m.BentGuideModal })));
-const ScaffoldingModal = lazy(() =>
-  import('./components/ScaffoldingModal').then((m) => ({ default: m.ScaffoldingModal }))
-);
-const ARViewerModal = lazy(() => import('./components/ARViewerModal').then((m) => ({ default: m.ARViewerModal })));
-const ColorStudioModal = lazy(() =>
-  import('./components/CompactColorStudioModal').then((m) => ({ default: m.ColorStudioModal }))
-);
-const HolisticDNAInspector = lazy(() =>
-  import('./components/HolisticDNAInspector').then((m) => ({ default: m.HolisticDNAInspector }))
-);
-const FloatingReferenceClipboard = lazy(() =>
-  import('./components/FloatingReferenceClipboard').then((m) => ({ default: m.FloatingReferenceClipboard }))
-);
+import { AppModalHost } from './components/modals/AppModalHost';
+import { useAppShortcuts } from './hooks/useAppShortcuts';
+import { useAppAutoSave } from './hooks/useAppAutoSave';
 import { haptics } from './utils/haptics';
 import { setGlobalSoundEnabled } from './utils/audio';
 import { PlatformBridge } from './core/platformBridge';
@@ -149,6 +106,11 @@ const DEFAULT_BRUSH_SETTINGS: BrushSettings = {
   patternContrast: 1.0,
   chiselAngle: 45,
   aspectRatio: 3.5,
+  brushShape: 'wide_flat',
+  brushWidthMultiplier: 6,
+  straightLineMode: false,
+  magneticEndpointSnapping: true,
+  adaptableCorners: true,
   // Predictive Stroke is on out of the box: smoothing every stroke is the point
   // of it, and a cleaner line is what most people want without going looking
   // for a setting. Replacing strokes with shapes stays off until asked for.
@@ -516,149 +478,43 @@ export function App() {
   const [activeDNA, setActiveDNA] = useState<HolisticStrokeDNA | null>(null);
   const [snappedShapeNotice, setSnappedShapeNotice] = useState<string | null>(null);
 
-  // Storage Permission & Bulletproof IndexedDB Auto-Save
-  const [autoSaveStatus, setAutoSaveStatus] = useState<AutoSaveStatus>('idle');
-  const [lastSavedTime, setLastSavedTime] = useState<Date | null>(null);
-  const [isStoragePersistent, setIsStoragePersistent] = useState<boolean>(false);
-  const [storageEstimate, setStorageEstimate] = useState<StorageEstimateInfo | null>(null);
-  const [autoSaveMeta, setAutoSaveMeta] = useState<AutoSaveMetaInfo>({ exists: false });
-  const autoSaveTimerRef = React.useRef<NodeJS.Timeout | null>(null);
   const isInitialMountRef = React.useRef<boolean>(true);
-
-  // Initialize Storage Persistence check and query local autosave session
-  useEffect(() => {
-    checkStoragePersistence().then((persisted) => {
-      setIsStoragePersistent(persisted);
-      if (!persisted) {
-        // Attempt silent browser persistence request on startup
-        requestStoragePersistence().then((granted) => {
-          setIsStoragePersistent(granted);
-        });
-      }
-    });
-    getStorageEstimate().then(setStorageEstimate);
-    hasAutoSaveProject().then(setAutoSaveMeta);
-  }, []);
-
-  const handleRequestStoragePermission = useCallback(async () => {
-    const granted = await requestStoragePersistence();
-    setIsStoragePersistent(granted);
-    const est = await getStorageEstimate();
-    setStorageEstimate(est);
-    return granted;
-  }, []);
-
-  const handleRestoreAutoSave = useCallback(async () => {
-    if (!engine) return;
-    try {
-      const savedProject = await loadAutoSaveProject();
-      if (savedProject) {
-        await engine.importProjectData(savedProject);
-        if (savedProject.activeModelName) {
-          setActiveModelName(savedProject.activeModelName);
-        }
-        if (savedProject.activeModelId) {
-          setActiveModelId(savedProject.activeModelId);
-        }
-        if (savedProject.layers && savedProject.layers.length > 0) {
-          setLayers(savedProject.layers);
-          setActiveLayerId(savedProject.layers[0].id);
-        }
-        if (savedProject.lightingPreset) {
-          setLightingPreset(savedProject.lightingPreset);
-        }
-        if (savedProject.showGrid !== undefined) {
-          setShowGrid(savedProject.showGrid);
-        }
-        if (savedProject.showPlane !== undefined) {
-          setShowPlane(savedProject.showPlane);
-        }
-        if (savedProject.showWireframe !== undefined) {
-          setShowWireframe(savedProject.showWireframe);
-        }
-        haptics.trigger('success');
-      }
-    } catch (err) {
-      console.error('Failed to restore autosaved project:', err);
-    }
-  }, [engine]);
-
-  const handleClearAutoSave = useCallback(async () => {
-    await clearAutoSaveProject();
-    setAutoSaveMeta({ exists: false });
-    const est = await getStorageEstimate();
-    setStorageEstimate(est);
-    haptics.trigger('light');
-  }, []);
-
-  const triggerAutoSave = useCallback(() => {
-    if (autoSaveTimerRef.current) {
-      clearTimeout(autoSaveTimerRef.current);
-    }
-
-    // Debounce save execution smoothly
-    autoSaveTimerRef.current = setTimeout(async () => {
-      if (!engine) return;
-      try {
-        setAutoSaveStatus('saving');
-
-        // 1. Export full 3D project representation
-        const projectData = engine.exportProjectData('Autosaved Session', layers);
-
-        // 2. Commit full project into IndexedDB (supports unlimited geometric data)
-        await saveAutoSaveProject(projectData);
-
-        // 3. Keep lightweight fallback meta in LocalStorage
-        const metaState = {
-          timestamp: Date.now(),
-          layerCount: layers.length,
-          modelName: activeModelName,
-          lightingPreset,
-          brushSettingsSummary: {
-            color: brushSettings.color,
-            size: brushSettings.size,
-            tool,
-          },
-        };
-        try {
-          localStorage.setItem('mody_autosave_meta', JSON.stringify(metaState));
-        } catch (_) {}
-
-        setAutoSaveStatus('saved');
-        setLastSavedTime(new Date());
-        setAutoSaveMeta({
-          exists: true,
-          timestamp: Date.now(),
-          strokeCount: projectData.strokes?.length || 0,
-          layerCount: layers.length,
-          modelName: activeModelName,
-          formattedDate: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        });
-
-        // Update storage estimate
-        getStorageEstimate().then(setStorageEstimate);
-
-        // Revert to idle after 2.5s
-        setTimeout(() => {
-          setAutoSaveStatus((prev) => (prev === 'saved' ? 'idle' : prev));
-        }, 2500);
-      } catch (err) {
-        console.warn('Auto-save storage failed:', err);
-        setAutoSaveStatus('error');
-        setTimeout(() => {
-          setAutoSaveStatus((prev) => (prev === 'error' ? 'idle' : prev));
-        }, 3500);
-      }
-    }, 650);
-  }, [engine, layers, activeModelName, lightingPreset, brushSettings, tool]);
-
-  const activeLayer = layers.find((l) => l.id === activeLayerId) || layers[0];
 
   // Multi-Model & Target Scope State
   const [loadedModels, setLoadedModels] = useState<LoadedModelInfo[]>([]);
   const [activeModelId, setActiveModelId] = useState<string | null>(null);
   const [targetScope, setTargetScope] = useState<TransformTargetScope>('all');
   const [activeGuide, setActiveGuide] = useState<ActiveGuideReference | null>(null);
+
+  // Storage Permission & Bulletproof IndexedDB Auto-Save Hook
+  const {
+    autoSaveStatus,
+    lastSavedTime,
+    isStoragePersistent,
+    storageEstimate,
+    autoSaveMeta,
+    handleRequestStoragePermission,
+    handleRestoreAutoSave,
+    handleClearAutoSave,
+    triggerAutoSave,
+  } = useAppAutoSave({
+    engine,
+    layers,
+    activeModelName,
+    lightingPreset,
+    brushSettings,
+    tool,
+    setActiveModelName,
+    setActiveModelId,
+    setLayers,
+    setActiveLayerId,
+    setLightingPreset,
+    setShowGrid,
+    setShowPlane,
+    setShowWireframe,
+  });
+
+  const activeLayer = layers.find((l) => l.id === activeLayerId) || layers[0];
 
   useEffect(() => {
     if (!engine) return;
@@ -1140,17 +996,6 @@ export function App() {
     haptics.trigger('success');
   }, [engine]);
 
-  // Global Ctrl+S / Cmd+S Quick Save shortcut
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
-        e.preventDefault();
-        void handleQuickSave();
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleQuickSave]);
 
   // Sync grid toggle
   const handleToggleGrid = () => {
@@ -1243,53 +1088,16 @@ export function App() {
     }
   }, [engine, layers, activeLayerId]);
 
-  // Global Keyboard Shortcuts
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) {
-        return;
-      }
-
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'z') {
-        e.preventDefault();
-        if (e.shiftKey) {
-          handleRedo();
-        } else {
-          handleUndo();
-        }
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'y') {
-        e.preventDefault();
-        handleRedo();
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'c') {
-        e.preventDefault();
-        handleCopyStrokes();
-      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'v') {
-        e.preventDefault();
-        handlePasteStrokes();
-      } else if (e.key.toLowerCase() === 'b') {
-        setTool('brush');
-      } else if (e.key.toLowerCase() === 'u') {
-        setTool('spatial_brush');
-      } else if (e.key.toLowerCase() === 'i') {
-        setTool((prev) => (prev === 'paint_picker' || prev === 'eyedropper' ? 'brush' : 'paint_picker'));
-      } else if (e.key.toLowerCase() === 'j') {
-        setTool((prev) => (prev === 'brush_picker' ? 'brush' : 'brush_picker'));
-      } else if (e.key === '[') {
-        setBrushSettings((prev) => ({
-          ...prev,
-          size: Math.max(0.01, prev.size - 0.005),
-        }));
-      } else if (e.key === ']') {
-        setBrushSettings((prev) => ({
-          ...prev,
-          size: Math.min(0.25, prev.size + 0.005),
-        }));
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [handleUndo, handleRedo, handleCopyStrokes, handlePasteStrokes]);
+  // Global Keyboard Shortcuts (Ctrl+Z, Ctrl+Y, Ctrl+S, brush size, tools)
+  useAppShortcuts({
+    handleUndo,
+    handleRedo,
+    handleCopyStrokes,
+    handlePasteStrokes,
+    handleQuickSave,
+    setTool,
+    setBrushSettings,
+  });
 
   // Global Drag & Drop for 3D Models
   useEffect(() => {
@@ -1397,6 +1205,7 @@ export function App() {
         canRedo={canRedo}
         theme={theme}
         onOpenIllumination={() => setIsIlluminationOpen(true)}
+        onToggleModelDisplay={() => setIsModelDisplayOpen((prev) => !prev)}
         onOpenScaffolding={() => setIsScaffoldingOpen(true)}
         onQuickSave={handleQuickSave}
         onOpenSessions={() => setIsSessionModalOpen(true)}
@@ -1634,236 +1443,58 @@ export function App() {
         />
       )}
 
-      {/* Render Mode & Post-Processing Shaders Modal */}
-      {isRenderSettingsOpen && (
-        <Suspense fallback={null}>
-          <RenderSettingsPanel
-            settings={postSettings}
-            setSettings={setPostSettings}
-            onClose={() => setIsRenderSettingsOpen(false)}
-            onRecalculateNormals={() => engine?.recalculateMeshNormals()}
-            gpuInfo={gpuInfo}
-            theme={theme}
-            pathTracingProgress={pathTracingProgress}
-          />
-        </Suspense>
-      )}
-
-      {/* 3D Model Ingestion / Presets Modal */}
-      {isModelsOpen && (
-        <Suspense fallback={null}>
-          <ModelLibraryModal
-            engine={engine}
-            onClose={() => setIsModelsOpen(false)}
-            activeModelName={activeModelName}
-            theme={theme}
-            onBeforeReplace={handleBeforeReplace}
-          />
-        </Suspense>
-      )}
-
-      {/* Export 3D / Textures Modal */}
-      {isExportOpen && (
-        <Suspense fallback={null}>
-          <ExportModal
-            engine={engine}
-            onClose={() => setIsExportOpen(false)}
-            activeModelName={activeModelName}
-            theme={theme}
-          />
-        </Suspense>
-      )}
-
-      {/* Project Session Management Modal (Non-Destructive & Undo Preserved) */}
-      {isSessionModalOpen && (
-        <Suspense fallback={null}>
-          <ProjectSessionModal
-            isOpen={isSessionModalOpen}
-            onClose={() => setIsSessionModalOpen(false)}
-            onSaveSession={handleSaveNamedSession}
-            onLoadSession={handleLoadNamedSession}
-            onSaveToFolder={handleSaveProjectToFolder}
-            onExportFile={handleSaveProject}
-            onImportFile={handleLoadProject}
-            theme={theme}
-            activeProjectName={activeModelName}
-          />
-        </Suspense>
-      )}
-
-      {/* Studio Illumination Modal */}
-      <DeferredPanel active={isIlluminationOpen}>
-        <SimpleSceneIlluminationModal
-          engine={engine}
-          isOpen={isIlluminationOpen}
-          onClose={() => setIsIlluminationOpen(false)}
-          theme={theme}
-        />
-      </DeferredPanel>
-
-      {/* RDP Curve Decimation Modal */}
-      <DeferredPanel active={isDecimateOpen}>
-        <CurveDecimateModal
-          isOpen={isDecimateOpen}
-          onClose={() => setIsDecimateOpen(false)}
-          onApplyDecimation={(epsilon, preserveTopology) => {
-            if (engine) {
-              const count = engine.decimateActiveLayerCurves(epsilon, preserveTopology);
-              console.log(`Simplified curves with RDP (epsilon: ${epsilon}), remaining points: ${count}`);
-            }
-          }}
-          theme={theme}
-        />
-      </DeferredPanel>
-
-      {/* Bent 3D Manifold Guide & Lofting Modal */}
-      <DeferredPanel active={isBentGuideOpen}>
-        <BentGuideModal
-          isOpen={isBentGuideOpen}
-          onClose={() => setIsBentGuideOpen(false)}
-          engine={engine}
-          theme={theme}
-        />
-      </DeferredPanel>
-
-      {/* 3D Scaffolding & Armature Guides Modal */}
-      <DeferredPanel active={isScaffoldingOpen}>
-        <ScaffoldingModal
-          isOpen={isScaffoldingOpen}
-          onClose={() => setIsScaffoldingOpen(false)}
-          engine={engine}
-          theme={theme === 'light' ? 'light' : 'dark'}
-        />
-      </DeferredPanel>
-
-      {/* Floating 2D Blueprint Clipboard & Reference Moodboard */}
-      <DeferredPanel active={isClipboardOpen}>
-        <FloatingReferenceClipboard
-          isOpen={isClipboardOpen}
-          onClose={() => setIsClipboardOpen(false)}
-          referenceImages={referenceImages}
-          setReferenceImages={setReferenceImages}
-          theme={theme}
-        />
-      </DeferredPanel>
-
-      {/* Arbitrary 3D Mirror Plane Modal */}
-      <DeferredPanel active={isCustomMirrorOpen}>
-        <CustomMirrorModal
-          isOpen={isCustomMirrorOpen}
-          onClose={() => setIsCustomMirrorOpen(false)}
-          config={customMirrorConfig}
-          onConfigChange={(newCfg) => {
-            setCustomMirrorConfig(newCfg);
-            if (engine) {
-              engine.updateCustomMirrorPlane(newCfg.planeOrigin, newCfg.planeNormal);
-              setSymmetry('custom_plane');
-            }
-          }}
-          onAlignToCamera={() => {
-            if (engine) {
-              const viewDir = engine.camera.getWorldDirection(new THREE.Vector3()).negate();
-              const camPos = engine.camera.position.clone().add(viewDir.clone().multiplyScalar(-1.5));
-              const newCfg = {
-                planeOrigin: [camPos.x, camPos.y, camPos.z] as [number, number, number],
-                planeNormal: [viewDir.x, viewDir.y, viewDir.z] as [number, number, number],
-                visible: true,
-              };
-              setCustomMirrorConfig(newCfg);
-              engine.updateCustomMirrorPlane(newCfg.planeOrigin, newCfg.planeNormal);
-              setSymmetry('custom_plane');
-            }
-          }}
-          theme={theme}
-        />
-      </DeferredPanel>
-
-      {/* WebXR AR Viewer Modal */}
-      <DeferredPanel active={isARViewerOpen}>
-        <ARViewerModal
-          isOpen={isARViewerOpen}
-          onClose={() => setIsARViewerOpen(false)}
-          engine={engine}
-          theme={theme}
-        />
-      </DeferredPanel>
-
-      {/* Advanced Color Studio Modal (HSV + OKLCh Polar + 1-Click Shaders) */}
-      <DeferredPanel active={isColorStudioOpen}>
-        <ColorStudioModal
-          isOpen={isColorStudioOpen}
-          onClose={() => setIsColorStudioOpen(false)}
-          currentColor={brushSettings.color || '#000000'}
-          onChangeColor={(hex) => setBrushSettings((prev) => ({ ...prev, color: hex }))}
-          onApplyBrushSettings={(newSettings) =>
-            setBrushSettings((prev) => ({ ...prev, ...newSettings }))
-          }
-          onApplyToModel={(mat) => engine?.setModelCustomMaterial(mat)}
-          onSampleFromScreen={() => {
-            setIsColorStudioOpen(false);
-            setTool('eyedropper');
-          }}
-          theme={theme}
-        />
-      </DeferredPanel>
-
-      {/* Holistic DNA Inspector & Injector Popup */}
-      <DeferredPanel active={activeDNA !== null}>
-        <HolisticDNAInspector
-          dna={activeDNA}
-          onClose={() => setActiveDNA(null)}
-          onInjectDNA={(dna) => {
-            setBrushSettings((prev) => ({
-              ...prev,
-              color: dna.colorHex,
-              size: dna.size,
-              opacity: dna.opacity,
-              roughness: dna.roughness,
-              metalness: dna.metalness,
-              emissiveIntensity: dna.emissiveIntensity,
-              materialType: dna.materialType,
-              profile: dna.profile,
-              patternType: dna.patternType,
-              patternScale: dna.patternScale,
-              patternIntensity: dna.patternIntensity,
-              shaderEffect: dna.shaderEffect,
-            }));
-          }}
-          theme={theme}
-        />
-      </DeferredPanel>
-
-      {/* Snapped Shape Notice Toast */}
-      {snappedShapeNotice && (
-        <div className="fixed bottom-16 left-1/2 -translate-x-1/2 z-50 pointer-events-none animate-in fade-in slide-in-from-bottom-2 duration-150">
-          <div className={`flex items-center gap-2 px-4 py-2 rounded-full font-semibold text-xs shadow-xl border ${
-            theme === 'light'
-              ? 'bg-neutral-900 text-white border-neutral-800'
-              : 'bg-[#18191d] text-white border-white/20'
-          }`}>
-            <span className="w-2 h-2 rounded-full animate-ping bg-white" />
-            <span>{snappedShapeNotice}</span>
-          </div>
-        </div>
-      )}
-
-      {/* Drag & Drop Overlay Indicator */}
-      {windowDragOver && (
-        <div className={`fixed inset-0 z-50 pointer-events-none border-4 border-dashed flex items-center justify-center animate-in fade-in duration-100 ${
-          theme === 'light'
-            ? 'bg-neutral-900/40 border-neutral-500'
-            : 'bg-black/60 border-white/50'
-        }`}>
-          <div className="px-6 py-4 rounded-3xl bg-white dark:bg-[#18191d] shadow-2xl text-center space-y-2 border border-neutral-200 dark:border-neutral-800">
-            <div className="text-base font-bold text-neutral-900 dark:text-white">
-              Drop 3D Model to Ingest & Convert
-            </div>
-            <div className="text-xs text-neutral-500 dark:text-neutral-400">
-              Supports GLB, GLTF, OBJ (+MTL), FBX, 3DS, STL, PLY, DAE
-            </div>
-          </div>
-        </div>
-      )}
+      {/* All Deferred Modals & Overlays Host */}
+      <AppModalHost
+        engine={engine}
+        theme={theme}
+        postSettings={postSettings}
+        setPostSettings={setPostSettings}
+        isRenderSettingsOpen={isRenderSettingsOpen}
+        setIsRenderSettingsOpen={setIsRenderSettingsOpen}
+        gpuInfo={gpuInfo}
+        pathTracingProgress={pathTracingProgress}
+        isModelsOpen={isModelsOpen}
+        setIsModelsOpen={setIsModelsOpen}
+        activeModelName={activeModelName}
+        handleBeforeReplace={handleBeforeReplace}
+        isExportOpen={isExportOpen}
+        setIsExportOpen={setIsExportOpen}
+        isSessionModalOpen={isSessionModalOpen}
+        setIsSessionModalOpen={setIsSessionModalOpen}
+        handleSaveNamedSession={handleSaveNamedSession}
+        handleLoadNamedSession={handleLoadNamedSession}
+        handleSaveProjectToFolder={handleSaveProjectToFolder}
+        handleSaveProject={handleSaveProject}
+        handleLoadProject={handleLoadProject}
+        isIlluminationOpen={isIlluminationOpen}
+        setIsIlluminationOpen={setIsIlluminationOpen}
+        isDecimateOpen={isDecimateOpen}
+        setIsDecimateOpen={setIsDecimateOpen}
+        isBentGuideOpen={isBentGuideOpen}
+        setIsBentGuideOpen={setIsBentGuideOpen}
+        isScaffoldingOpen={isScaffoldingOpen}
+        setIsScaffoldingOpen={setIsScaffoldingOpen}
+        isClipboardOpen={isClipboardOpen}
+        setIsClipboardOpen={setIsClipboardOpen}
+        referenceImages={referenceImages}
+        setReferenceImages={setReferenceImages}
+        isCustomMirrorOpen={isCustomMirrorOpen}
+        setIsCustomMirrorOpen={setIsCustomMirrorOpen}
+        customMirrorConfig={customMirrorConfig}
+        setCustomMirrorConfig={setCustomMirrorConfig}
+        setSymmetry={setSymmetry}
+        isARViewerOpen={isARViewerOpen}
+        setIsARViewerOpen={setIsARViewerOpen}
+        isColorStudioOpen={isColorStudioOpen}
+        setIsColorStudioOpen={setIsColorStudioOpen}
+        brushSettings={brushSettings}
+        setBrushSettings={setBrushSettings}
+        setTool={setTool}
+        activeDNA={activeDNA}
+        setActiveDNA={setActiveDNA}
+        snappedShapeNotice={snappedShapeNotice}
+        windowDragOver={windowDragOver}
+      />
 
       {/* Consolidated Shared Settings Sheet (Preferences) */}
       <StudioSettingsSheet
@@ -1934,6 +1565,7 @@ export function App() {
           onCancel={handleWorkLossCancel}
         />
       )}
+
       </div>
     </DeviceSimulatorFrame>
   );

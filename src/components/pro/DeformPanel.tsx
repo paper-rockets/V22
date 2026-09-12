@@ -6,7 +6,6 @@ import {
   IcMirror as Compass,
   IcSimplify as Scissors,
   IcCamera as Camera,
-  IcSparkle as Sparkles,
   IcBend as Spline,
   IcMirrorSettings,
   IcAlignView,

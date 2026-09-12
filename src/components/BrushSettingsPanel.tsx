@@ -15,7 +15,6 @@ import {
   RefreshCw,
   Check,
   Paintbrush,
-  Sparkles,
   Crosshair,
   Compass,
   Layers,
@@ -391,16 +390,16 @@ export const BrushSettingsPanelComponent: React.FC<BrushSettingsPanelProps> = ({
             </div>
 
             {/* Width Multiplier */}
-            {brushSettings.brushShape === 'wide_flat' && (
+            {(brushSettings.brushShape === 'wide_flat' || brushSettings.profile === 'ribbon' || brushSettings.profile === 'marker') && (
               <div className={`space-y-1 pt-1.5 border-t ${theme === 'light' ? 'border-black/10' : 'border-zinc-800/80'}`}>
                 <div className={`flex justify-between ${theme === 'light' ? 'text-neutral-700' : 'text-zinc-300'}`}>
-                  <span>Line Width Multiplier</span>
+                  <span>Ribbon / Line Width Multiplier</span>
                   <span className={`font-mono font-bold ${theme === 'light' ? 'text-neutral-900' : 'text-zinc-200'}`}>{(brushSettings.brushWidthMultiplier || 3.0).toFixed(1)}x</span>
                 </div>
                 <input
                   type="range"
-                  min="1.5"
-                  max="8.0"
+                  min="1.0"
+                  max="20.0"
                   step="0.5"
                   value={brushSettings.brushWidthMultiplier || 3.0}
                   onChange={(e) => updateSetting('brushWidthMultiplier', parseFloat(e.target.value))}
@@ -421,6 +420,20 @@ export const BrushSettingsPanelComponent: React.FC<BrushSettingsPanelProps> = ({
                 type="checkbox"
                 checked={brushSettings.straightLineMode || false}
                 onChange={(e) => updateSetting('straightLineMode', e.target.checked)}
+                className={`w-4 h-4 rounded cursor-pointer ${theme === 'light' ? 'accent-neutral-900' : 'accent-white'}`}
+              />
+            </div>
+
+            {/* Axis & Isometric Snapping */}
+            <div className={`flex items-center justify-between pt-1.5 border-t ${theme === 'light' ? 'border-black/10' : 'border-zinc-800/80'}`}>
+              <div className="flex flex-col">
+                <span className={`font-medium ${theme === 'light' ? 'text-neutral-900' : 'text-zinc-200'}`}>Axis & Isometric Snap</span>
+                <span className={`text-[10px] ${theme === 'light' ? 'text-neutral-500' : 'text-zinc-500'}`}>Auto-align to 90° and 30° angles</span>
+              </div>
+              <input
+                type="checkbox"
+                checked={brushSettings.angleSnapping !== false}
+                onChange={(e) => updateSetting('angleSnapping', e.target.checked)}
                 className={`w-4 h-4 rounded cursor-pointer ${theme === 'light' ? 'accent-neutral-900' : 'accent-white'}`}
               />
             </div>

@@ -10,7 +10,6 @@ import {
   Box,
   RotateCw,
   RotateCcw,
-  Sparkles,
   ArrowLeft,
   RefreshCw,
   Maximize2,

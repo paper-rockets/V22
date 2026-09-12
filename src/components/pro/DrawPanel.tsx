@@ -1,11 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, User, Shield } from 'lucide-react';
+import { ChevronLeft, ChevronRight, User, Shield, Compass } from 'lucide-react';
 import {
   IcDraw as PenLine,
   IcErase as Eraser,
   IcSample as Pipette,
   IcPalette as Palette,
-  IcSparkle as Sparkles,
   IcLitForm as Zap,
   IcFlatPaint as FlatPaintIc,
   IcGlow as Flame,
@@ -204,7 +203,7 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
       >
         {([
           ['paint', 'Paint'],
-          ['brush', 'Brush'],
+          ['brush', 'Brush Settings'],
           ['advanced', 'Fine tune'],
         ] as const).map(([id, label]) => (
           <button
@@ -782,6 +781,29 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
 
             {/* Drawing Assistance & Toggles */}
             <div className="space-y-2 pt-1 border-t border-black/5 dark:border-white/5">
+              {/* Ribbon Width Multiplier */}
+              {(brushSettings.profile === 'ribbon' || brushSettings.profile === 'marker' || brushSettings.brushShape === 'wide_flat') && (
+                <div className="space-y-1 pt-1 border-t border-black/5 dark:border-white/5">
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="font-medium text-current">Ribbon Width Multiplier</span>
+                    <span className="font-mono text-[10px] font-bold">
+                      {(brushSettings.brushWidthMultiplier || 3.0).toFixed(1)}x
+                    </span>
+                  </div>
+                  <input
+                    type="range"
+                    min="1.0"
+                    max="20.0"
+                    step="0.5"
+                    value={brushSettings.brushWidthMultiplier || 3.0}
+                    onChange={(e) => updateSetting('brushWidthMultiplier', parseFloat(e.target.value))}
+                    className={`w-full h-1.5 rounded cursor-pointer ${
+                      isLight ? 'accent-neutral-900 bg-neutral-200' : 'accent-white bg-neutral-800'
+                    }`}
+                  />
+                </div>
+              )}
+
               {/* Straight line mode */}
               <label className="flex items-center justify-between min-h-[44px] cursor-pointer">
                 <div className="flex items-center gap-2">
@@ -792,6 +814,20 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
                   type="checkbox"
                   checked={brushSettings.straightLineMode || false}
                   onChange={(e) => updateSetting('straightLineMode', e.target.checked)}
+                  className="w-4 h-4 rounded accent-neutral-900 dark:accent-white cursor-pointer"
+                />
+              </label>
+
+              {/* Axis & Isometric Snapping */}
+              <label className="flex items-center justify-between min-h-[44px] cursor-pointer border-t border-black/5 dark:border-white/5 pt-1">
+                <div className="flex items-center gap-2">
+                  <Compass className="w-4 h-4" />
+                  <span className="text-[11px] font-medium">Axis & Isometric Snap (90° / 30°)</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={brushSettings.angleSnapping !== false}
+                  onChange={(e) => updateSetting('angleSnapping', e.target.checked)}
                   className="w-4 h-4 rounded accent-neutral-900 dark:accent-white cursor-pointer"
                 />
               </label>

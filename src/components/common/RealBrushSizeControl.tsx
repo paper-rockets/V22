@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import { BrushSettings } from '../../types';
 
 export interface RealBrushSizeControlProps {
@@ -19,11 +19,11 @@ export const RealBrushSizeControl: React.FC<RealBrushSizeControlProps> = ({
 
   // Integer scale for display (10 to 100)
   const displaySizeNumber = Math.round(
-    ((brushSettings.size - 0.008) / (0.16 - 0.008)) * 90 + 10
+    ((brushSettings.size - 0.008) / (0.35 - 0.008)) * 90 + 10
   );
 
-  // Map 3D world size (0.008 to 0.16) to actual on-screen preview pixel diameter (4px to 48px)
-  const pixelSize = Math.max(4, Math.min(48, Math.round(brushSettings.size * 320)));
+  // Map 3D world size (0.008 to 0.35) to actual on-screen preview pixel diameter (4px to 64px)
+  const pixelSize = Math.max(4, Math.min(64, Math.round((brushSettings.size / 0.35) * 56 + 4)));
   const color = brushSettings.color || '#38bdf8';
   const opacity = brushSettings.opacity ?? 1.0;
 
@@ -93,8 +93,8 @@ export const RealBrushSizeControl: React.FC<RealBrushSizeControlProps> = ({
       <input
         type="range"
         min="0.008"
-        max="0.16"
-        step="0.002"
+        max="0.35"
+        step="0.004"
         value={brushSettings.size}
         onChange={(e) => onSizeChange(parseFloat(e.target.value))}
         className={`w-full h-2 rounded-full appearance-none cursor-pointer accent-sky-500 ${

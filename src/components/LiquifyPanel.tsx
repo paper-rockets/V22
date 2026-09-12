@@ -12,7 +12,6 @@ import {
   Eye,
   Sliders,
   X,
-  Sparkles,
 } from 'lucide-react';
 
 interface LiquifyPanelProps {
@@ -98,7 +97,7 @@ export const LiquifyPanel: React.FC<LiquifyPanelProps> = ({
       {/* Header */}
       <div className={`flex items-center justify-between pb-2 border-b ${isLight ? 'border-black/10' : 'border-neutral-800'}`}>
         <div className="flex items-center gap-2">
-          <Sparkles className={`w-4 h-4 ${isLight ? 'text-neutral-900 dark:text-zinc-200' : 'text-neutral-900 dark:text-zinc-300'}`} />
+          <Move className={`w-4 h-4 ${isLight ? 'text-neutral-900 dark:text-zinc-200' : 'text-neutral-900 dark:text-zinc-300'}`} />
           <span className={`text-xs font-bold uppercase tracking-wider ${t.textPrimary}`}>Push & Pull</span>
         </div>
         {(onClose || onCancel) && !inline && (

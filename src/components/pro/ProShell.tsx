@@ -19,6 +19,8 @@ export const ProShell: React.FC<ProShellProps> = (props) => {
         onOpenColorStudio={props.onOpenColorStudio}
         onOpenIllumination={props.onOpenIllumination}
         isIlluminationOpen={props.isIlluminationOpen}
+        engine={props.engine}
+        onOpenCustomMirror={props.onOpenCustomMirror}
       />
       <ProPanel {...props} />
     </>

@@ -19,9 +19,6 @@
     "paths": {
       "@/*": [
         "./*"
-      ],
-      "lucide-react": [
-        "./src/icons/iconoirLucideAdapter.tsx"
       ]
     },
     "allowImportingTsExtensions": true,

@@ -1,70 +1,61 @@
 import React from 'react';
 import {
-  CursorPointer,
-  DesignPencil,
-  Erase,
-  ColorPicker,
-  ViewGrid,
-  Axes,
-  MultiplePages,
-  SunLight,
-  BoxIso,
-  Undo,
-  Redo,
-  FloppyDisk,
+  MousePointer2,
+  Pencil,
+  Eraser,
+  Pipette,
+  Boxes,
+  Atom,
+  Layers,
+  Sun,
+  PaintbrushVertical,
+  Box,
+  Undo2,
+  Redo2,
+  Save,
   Folder,
   Settings,
-  Expand,
-  Collapse,
-  NavArrowRight,
+  Maximize2,
+  Minimize2,
+  SunMedium,
+  ChevronRight,
   Palette,
-  FillColor,
-  MagicWand,
-  Cut,
+  PaintBucket,
+  Scissors,
   Star,
   Ruler,
-  CurveArray,
-  SelectWindow,
-  Restart,
+  Spline,
+  CircleDashed,
+  RotateCcw,
+  ArrowDownToLine,
   Copy,
-  Trash,
+  Trash2,
   Lock,
-  LockSlash,
+  Unlock,
   Eye,
-  EyeClosed,
-  Refresh,
+  EyeOff,
+  Move,
+  RefreshCw,
   Check,
   Compass,
-  Cube,
-  Sphere,
+  Circle,
   Cylinder,
-  Import,
-  Mirror,
-  Camera,
-  Activity,
-  Flash,
-  DesignNib,
-  AlignBottomBox,
-  Box3dThreePoints,
-  Compress,
-  CompressLines,
-  CubeDots,
-  DeCompress,
-  Drag,
-  Droplet,
-  ProjectCurve3d,
-  Reduce,
-  ScaleFrameEnlarge,
-  SelectPoint3d,
-  SineWave,
-  Sparks,
-  ViewStructureDown,
-  Accessibility,
-  CompactDisc,
-  ConstrainedSurface,
-  ExpandLines,
+  Torus,
   Triangle,
-} from 'iconoir-react';
+  Square,
+  Upload,
+  Droplet,
+  Focus,
+  Camera,
+  User,
+  FlipHorizontal2,
+  Zap,
+  Grid,
+  Activity,
+  ArrowDownNarrowWide,
+  Minus,
+  Maximize,
+} from 'lucide-react';
 
 export type IP = { className?: string; strokeWidth?: number; style?: React.CSSProperties };
 
@@ -83,107 +74,101 @@ const wrap = (Comp: React.ComponentType<any>): React.FC<IP> => {
   return Icon;
 };
 
-// ── Rail icons ──────────────────────────────────────────────
-export const IcPointer = wrap(CursorPointer);
-export const IcDraw = wrap(DesignPencil);
-export const IcErase = wrap(Erase);
-export const IcSample = wrap(ColorPicker);
-export const IcCreate = wrap(Box3dThreePoints);
-export const IcDeform = wrap(ScaleFrameEnlarge);
-export const IcLayers = wrap(ViewStructureDown);
-export const IcSun = wrap(SunLight);
+// ── Rail icons (Lucide) ──────────────────────────────────────
+export const IcPointer = wrap(MousePointer2);
+export const IcDraw = wrap(Pencil);
+export const IcErase = wrap(Eraser);
+export const IcSample = wrap(Pipette);
+export const IcCreate = wrap(Boxes);
+export const IcDeform = wrap(Spline);
+export const IcLayers = wrap(Layers);
+export const IcSun = wrap(Sun);
+export const IcBrush = wrap(PaintbrushVertical);
 
-// ── Top bar icons (Iconoir) ─────────────────────────────────
-export const IcScene = wrap(BoxIso);
-export const IcUndo = wrap(Undo);
-export const IcRedo = wrap(Redo);
-export const IcSave = wrap(FloppyDisk);
+// ── Top bar icons (Lucide) ─────────────────────────────────
+export const IcScene = wrap(Box);
+export const IcUndo = wrap(Undo2);
+export const IcRedo = wrap(Redo2);
+export const IcSave = wrap(Save);
 export const IcSessions = wrap(Folder);
 export const IcSettings = wrap(Settings);
-export const IcFullscreen = wrap(Expand);
-export const IcExitFullscreen = wrap(Collapse);
-export const IcIllumination = wrap(SunLight);
+export const IcFullscreen = wrap(Maximize2);
+export const IcExitFullscreen = wrap(Minimize2);
+export const IcIllumination = wrap(SunMedium);
 
-// ── Chevrons / collapse (Iconoir) ───────────────────────────
-export const IcChevronRight = wrap(NavArrowRight);
+// ── Chevrons / collapse (Lucide) ───────────────────────────
+export const IcChevronRight = wrap(ChevronRight);
 
-// ── Draw panel icons (Iconoir) ──────────────────────────────
+// ── Draw panel icons (Lucide) ──────────────────────────────
 export const IcPalette = wrap(Palette);
-export const IcFlatPaint = wrap(FillColor);
-export const IcLitForm = wrap(MagicWand);
-export const IcGlow = wrap(SunLight);
-export const IcCutout = wrap(Cut);
+export const IcFlatPaint = wrap(PaintBucket);
+export const IcLitForm = wrap(SunMedium);
+export const IcGlow = wrap(Sun);
+export const IcCutout = wrap(Scissors);
 export const IcStar = wrap(Star);
 export const IcRuler = wrap(Ruler);
-export const IcCurve = wrap(CurveArray);
+export const IcCurve = wrap(Spline);
 
-// ── Select panel icons (Iconoir) ────────────────────────────
-export const IcLasso = wrap(SelectWindow);
-export const IcReset = wrap(Restart);
-export const IcSnapGround = wrap(AlignBottomBox);
+// ── Select panel icons (Lucide) ────────────────────────────
+export const IcLasso = wrap(CircleDashed);
+export const IcReset = wrap(RotateCcw);
+export const IcSnapGround = wrap(ArrowDownToLine);
 export const IcCopy = wrap(Copy);
-export const IcDelete = wrap(Trash);
+export const IcDelete = wrap(Trash2);
 export const IcLock = wrap(Lock);
-export const IcUnlock = wrap(LockSlash);
+export const IcUnlock = wrap(Unlock);
 export const IcEye = wrap(Eye);
-export const IcEyeOff = wrap(EyeClosed);
-export const IcAxis = wrap(Axes);
-export const IcRefresh = wrap(Refresh);
+export const IcEyeOff = wrap(EyeOff);
+export const IcAxis = wrap(Move);
+export const IcRefresh = wrap(RefreshCw);
 export const IcCheck = wrap(Check);
-export const IcSparkle = wrap(Sparks);
+export const IcSparkle = wrap(Atom);
 export const IcCompass = wrap(Compass);
 
-// ── Create panel icons (primitives) ─────────────────────────
-export const IcCube = wrap(Cube);
-export const IcSphere = wrap(Sphere);
+// ── Create panel icons (primitives - Lucide) ────────────────
+export const IcCube = wrap(Box);
+export const IcSphere = wrap(Circle);
 export const IcCylinder = wrap(Cylinder);
-export const IcTorus = wrap(CompactDisc);
+export const IcTorus = wrap(Torus);
 export const IcCapsule = wrap(Cylinder);
 export const IcCone = wrap(Triangle);
 export const IcPyramid = wrap(Triangle);
-export const IcDisk = wrap(CompactDisc);
+export const IcDisk = wrap(Circle);
+export const IcPlane = wrap(Square);
 export const IcModelLibrary = wrap(Folder);
-export const IcImport = wrap(Import);
+export const IcImport = wrap(Upload);
 export const IcTexture = wrap(Palette);
 export const IcClay = wrap(Droplet);
-export const IcOrigin = wrap(SelectPoint3d);
+export const IcOrigin = wrap(Focus);
 
-// ── Deform panel icons ──────────────────────────────────────
-export const IcMove = wrap(Axes);
-export const IcGuide = wrap(ProjectCurve3d);
-export const IcMirror = wrap(Mirror);
-export const IcSimplify = wrap(CompressLines);
+// ── Deform panel icons (Lucide) ─────────────────────────────
+export const IcMove = wrap(Move);
+export const IcGuide = wrap(Spline);
+export const IcMirror = wrap(FlipHorizontal2);
+export const IcSimplify = wrap(Scissors);
 export const IcCamera = wrap(Camera);
-export const IcBend = wrap(ProjectCurve3d);
-export const IcArmature = wrap(Accessibility);
-export const IcMirrorSettings = wrap(Mirror);
-export const IcAlignView = wrap(Camera);
-export const IcSimplifySettings = wrap(CompressLines);
-export const IcQuickSimplify = wrap(CompressLines);
+export const IcBend = wrap(Spline);
+export const IcArmature = wrap(User);
+export const IcMirrorSettings = wrap(FlipHorizontal2);
+export const IcAlignView = wrap(Box);
+export const IcSimplifySettings = wrap(Scissors);
+export const IcQuickSimplify = wrap(Scissors);
 
-// ── Brush type icons ────────────────────────────────────────
+// ── Brush type icons (Lucide) ───────────────────────────────
 export const IcBrushClay = wrap(Droplet);
-
-export const IcBrushBuild = wrap(ExpandLines);
-
-export const IcBrushMove = wrap(Drag);
-
-export const IcBrushInflate = wrap(DeCompress);
-
-export const IcBrushPinch = wrap(Compress);
-
-export const IcBrushCrease = wrap(ConstrainedSurface);
-
-export const IcBrushFlatten = wrap(Reduce);
-
-export const IcBrushSmooth = wrap(SineWave);
-
-export const IcBrushRibbon = wrap(ProjectCurve3d);
+export const IcBrushBuild = wrap(Box);
+export const IcBrushMove = wrap(Move);
+export const IcBrushInflate = wrap(Maximize);
+export const IcBrushPinch = wrap(Minus);
+export const IcBrushCrease = wrap(Spline);
+export const IcBrushFlatten = wrap(ArrowDownNarrowWide);
+export const IcBrushSmooth = wrap(Spline);
+export const IcBrushRibbon = wrap(PaintbrushVertical);
 export const IcBrushTube = wrap(Cylinder);
-export const IcBrushMarker = wrap(DesignNib);
+export const IcBrushMarker = wrap(Pencil);
 export const IcBrushWire = wrap(Activity);
-export const IcBrushNeon = wrap(Flash);
-export const IcBrushStipple = wrap(CubeDots);
+export const IcBrushNeon = wrap(Zap);
+export const IcBrushStipple = wrap(Grid);
 
 export const BRUSH_ICON_MAP: Record<string, React.FC<IP>> = {
   clay: IcBrushClay,

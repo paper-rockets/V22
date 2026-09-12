@@ -14,7 +14,6 @@ import {
   Cloud,
   Eye,
   EyeOff,
-  Sparkles,
   Zap,
   X,
   ChevronRight,
@@ -361,7 +360,7 @@ export const IlluminationStudioModal: React.FC<IlluminationStudioModalProps> = (
       id: 'golden',
       name: 'Golden Hour',
       desc: 'Rich amber light beams cutting through glowing cloud edges',
-      icon: Sparkles,
+      icon: Sunset,
       color: 'text-neutral-700 dark:text-zinc-300',
       badge: 'Golden Hour',
     },
@@ -460,7 +459,7 @@ export const IlluminationStudioModal: React.FC<IlluminationStudioModalProps> = (
               : 'text-neutral-400 hover:text-neutral-200 hover:bg-white/5'
           }`}
         >
-          <Sparkles className="w-3.5 h-3.5 text-neutral-700 dark:text-zinc-300" />
+          <Sliders className="w-3.5 h-3.5 text-neutral-700 dark:text-zinc-300" />
           <span>Presets</span>
         </button>
 

@@ -2,7 +2,7 @@ import React from 'react';
 import { BrushSettings } from '../../types';
 import { StudioSheet } from './StudioSheet';
 import { haptics } from '../../utils/haptics';
-import { Check, Magnet, Ruler, Sparkles, Waves } from 'lucide-react';
+import { Check, Compass, Magnet, Ruler, Spline, Waves } from 'lucide-react';
 
 /**
  * Drawing aids: Steady Stroke, Predictive Stroke, and the Ruler.
@@ -143,7 +143,7 @@ export const ShapesSheet: React.FC<ShapesSheetProps> = ({
           }
           className="flex w-full items-center gap-2 text-left"
         >
-          <Sparkles className="h-5 w-5 shrink-0" strokeWidth={1.8} />
+          <Spline className="h-5 w-5 shrink-0" strokeWidth={1.8} />
           <div className="min-w-0 flex-1">
             <div className="text-sm font-bold">Predictive Stroke</div>
             <div className="text-[10px] leading-4 opacity-65">
@@ -236,6 +236,28 @@ export const ShapesSheet: React.FC<ShapesSheetProps> = ({
           </div>
         </div>
         {straightOnly && <Check className="h-4 w-4 shrink-0" strokeWidth={2.5} />}
+      </button>
+
+      {/* ---------------------------------------------------------------- */}
+      {/* Axis & Isometric Snapping                                         */}
+      {/* ---------------------------------------------------------------- */}
+      <button
+        type="button"
+        role="switch"
+        aria-checked={brushSettings.angleSnapping !== false}
+        onClick={() => update({ angleSnapping: brushSettings.angleSnapping === false ? true : false })}
+        className={`mt-2 flex w-full items-center gap-2 rounded-2xl border p-3 text-left transition-colors ${
+          brushSettings.angleSnapping !== false ? accent : soft
+        }`}
+      >
+        <Compass className="h-5 w-5 shrink-0" strokeWidth={1.8} />
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-bold">Auto-Align to Axes & Isometric Steps</div>
+          <div className="text-[10px] leading-4 opacity-65">
+            Straight lines snap cleanly to vertical (90°), horizontal, and 30° isometric angles for buildings, stairs, and walls.
+          </div>
+        </div>
+        {brushSettings.angleSnapping !== false && <Check className="h-4 w-4 shrink-0" strokeWidth={2.5} />}
       </button>
 
       <div className="pb-1 pt-3">

@@ -10,7 +10,7 @@ import {
   X,
   Check,
   Search,
-  Sparkles,
+  Circle,
   Loader2,
   Zap,
   Palette,
@@ -83,9 +83,9 @@ export const ModelLibraryModal: React.FC<ModelLibraryModalProps> = ({
 
   const [loadChoice, setLoadChoice] = useState<'add' | 'clear'>(() => {
     try {
-      return localStorage.getItem('remix3d.modelLoadChoice') === 'clear' ? 'clear' : 'add';
+      return localStorage.getItem('remix3d.modelLoadChoice') === 'add' ? 'add' : 'clear';
     } catch {
-      return 'add';
+      return 'clear';
     }
   });
 
@@ -404,7 +404,7 @@ export const ModelLibraryModal: React.FC<ModelLibraryModalProps> = ({
                     : 'text-zinc-400 hover:text-white'
                 }`}
               >
-                <Sparkles className="w-3 h-3" />
+                <Circle className="w-3 h-3" />
                 <span>White clay</span>
               </button>
               </div>

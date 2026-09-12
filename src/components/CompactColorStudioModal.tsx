@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom';
 import * as THREE from 'three';
 import {
+  Atom,
   Box,
   Check,
   ChevronDown,
@@ -11,7 +12,6 @@ import {
   Palette,
   Pipette,
   Sliders,
-  Sparkles,
   SunMedium,
   X,
   Zap,
@@ -28,7 +28,7 @@ import {
   rgbToHsv,
 } from '../core/colorMath';
 import { normalizeHexColor } from '../core/materialCache';
-import { ALL_MATERIAL_PRESETS, PRESET_CATEGORIES, createMatCap } from '../presets/materialPresets';
+import { ALL_MATERIAL_PRESETS, createMatCap } from '../presets/materialPresets';
 import { BrushSettings } from '../types';
 import { MenuSegmentedToggle, getMenuSurfaceClasses } from './ui/MenuPrimitives';
 
@@ -67,7 +67,18 @@ const QUICK_SHADER_NAMES = [
   'Hot Molten Lava',
   'Toon Manga Ink & White',
 ];
-const QUICK_SHADER_LABELS = ['Clay', 'Toon', 'Gloss', 'Prism', 'Water', 'Metal', 'Copper', 'Glow', 'Lava', 'Ink'];
+const QUICK_SHADER_LABEL_MAP: Record<string, string> = {
+  'Flat Graphic White': 'Clay',
+  'Toon Classic 2-Tone': 'Toon',
+  'Crystal Clear Glass': 'Gloss',
+  'Prism Rainbow Glass': 'Prism',
+  'Summer Ocean Water': 'Water',
+  'Polished Gold Ingot': 'Metal',
+  'Burnished Copper': 'Copper',
+  'Electric Neon Cyan': 'Glow',
+  'Hot Molten Lava': 'Lava',
+  'Toon Manga Ink & White': 'Ink',
+};
 const PRESET_REPRESENTATIVE_COLORS: Record<string, string> = {
   'Flat Graphic White': '#ffffff',
   'Toon Classic 2-Tone': '#e0e7ff',
@@ -111,34 +122,38 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
   const [showPalettes, setShowPalettes] = useState(false);
   const [paletteName, setPaletteName] = useState<keyof typeof CURATED_PALETTES>('Drafting Neon');
   const [harmonyMode, setHarmonyMode] = useState<HarmonyMode>('analogous');
-  const [showAllShaders, setShowAllShaders] = useState(false);
   const [showUniforms, setShowUniforms] = useState(false);
   const [shaderTarget, setShaderTarget] = useState<'brush' | 'model'>('brush');
   const wheelCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const draggingWheel = useRef(false);
   const draggingSquare = useRef(false);
 
-  const quickPresets = useMemo(() => {
-    const named = QUICK_SHADER_NAMES.map((name) =>
-      ALL_MATERIAL_PRESETS.find((preset) => preset.name === name),
-    ).filter(Boolean) as any[];
-    return named.length === QUICK_SHADER_NAMES.length ? named : ALL_MATERIAL_PRESETS.slice(0, 10);
+  const allShaders = useMemo(() => {
+    const quickIds = new Set<string>();
+    const ordered: any[] = [];
+
+    QUICK_SHADER_NAMES.forEach((name) => {
+      const found = (ALL_MATERIAL_PRESETS as any[]).find((preset) => preset.name === name);
+      if (found && !quickIds.has(found.id)) {
+        quickIds.add(found.id);
+        ordered.push(found);
+      }
+    });
+
+    (ALL_MATERIAL_PRESETS as any[]).forEach((preset) => {
+      if (!quickIds.has(preset.id)) {
+        quickIds.add(preset.id);
+        ordered.push(preset);
+      }
+    });
+
+    return ordered;
   }, []);
-  const [selectedPresetId, setSelectedPresetId] = useState(() => quickPresets[0]?.id ?? '');
-  const [shaderCategory, setShaderCategory] = useState<string>('All');
-  const [shaderSearch, setShaderSearch] = useState<string>('');
+  const [selectedPresetId, setSelectedPresetId] = useState(() => allShaders[0]?.id ?? '');
   const [shaderRoughness, setShaderRoughness] = useState<number>(0.5);
   const [shaderMetalness, setShaderMetalness] = useState<number>(0.1);
   const [shaderRimPower, setShaderRimPower] = useState<number>(0.8);
   const lastSolidColorRef = useRef(normalizeHexColor(currentColor, '#38bdf8'));
-
-  const filteredPresets = useMemo(() => {
-    return (ALL_MATERIAL_PRESETS as any[]).filter((preset: any) => {
-      const matchCategory = shaderCategory === 'All' || preset.category === shaderCategory;
-      const matchSearch = !shaderSearch.trim() || preset.name?.toLowerCase().includes(shaderSearch.toLowerCase());
-      return matchCategory && matchSearch;
-    });
-  }, [shaderCategory, shaderSearch]);
 
   const handleUniformChange = (type: 'roughness' | 'metalness' | 'rim', value: number) => {
     if (type === 'roughness') {
@@ -464,7 +479,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
     { id: 'wheel', label: 'Color', icon: Palette },
     { id: 'oklch', label: 'OKLCh', icon: Sliders },
     { id: 'harmonies', label: 'Harmony', icon: SunMedium },
-    { id: 'shaders', label: 'Shader', icon: Sparkles },
+    { id: 'shaders', label: 'Shader', icon: Atom },
   ];
   const activeTitle = tabs.find((tab) => tab.id === activeTab)?.label ?? 'Color';
   const shell = isLight
@@ -561,36 +576,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
 
           {activeTab === 'shaders' && (
             <div className="space-y-3 py-1">
-              <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
-                {quickPresets.map((preset, index) => (
-                  <button
-                    key={preset.id}
-                    type="button"
-                    onClick={() => applyPreset(preset)}
-                    className={`flex flex-col items-center justify-center gap-1 rounded-xl p-1.5 border transition-all active:scale-95 ${
-                      selectedPresetId === preset.id
-                        ? isLight
-                          ? 'border-neutral-900 bg-black/10 text-neutral-950 font-bold'
-                          : 'border-white bg-white/15 text-white font-bold'
-                        : `border-transparent ${ghostButton}`
-                    }`}
-                    title={preset.name}
-                  >
-                    <span
-                      className={`block h-10 w-10 sm:h-11 sm:w-11 overflow-hidden rounded-full border shadow-sm ${
-                        selectedPresetId === preset.id
-                          ? 'border-neutral-900 ring-2 ring-neutral-900/25 dark:border-white dark:ring-white/25'
-                          : isLight ? 'border-black/15' : 'border-white/15'
-                      }`}
-                    >
-                      <img src={preset.url} alt="" className="h-full w-full object-cover" />
-                    </span>
-                    <span className="text-[10px] truncate max-w-full font-medium">{QUICK_SHADER_LABELS[index] ?? preset.name}</span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Unified Segmented Target Selector with Icons */}
+              {/* Target Selector: Brush vs Model */}
               <MenuSegmentedToggle
                 theme={isLight ? 'light' : 'dark'}
                 value={shaderTarget}
@@ -601,138 +587,88 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
                 ]}
               />
 
-              <button
-                type="button"
-                onClick={() => setShowAllShaders((shown) => !shown)}
-                className={`flex h-11 w-full items-center justify-between border-t text-xs font-semibold ${divider} ${ghostButton}`}
-              >
-                <span>{showAllShaders ? 'Hide all effects' : 'All Effects'}</span>
-                <ChevronDown className={`h-4 w-4 transition-transform ${showAllShaders ? 'rotate-180' : ''}`} />
-              </button>
-
-              {showAllShaders && (
-                <div className="space-y-3 pt-1">
-                  {/* Category & Search filter */}
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={shaderCategory}
-                      onChange={(e) => setShaderCategory(e.target.value)}
-                      className={`h-10 flex-1 rounded-xl border px-3 text-xs outline-none ${field}`}
-                      aria-label="Shader category"
-                    >
-                      {PRESET_CATEGORIES.map((cat: string) => (
-                        <option key={cat} value={cat}>
-                          {cat}
-                        </option>
-                      ))}
-                    </select>
-                    <input
-                      type="text"
-                      placeholder="Search…"
-                      value={shaderSearch}
-                      onChange={(e) => setShaderSearch(e.target.value)}
-                      className={`h-10 w-28 rounded-xl border px-3 text-xs outline-none ${field}`}
-                      aria-label="Search shaders"
-                    />
-                  </div>
-
-                  {/* Visual Thumbnail Grid */}
-                  <div className={`grid grid-cols-3 gap-2 max-h-[220px] overflow-y-auto studio-scroll p-1.5 rounded-xl border ${divider}`}>
-                    {filteredPresets.map((preset: any) => {
-                      const isSelected = selectedPresetId === preset.id;
-                      return (
-                        <button
-                          key={preset.id}
-                          type="button"
-                          onClick={() => applyPreset(preset)}
-                          className={`flex flex-col items-center gap-1.5 p-2 rounded-xl border transition-all cursor-pointer text-left ${
-                            isSelected
-                              ? isLight
-                                ? 'border-neutral-900 bg-black/10 text-neutral-950 ring-2 ring-neutral-900/30 font-bold'
-                                : 'border-white bg-white/15 text-white ring-2 ring-white/30 font-bold'
-                              : isLight
-                              ? 'border-transparent hover:border-black/10 hover:bg-black/5 text-neutral-800'
-                              : `border-transparent hover:border-white/20 hover:bg-white/5 ${ghostButton}`
-                          }`}
-                          title={preset.name}
-                        >
-                          <span
-                            className={`block h-12 w-12 shrink-0 overflow-hidden rounded-full border shadow-sm ${
-                              isSelected
-                                ? 'border-neutral-900 ring-2 ring-neutral-900/40 dark:border-white dark:ring-white/40'
-                                : isLight ? 'border-black/15' : 'border-white/20'
-                            }`}
-                          >
-                            <img
-                              src={preset.url}
-                              alt=""
-                              className="h-full w-full object-cover"
-                              loading="lazy"
-                            />
-                          </span>
-                          <span className="text-[10px] font-medium text-center line-clamp-1 w-full leading-tight">
-                            {preset.name}
-                          </span>
-                        </button>
-                      );
-                    })}
-                    {filteredPresets.length === 0 && (
-                      <div className={`col-span-full py-8 text-center text-xs ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
-                        No shaders found matching your criteria.
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Shader Uniform Controls - Collapsible & Minimized by Default */}
-                  <div className={`rounded-xl border overflow-hidden transition-all ${isLight ? 'bg-black/[0.03] border-black/10' : 'bg-white/[0.02] border-white/10'}`}>
+              {/* All Shaders Unified Grid */}
+              <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
+                {allShaders.map((preset) => {
+                  const isSelected = selectedPresetId === preset.id;
+                  const label = QUICK_SHADER_LABEL_MAP[preset.name] ?? preset.name;
+                  return (
                     <button
+                      key={preset.id}
                       type="button"
-                      onClick={() => setShowUniforms((prev) => !prev)}
-                      className={`w-full flex items-center justify-between p-3 cursor-pointer select-none transition-colors ${ghostButton}`}
-                      aria-expanded={showUniforms}
+                      onClick={() => applyPreset(preset)}
+                      className={`flex flex-col items-center justify-center gap-1 rounded-xl p-1.5 border transition-all active:scale-95 ${
+                        isSelected
+                          ? isLight
+                            ? 'border-neutral-900 bg-black/10 text-neutral-950 font-bold'
+                            : 'border-white bg-white/15 text-white font-bold'
+                          : `border-transparent ${ghostButton}`
+                      }`}
+                      title={preset.name}
                     >
-                      <span className={`text-[11px] font-bold uppercase tracking-wider ${isLight ? 'text-neutral-700' : 'text-neutral-400'}`}>
-                        Shader Uniforms
+                      <span
+                        className={`block h-10 w-10 sm:h-11 sm:w-11 overflow-hidden rounded-full border shadow-sm ${
+                          isSelected
+                            ? 'border-neutral-900 ring-2 ring-neutral-900/25 dark:border-white dark:ring-white/25'
+                            : isLight ? 'border-black/15' : 'border-white/15'
+                        }`}
+                      >
+                        <img src={preset.url} alt="" className="h-full w-full object-cover" loading="lazy" />
                       </span>
-                      <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showUniforms ? 'rotate-180' : ''} ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`} />
+                      <span className="text-[10px] truncate max-w-full font-medium text-center">{label}</span>
                     </button>
-                    {showUniforms && (
-                      <div className={`px-3 pb-3 space-y-2.5 border-t pt-2.5 ${divider}`}>
-                        {slider('Roughness', `${Math.round(shaderRoughness * 100)}%`, (
-                          <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            value={Math.round(shaderRoughness * 100)}
-                            onChange={(e) => handleUniformChange('roughness', Number(e.target.value) / 100)}
-                            className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`}
-                          />
-                        ))}
-                        {slider('Metalness', `${Math.round(shaderMetalness * 100)}%`, (
-                          <input
-                            type="range"
-                            min="0"
-                            max="100"
-                            value={Math.round(shaderMetalness * 100)}
-                            onChange={(e) => handleUniformChange('metalness', Number(e.target.value) / 100)}
-                            className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`}
-                          />
-                        ))}
-                        {slider('Glow / Rim Power', `${shaderRimPower.toFixed(2)}`, (
-                          <input
-                            type="range"
-                            min="0"
-                            max="200"
-                            value={Math.round(shaderRimPower * 100)}
-                            onChange={(e) => handleUniformChange('rim', Number(e.target.value) / 100)}
-                            className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`}
-                          />
-                        ))}
-                      </div>
-                    )}
+                  );
+                })}
+              </div>
+
+              {/* Shader Uniform Controls - Collapsible & Minimized by Default */}
+              <div className={`rounded-xl border overflow-hidden transition-all ${isLight ? 'bg-black/[0.03] border-black/10' : 'bg-white/[0.02] border-white/10'}`}>
+                <button
+                  type="button"
+                  onClick={() => setShowUniforms((prev) => !prev)}
+                  className={`w-full flex items-center justify-between p-3 cursor-pointer select-none transition-colors ${ghostButton}`}
+                  aria-expanded={showUniforms}
+                >
+                  <span className={`text-[11px] font-bold uppercase tracking-wider ${isLight ? 'text-neutral-700' : 'text-neutral-400'}`}>
+                    Shader Uniforms
+                  </span>
+                  <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showUniforms ? 'rotate-180' : ''} ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`} />
+                </button>
+                {showUniforms && (
+                  <div className={`px-3 pb-3 space-y-2.5 border-t pt-2.5 ${divider}`}>
+                    {slider('Roughness', `${Math.round(shaderRoughness * 100)}%`, (
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={Math.round(shaderRoughness * 100)}
+                        onChange={(e) => handleUniformChange('roughness', Number(e.target.value) / 100)}
+                        className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`}
+                      />
+                    ))}
+                    {slider('Metalness', `${Math.round(shaderMetalness * 100)}%`, (
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={Math.round(shaderMetalness * 100)}
+                        onChange={(e) => handleUniformChange('metalness', Number(e.target.value) / 100)}
+                        className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`}
+                      />
+                    ))}
+                    {slider('Glow / Rim Power', `${shaderRimPower.toFixed(2)}`, (
+                      <input
+                        type="range"
+                        min="0"
+                        max="200"
+                        value={Math.round(shaderRimPower * 100)}
+                        onChange={(e) => handleUniformChange('rim', Number(e.target.value) / 100)}
+                        className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`}
+                      />
+                    ))}
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           )}
 
