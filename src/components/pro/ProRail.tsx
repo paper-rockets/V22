@@ -23,6 +23,7 @@ import {
   IcDraw,
   IcErase,
   IcMirror,
+  IcBrushRibbon,
 } from './StudioIcons';
 import { useDismissibleSurface } from '../../hooks/useDismissibleSurface';
 import { MenuShelf } from '../ui/MenuPrimitives';
@@ -372,9 +373,7 @@ export const ProRail: React.FC<ProRailProps> = ({
             aria-label="Brushes"
             title={`Brush: ${activeBrush.name}`}
           >
-            <svg viewBox="0 0 24 24" className="w-5 h-5 stroke-current fill-none">
-              <path d="M 4 14 Q 8 6, 12 12 T 20 10" strokeWidth={1.6} strokeLinecap="round" />
-            </svg>
+            <IcBrushRibbon className="h-5 w-5" strokeWidth={1.7} />
             <span className="paperrocket-studio-quick-label">Brush</span>
             </button>
 

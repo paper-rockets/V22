@@ -23,6 +23,7 @@
     "dev:remote": "node scripts/remote-server.mjs"
   },
   "dependencies": {
+    "iconoir-react": "^7.12.1",
     "jszip": "^3.10.1",
     "lucide-react": "^0.546.0",
     "meshoptimizer": "^1.2.0",

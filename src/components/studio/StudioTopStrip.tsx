@@ -6,7 +6,9 @@ import {
   Maximize2,
   Minimize2,
   MoreHorizontal,
+  Palette,
   Redo2,
+  Ruler,
   Save,
   Settings,
   Square,
@@ -14,6 +16,7 @@ import {
   Undo2,
   User,
 } from 'lucide-react';
+import { FrameTool } from 'iconoir-react';
 import { toggleSheet } from './panelStore';
 import { StudioTopMoreMenu } from './StudioTopMoreMenu';
 
@@ -29,11 +32,14 @@ interface StudioTopStripProps {
   onOpenScaffolding?: () => void;
   onQuickSave?: () => void;
   onOpenSessions?: () => void;
+  onToggleModelDisplay?: () => void;
   isGizmoActive?: boolean;
   onToggleGizmo?: () => void;
   showPlane?: boolean;
   onTogglePlane?: () => void;
 }
+
+const CanvasSheetIcon = FrameTool;
 
 export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
   projectName,
@@ -47,6 +53,7 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
   onOpenScaffolding,
   onQuickSave,
   onOpenSessions,
+  onToggleModelDisplay,
   isGizmoActive,
   onToggleGizmo,
   showPlane = true,
@@ -209,6 +216,17 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
             <Sun className="w-[18px] h-[18px] sm:w-[21px] sm:h-[21px]" strokeWidth={1.7} />
           </button>
         )}
+        {onToggleModelDisplay && (
+          <button
+            type="button"
+            onClick={onToggleModelDisplay}
+            className={`${button} hidden text-sky-400 hover:text-sky-300 md:grid`}
+            aria-label="3D Model Display: Texture & Clay"
+            title="3D Model Display: Texture, White Clay & Opacity"
+          >
+            <Palette className="w-[17px] h-[17px] sm:w-[19px] sm:h-[19px]" strokeWidth={1.7} />
+          </button>
+        )}
         <button
           type="button"
           onClick={openShapes}
@@ -216,7 +234,7 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
           aria-label="Drawing Aids"
           title="Drawing Aids: Steady, Predictive, and Ruler"
         >
-          <Square className="w-[17px] h-[17px] sm:w-[19px] sm:h-[19px]" strokeWidth={1.7} />
+          <Ruler className="w-[17px] h-[17px] sm:w-[19px] sm:h-[19px]" strokeWidth={1.7} />
         </button>
         {onOpenScaffolding && (
           <button
@@ -237,7 +255,7 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
             aria-label={showPlane ? 'Hide Canvas Plane' : 'Show Canvas Plane'}
             title={showPlane ? 'Hide Canvas Plane' : 'Show Canvas Plane'}
           >
-            <Grid className="w-[17px] h-[17px] sm:w-[19px] sm:h-[19px]" strokeWidth={1.7} />
+            <CanvasSheetIcon className="w-[17px] h-[17px] sm:w-[19px] sm:h-[19px]" strokeWidth={1.7} />
           </button>
         )}
         <button
@@ -282,6 +300,7 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
         onQuickSave={onQuickSave}
         onOpenSessions={onOpenSessions}
         onOpenIllumination={onOpenIllumination}
+        onToggleModelDisplay={onToggleModelDisplay}
         onOpenShapes={openShapes}
         onOpenSettings={openSettings}
         onOpenScaffolding={onOpenScaffolding}

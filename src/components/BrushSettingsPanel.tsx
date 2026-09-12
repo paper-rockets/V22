@@ -20,6 +20,7 @@ import {
   Compass,
   Layers,
 } from 'lucide-react';
+import { Keyframes } from 'iconoir-react';
 
 interface BrushSettingsPanelProps {
   brushSettings: BrushSettings;
@@ -267,7 +268,7 @@ export const BrushSettingsPanelComponent: React.FC<BrushSettingsPanelProps> = ({
             <div className={`pt-2.5 border-t space-y-1.5 ${theme === 'light' ? 'border-black/10' : 'border-zinc-800/80'}`}>
               <div className="flex items-center justify-between text-[11px]">
                 <span className={`font-medium flex items-center gap-1 ${theme === 'light' ? 'text-neutral-700' : 'text-zinc-300'}`}>
-                  <Sparkles className={`w-3 h-3 ${theme === 'light' ? 'text-neutral-500' : 'text-zinc-400'}`} />
+                  <Keyframes className={`w-3 h-3 ${theme === 'light' ? 'text-neutral-500' : 'text-zinc-400'}`} />
                   <span>Dynamic Shader FX</span>
                 </span>
                 <span className={`text-[10px] font-mono ${theme === 'light' ? 'text-neutral-500' : 'text-zinc-400'}`}>

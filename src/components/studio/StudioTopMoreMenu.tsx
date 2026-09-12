@@ -5,6 +5,8 @@ import {
   Grid,
   Maximize2,
   Minimize2,
+  Palette,
+  Ruler,
   Save,
   Settings,
   Square,
@@ -12,6 +14,9 @@ import {
   User,
   X,
 } from 'lucide-react';
+import { FrameTool } from 'iconoir-react';
+
+const CanvasSheetIcon = FrameTool;
 
 interface StudioTopMoreMenuProps {
   open: boolean;
@@ -21,6 +26,7 @@ interface StudioTopMoreMenuProps {
   onQuickSave?: () => void;
   onOpenSessions?: () => void;
   onOpenIllumination?: () => void;
+  onToggleModelDisplay?: () => void;
   onOpenShapes: () => void;
   onOpenSettings: () => void;
   onOpenScaffolding?: () => void;
@@ -67,6 +73,7 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
   onQuickSave,
   onOpenSessions,
   onOpenIllumination,
+  onToggleModelDisplay,
   onOpenShapes,
   onOpenSettings,
   onOpenScaffolding,
@@ -160,18 +167,21 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
             <ActionButton icon={<Save className="h-5 w-5" strokeWidth={1.7} />} label="Save" description="Quick save" onSelect={select(onQuickSave)} isLight={isLight} />
           )}
           {onOpenSessions && (
-            <ActionButton icon={<FolderOpen className="h-5 w-5" strokeWidth={1.7} />} label="Sessions" description="Versions and files" onSelect={select(onOpenSessions)} isLight={isLight} />
+            <ActionButton icon={<FolderOpen className="h-5 w-5" strokeWidth={1.7} />} label="Projects" description="Save & Backup" onSelect={select(onOpenSessions)} isLight={isLight} />
           )}
           {onOpenIllumination && (
             <ActionButton icon={<Sun className="h-5 w-5 text-amber-400" strokeWidth={1.7} />} label="Lighting" description="Scene illumination" onSelect={select(onOpenIllumination)} isLight={isLight} />
           )}
-          <ActionButton icon={<Square className="h-5 w-5" strokeWidth={1.7} />} label="Drawing Aids" description="Steady, predictive, and ruler" onSelect={select(onOpenShapes)} isLight={isLight} />
+          {onToggleModelDisplay && (
+            <ActionButton icon={<Palette className="h-5 w-5 text-sky-400" strokeWidth={1.7} />} label="Model Display" description="Texture, Clay & Opacity" onSelect={select(onToggleModelDisplay)} isLight={isLight} />
+          )}
+          <ActionButton icon={<Ruler className="h-5 w-5" strokeWidth={1.7} />} label="Drawing Aids" description="Steady, predictive, and ruler" onSelect={select(onOpenShapes)} isLight={isLight} />
           {onOpenScaffolding && (
             <ActionButton icon={<User className="h-5 w-5 text-sky-400" strokeWidth={1.7} />} label="3D Forms" description="Surfaces and mannequins" onSelect={select(onOpenScaffolding)} isLight={isLight} />
           )}
           {onTogglePlane && (
             <ActionButton
-              icon={<Grid className="h-5 w-5 text-emerald-400" strokeWidth={1.7} />}
+              icon={<CanvasSheetIcon className="h-5 w-5 text-emerald-400" strokeWidth={1.7} />}
               label={showPlane ? 'Hide Plane' : 'Show Plane'}
               description="Canvas surface"
               onSelect={select(onTogglePlane)}
