@@ -106,15 +106,20 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
   }, [brushSettings.drawingMode, setBrushSettings]);
 
   const selectSolidLook = (materialType: 'shadeless' | 'shaded' | 'glow') => {
-    const color = brushSettings.solidColor || brushSettings.color || '#000000';
+    let color = brushSettings.color || brushSettings.solidColor || '#38bdf8';
+    if (materialType === 'glow' && (color.toLowerCase() === '#000000' || color.toLowerCase() === '#000')) {
+      color = '#00f7ff';
+    }
     setBrushSettings((prev) => ({
       ...prev,
       color,
       solidColor: color,
       materialType,
+      profile: prev.profile === 'tube' ? 'ribbon' : (prev.profile || 'ribbon'),
       shaderEffect: undefined,
       customShader: undefined,
       matcapUrl: undefined,
+      previewUrl: undefined,
       matcapTexture: undefined,
       activeLookName: materialType === 'shadeless' ? 'Flat Paint' : materialType === 'shaded' ? 'Lit' : 'Glow',
     }));
@@ -147,7 +152,7 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
           </span>
         )}
         <div className={`h-10 w-10 shrink-0 rounded-lg grid place-items-center ${isLight ? 'bg-black/[0.04]' : 'bg-white/[0.07]'}`}>
-          <BrushShapeGlyph brushId={preset.id} profile={preset.profile} patternType={preset.patternType} boxSize={30} />
+          <BrushShapeGlyph brushId={preset.id} profile={preset.profile} materialType={preset.materialType} patternType={preset.patternType} boxSize={30} />
         </div>
         <span className="min-w-0 flex-1">
           <span className={`block text-[11px] leading-[1.15] [overflow-wrap:normal] [word-break:normal] ${isSelected ? (isLight ? 'text-neutral-950 font-bold' : 'text-white font-bold') : 'opacity-80 font-medium'}`}>
@@ -388,13 +393,13 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
         </div>
       </div>
 
-      {/* DRAWING GUIDES & ARMATURES */}
+      {/* 3D FORMS ARE SURFACES TO DRAW ON, NOT STROKE-CORRECTION AIDS */}
       {(onOpenScaffolding || onOpenBentGuide) && (
         <div className={cardClass}>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Shield className={`w-3.5 h-3.5 ${isLight ? 'text-neutral-900' : 'text-neutral-200'}`} />
-              <span className={subHeadingClass}>Drawing Guides</span>
+              <span className={subHeadingClass}>3D Forms</span>
             </div>
             <span className="text-[10px] opacity-65 font-medium">Snap & Sketch</span>
           </div>
@@ -412,12 +417,12 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
                     ? 'bg-white border-black/10 hover:bg-neutral-200/50 text-neutral-900 shadow-xs'
                     : 'bg-black/30 border-white/10 hover:bg-white/10 text-neutral-100 shadow-xs'
                 }`}
-                title="Open 3D Armatures (Human figure, head cage, car, limb guides)"
+                title="Open 3D Mannequins (Human figure, head cage, car, limb guides)"
               >
                 <User className="w-4 h-4 shrink-0 text-sky-400" />
                 <div className="flex flex-col text-left leading-tight overflow-hidden">
-                  <span className="text-xs font-semibold truncate">3D Armatures</span>
-                  <span className="text-[9.5px] opacity-65 truncate">Mannequin & Forms</span>
+                  <span className="text-xs font-semibold truncate">Mannequins</span>
+                  <span className="text-[9.5px] opacity-65 truncate">Figures to draw on</span>
                 </div>
               </button>
             )}
@@ -438,8 +443,8 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
               >
                 <Spline className="w-4 h-4 shrink-0 text-teal-400" />
                 <div className="flex flex-col text-left leading-tight overflow-hidden">
-                  <span className="text-xs font-semibold truncate">Bend Path</span>
-                  <span className="text-[9.5px] opacity-65 truncate">Curves & Ribbons</span>
+                  <span className="text-xs font-semibold truncate">Curved Surface</span>
+                  <span className="text-[9.5px] opacity-65 truncate">Bend a drawing form</span>
                 </div>
               </button>
             )}
@@ -464,14 +469,29 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
         {/* Quick Color Swatches */}
         <div className="grid grid-cols-8 gap-1 pt-0.5">
           {['#2563eb', '#38bdf8', '#ef4444', '#f59e0b', '#10b981', '#a855f7', '#000000', '#ffffff'].map((hex) => {
-            const isSelected = (brushSettings.solidColor || brushSettings.color || '#000000').toLowerCase() === hex.toLowerCase();
+            const isSelected =
+              !brushSettings.previewUrl &&
+              !brushSettings.matcapUrl &&
+              (brushSettings.activeLookName === 'Flat Paint' || !brushSettings.activeLookName) &&
+              (brushSettings.solidColor || brushSettings.color || '#000000').toLowerCase() === hex.toLowerCase();
             return (
               <button
                 key={hex}
                 type="button"
                 onClick={() => {
                   haptics.trigger('light');
-                  setBrushSettings((prev) => ({ ...prev, color: hex, solidColor: hex, materialType: 'shadeless', shaderEffect: undefined, customShader: undefined, matcapUrl: undefined, matcapTexture: undefined, activeLookName: 'Flat Paint' }));
+                  setBrushSettings((prev) => ({
+                    ...prev,
+                    color: hex,
+                    solidColor: hex,
+                    materialType: 'shadeless',
+                    shaderEffect: undefined,
+                    customShader: undefined,
+                    matcapUrl: undefined,
+                    previewUrl: undefined,
+                    matcapTexture: undefined,
+                    activeLookName: 'Flat Paint',
+                  }));
                 }}
                 className={`!min-w-0 h-6 sm:h-7 rounded-md sm:rounded-lg border transition-transform active:scale-90 ${
                   isSelected
@@ -507,7 +527,12 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
           <div className="flex items-center gap-2.5">
             <span
               className="w-6 h-6 rounded-lg border border-black/15 dark:border-white/20 shadow-xs shrink-0"
-              style={{ backgroundColor: brushSettings.solidColor || brushSettings.color || '#38bdf8' }}
+              style={{
+                background: (brushSettings.previewUrl || brushSettings.matcapUrl)
+                  ? `url(${brushSettings.previewUrl || brushSettings.matcapUrl}) center/cover no-repeat`
+                  : (brushSettings.color || brushSettings.solidColor || '#38bdf8'),
+                boxShadow: brushSettings.materialType === 'glow' ? `0 0 8px ${brushSettings.color || '#00f7ff'}` : undefined,
+              }}
             />
             <div className="text-left">
               <div className="font-semibold text-xs leading-none">Color Studio</div>
@@ -572,7 +597,7 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
         <div className="flex items-center justify-between">
           <div className={subHeadingClass}>Brush Size & Intensity</div>
           <div className="flex items-center gap-1.5">
-            <BrushShapeGlyph brushId={activeBrush.id} profile={activeBrush.profile} patternType={activeBrush.patternType} boxSize={18} />
+            <BrushShapeGlyph brushId={activeBrush.id} profile={activeBrush.profile} materialType={activeBrush.materialType} patternType={activeBrush.patternType} boxSize={18} />
             <span className="text-[10.5px] font-semibold text-neutral-950 dark:text-white">{activeBrush.name}</span>
             <span className="text-[9px] font-medium opacity-65 font-mono">
               ({isConformal ? 'Conformal' : 'Non-Conf'}, {isFlat ? 'Flat' : 'Not Flat'})

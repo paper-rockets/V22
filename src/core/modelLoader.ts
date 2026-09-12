@@ -777,7 +777,7 @@ export class ModelLoaderService {
    */
   public async autoSlimDenseMeshes(root: THREE.Object3D, warnings: IntegrityWarning[]): Promise<void> {
     const profile = getQualityProfile();
-    const threshold = profile.powerPreference === 'low-power' ? 300000 : 700000;
+    const threshold = profile.powerPreference === 'low-power' ? 70000 : 450000;
 
     let totalTriangles = 0;
     root.traverse((child) => {
@@ -805,7 +805,7 @@ export class ModelLoaderService {
         const geom = mesh.geometry;
         const count = geom.index ? geom.index.count / 3 : (geom.attributes.position?.count || 0) / 3;
 
-        if (count > 8000) {
+        if (count > 4000) {
           const simplified = this.simplifyBufferGeometry(geom, targetRatio);
           if (simplified !== geom) {
             geom.dispose();

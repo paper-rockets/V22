@@ -205,7 +205,7 @@ export const ScaffoldingModal: React.FC<ScaffoldingModalProps> = ({
         <div className="flex items-center gap-2">
           <Shield className={`w-4 h-4 ${isLight ? 'text-neutral-900' : 'text-zinc-300'}`} />
           <span className={`text-xs font-bold uppercase tracking-wider ${t.textPrimary}`}>
-            3D Armature & Form Guides
+            3D Forms
           </span>
         </div>
         <button
@@ -217,7 +217,7 @@ export const ScaffoldingModal: React.FC<ScaffoldingModalProps> = ({
       </div>
 
       <p className={`text-[11px] leading-relaxed ${t.textSecondary}`}>
-        Import or generate 3D armatures as reference guides. Your strokes snap directly across their surfaces.
+        Choose a surface or mannequin to draw on. For straight lines and smoother strokes, use Drawing Aids.
       </p>
 
       {/* Tabs */}
@@ -236,7 +236,7 @@ export const ScaffoldingModal: React.FC<ScaffoldingModalProps> = ({
               : 'text-neutral-400 hover:text-white'
           }`}
         >
-          Armatures
+          Figures
         </button>
         <button
           onClick={() => setActiveTab('primitives')}
@@ -250,7 +250,7 @@ export const ScaffoldingModal: React.FC<ScaffoldingModalProps> = ({
               : 'text-neutral-400 hover:text-white'
           }`}
         >
-          Primitives
+          Basic Forms
         </button>
         <button
           onClick={() => setActiveTab('active_scaffolds')}

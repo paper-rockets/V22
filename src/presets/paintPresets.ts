@@ -194,6 +194,7 @@ export function applyPaintPresetToSettings(
     shaderEffect: preset.shaderEffect,
     customShader: undefined,
     matcapUrl: undefined,
+    previewUrl: undefined,
     matcapTexture: undefined,
     activeLookName: preset.name,
   };

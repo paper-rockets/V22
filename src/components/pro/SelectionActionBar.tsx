@@ -59,7 +59,7 @@ export const SelectionActionBar: React.FC<SelectionActionBarProps> = ({
     <div
       role="toolbar"
       aria-label="Selection actions"
-      className={`fixed bottom-20 left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 rounded-2xl shadow-2xl border backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-150 select-none max-w-[calc(100vw-32px)] ${
+      className={`fixed bottom-[max(84px,calc(74px+env(safe-area-inset-bottom)))] left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 rounded-2xl shadow-2xl border backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-150 select-none max-w-[calc(100vw-32px)] ${
         isLight
           ? 'bg-white/95 border-black/15 text-neutral-800 shadow-[0_12px_40px_rgba(0,0,0,0.15)]'
           : 'bg-[#15171c]/95 border-white/20 text-neutral-100 shadow-[0_16px_50px_rgba(0,0,0,0.7)]'

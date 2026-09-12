@@ -17,7 +17,7 @@ import {
 import { normalizeHexColor } from '../core/materialCache';
 import { parseOBJ } from '../utils/objLoader';
 import { resolveAssetUrl } from '../utils/assetUrl';
-import { ALL_MATERIAL_PRESETS } from '../presets/materialPresets';
+import { ALL_MATERIAL_PRESETS, createMatCap } from '../presets/materialPresets';
 import { SHADER_PRESETS } from '../presets/shaderPresets';
 import {
   Palette,
@@ -359,34 +359,53 @@ void main() {
       });
     } else {
       setMaterialMode('matcap');
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
-      img.onload = () => {
+      if (typeof preset.generate === 'function') {
         const canvas = document.createElement('canvas');
         canvas.width = 512;
         canvas.height = 512;
         const ctx = canvas.getContext('2d');
         if (ctx) {
-          ctx.drawImage(img, 0, 0, 512, 512);
+          preset.generate(ctx, 512, 512);
           const tex = new THREE.CanvasTexture(canvas);
           tex.needsUpdate = true;
           setTexture(tex);
-
-          // Sample center pixel to synchronize color picker
           try {
             const pixel = ctx.getImageData(256, 256, 1, 1).data;
             const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
             onChangeColor(hex);
           } catch (_) {}
         }
-      };
-      img.src = preset.url;
+      } else if (preset.url) {
+        const img = new Image();
+        img.crossOrigin = 'anonymous';
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          canvas.width = 512;
+          canvas.height = 512;
+          const ctx = canvas.getContext('2d');
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, 512, 512);
+            const tex = new THREE.CanvasTexture(canvas);
+            tex.needsUpdate = true;
+            setTexture(tex);
+
+            // Sample center pixel to synchronize color picker
+            try {
+              const pixel = ctx.getImageData(256, 256, 1, 1).data;
+              const hex = rgbToHex(pixel[0], pixel[1], pixel[2]);
+              onChangeColor(hex);
+            } catch (_) {}
+          }
+        };
+        img.src = preset.url;
+      }
     }
   };
 
   const handleApplyToBrushDirect = () => {
     const preset = ALL_MATERIAL_PRESETS.find((p) => p.id === selectedPresetId);
     if (preset) {
+      const previewUrl = preset.url || (typeof preset.generate === 'function' ? createMatCap(preset.generate) : undefined);
       if (preset.type === 'shader') {
         onApplyBrushSettings?.({
           materialType: 'animated_fx',
@@ -397,16 +416,22 @@ void main() {
             vertexShader: preset.vertexShader,
             fragmentShader: preset.fragmentShader,
           },
-          matcapUrl: preset.url,
+          matcapUrl: previewUrl,
+          previewUrl: previewUrl,
           matcapTexture: texture || undefined,
           color: currentColor,
+          solidColor: currentColor,
+          activeLookName: preset.name,
         });
       } else {
         onApplyBrushSettings?.({
           materialType: 'matcap',
-          matcapUrl: preset.url,
+          matcapUrl: previewUrl,
+          previewUrl: previewUrl,
           matcapTexture: texture || undefined,
           color: currentColor,
+          solidColor: currentColor,
+          activeLookName: preset.name,
         });
       }
     } else if (materialMode === 'shader' && activeShader) {
@@ -420,12 +445,19 @@ void main() {
           fragmentShader: activeShader.fragmentShader,
         },
         color: currentColor,
+        solidColor: currentColor,
+        matcapUrl: undefined,
+        previewUrl: undefined,
+        matcapTexture: undefined,
+        activeLookName: activeShader.name,
       });
     } else if (materialMode === 'matcap' && texture) {
       onApplyBrushSettings?.({
         materialType: 'matcap',
         matcapTexture: texture,
         color: currentColor,
+        solidColor: currentColor,
+        activeLookName: 'MatCap',
       });
     }
     onClose();
@@ -824,6 +856,21 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
     }
   };
 
+  const applySolidColor = useCallback((hex: string) => {
+    onChangeColor(hex);
+    onApplyBrushSettings?.({
+      color: hex,
+      solidColor: hex,
+      materialType: 'shadeless',
+      shaderEffect: undefined,
+      customShader: undefined,
+      matcapUrl: undefined,
+      previewUrl: undefined,
+      matcapTexture: undefined,
+      activeLookName: 'Flat Paint',
+    });
+  }, [onChangeColor, onApplyBrushSettings]);
+
   const updateHueFromCoords = (x: number, y: number) => {
     let angle = (Math.atan2(y, x) * 180) / Math.PI;
     if (angle < 0) angle += 360;
@@ -831,8 +878,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
     setHsv(nextHsv);
     const rgb = hsvToRgb(nextHsv.h, nextHsv.s, nextHsv.v);
     const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
-    onChangeColor(hex);
-    onApplyBrushSettings?.({ color: hex });
+    applySolidColor(hex);
   };
 
   const updateSatValFromCoords = (x: number, y: number) => {
@@ -842,8 +888,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
     setHsv(nextHsv);
     const rgb = hsvToRgb(nextHsv.h, nextHsv.s, nextHsv.v);
     const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
-    onChangeColor(hex);
-    onApplyBrushSettings?.({ color: hex });
+    applySolidColor(hex);
   };
 
   // OKLCh Slider Handler
@@ -855,8 +900,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
       C: next.C,
       h: (next.h * Math.PI) / 180,
     });
-    onChangeColor(hex);
-    onApplyBrushSettings?.({ color: hex });
+    applySolidColor(hex);
   };
 
   const harmonies = useMemo(() => {
@@ -1169,8 +1213,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
                       className="h-10 rounded-lg border border-white/10 shadow-inner cursor-pointer hover:ring-2 hover:ring-neutral-400 dark:ring-neutral-500 transition-all"
                       style={{ backgroundColor: posterizedColor }}
                       onClick={() => {
-                        onChangeColor(posterizedColor);
-                        onApplyBrushSettings?.({ color: posterizedColor });
+                        applySolidColor(posterizedColor);
                       }}
                       title="Click to apply posterized color"
                     />
@@ -1200,8 +1243,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
                         <button
                           key={idx}
                           onClick={() => {
-                            onChangeColor(c);
-                            onApplyBrushSettings?.({ color: c });
+                            applySolidColor(c);
                           }}
                           className={`h-10 rounded-lg border transition-all active:scale-95 hover:scale-105 ${
                             c.toLowerCase() === currentColor.toLowerCase()
@@ -1240,8 +1282,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
                       <button
                         key={idx}
                         onClick={() => {
-                          onChangeColor(c);
-                          onApplyBrushSettings?.({ color: c });
+                          applySolidColor(c);
                         }}
                         className="rounded-md border border-white/10 hover:scale-105 transition-transform cursor-pointer"
                         style={{ backgroundColor: c }}
@@ -1265,8 +1306,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
                       <button
                         key={c}
                         onClick={() => {
-                          onChangeColor(c);
-                          onApplyBrushSettings?.({ color: c });
+                          applySolidColor(c);
                         }}
                         className={`h-8 rounded-lg border transition-all active:scale-95 hover:scale-105 cursor-pointer ${
                           c.toLowerCase() === currentColor.toLowerCase()
@@ -1297,8 +1337,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
               value={currentColor}
               onChange={(e) => {
                 if (e.target.value.startsWith('#')) {
-                  onChangeColor(e.target.value);
-                  onApplyBrushSettings?.({ color: e.target.value });
+                  applySolidColor(e.target.value);
                 }
               }}
               className={`w-24 px-2 py-1 rounded-lg font-mono text-center border ${
@@ -1316,8 +1355,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
                 onChangeColor(currentColor);
                 onClose();
               } else {
-                onChangeColor(currentColor);
-                onApplyBrushSettings?.({ color: currentColor });
+                applySolidColor(currentColor);
                 onClose();
               }
             }}

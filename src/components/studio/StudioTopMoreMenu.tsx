@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import {
   Compass,
   FolderOpen,
+  Grid,
   Maximize2,
   Minimize2,
   Save,
@@ -26,6 +27,8 @@ interface StudioTopMoreMenuProps {
   onToggleFullscreen: () => void;
   isGizmoActive?: boolean;
   onToggleGizmo?: () => void;
+  showPlane?: boolean;
+  onTogglePlane?: () => void;
 }
 
 interface ActionButtonProps {
@@ -70,6 +73,8 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
   onToggleFullscreen,
   isGizmoActive = true,
   onToggleGizmo,
+  showPlane = true,
+  onTogglePlane,
 }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
   const isLight = theme === 'light';
@@ -160,9 +165,18 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
           {onOpenIllumination && (
             <ActionButton icon={<Sun className="h-5 w-5 text-amber-400" strokeWidth={1.7} />} label="Lighting" description="Scene illumination" onSelect={select(onOpenIllumination)} isLight={isLight} />
           )}
-          <ActionButton icon={<Square className="h-5 w-5" strokeWidth={1.7} />} label="Shapes" description="Shape snapping" onSelect={select(onOpenShapes)} isLight={isLight} />
+          <ActionButton icon={<Square className="h-5 w-5" strokeWidth={1.7} />} label="Drawing Aids" description="Steady, predictive, and ruler" onSelect={select(onOpenShapes)} isLight={isLight} />
           {onOpenScaffolding && (
-            <ActionButton icon={<User className="h-5 w-5 text-sky-400" strokeWidth={1.7} />} label="Guides" description="3D Armatures & Forms" onSelect={select(onOpenScaffolding)} isLight={isLight} />
+            <ActionButton icon={<User className="h-5 w-5 text-sky-400" strokeWidth={1.7} />} label="3D Forms" description="Surfaces and mannequins" onSelect={select(onOpenScaffolding)} isLight={isLight} />
+          )}
+          {onTogglePlane && (
+            <ActionButton
+              icon={<Grid className="h-5 w-5 text-emerald-400" strokeWidth={1.7} />}
+              label={showPlane ? 'Hide Plane' : 'Show Plane'}
+              description="Canvas surface"
+              onSelect={select(onTogglePlane)}
+              isLight={isLight}
+            />
           )}
           <ActionButton icon={<Settings className="h-5 w-5" strokeWidth={1.7} />} label="Settings" description="Studio preferences" onSelect={select(onOpenSettings)} isLight={isLight} />
           {onToggleGizmo && (

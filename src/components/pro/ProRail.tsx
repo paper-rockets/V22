@@ -86,7 +86,6 @@ export const ProRail: React.FC<ProRailProps> = ({
   const colorBtnRef = useRef<HTMLButtonElement>(null);
   const sizeBtnRef = useRef<HTMLButtonElement>(null);
   const brushBtnRef = useRef<HTMLButtonElement>(null);
-  const [shelfTop, setShelfTop] = useState<number | null>(null);
 
   const [panel, setPanel] = useState<'color' | 'size' | 'brush' | null>(null);
   const [isDesktopExpanded, setIsDesktopExpanded] = useState(true);
@@ -103,13 +102,14 @@ export const ProRail: React.FC<ProRailProps> = ({
     }
   });
 
-  const activeColor = brushSettings?.solidColor || brushSettings?.color || '#000000';
+  const activeColor = brushSettings?.color || brushSettings?.solidColor || '#000000';
   const quickColors = useMemo(
     () => Array.from(new Set([...STAPLE_COLORS, ...recentColors])).slice(0, 6),
     [recentColors]
   );
 
   useEffect(() => {
+    if (brushSettings?.previewUrl || brushSettings?.matcapUrl) return;
     const normalized = activeColor.toLowerCase();
     if (STAPLE_COLORS.some((color) => color.toLowerCase() === normalized)) return;
     setRecentColors((previous) => {
@@ -119,7 +119,7 @@ export const ProRail: React.FC<ProRailProps> = ({
       } catch {}
       return next;
     });
-  }, [activeColor]);
+  }, [activeColor, brushSettings?.previewUrl, brushSettings?.matcapUrl]);
 
   useEffect(() => {
     const onDockChange = (event: Event) => {
@@ -138,24 +138,6 @@ export const ProRail: React.FC<ProRailProps> = ({
     const timer = window.setTimeout(() => setDockHidden(true), 2400);
     return () => window.clearTimeout(timer);
   }, [dockPreferences.autoHide, openSheet, panel]);
-
-  // Align popover shelf dynamically beside the active trigger button
-  useEffect(() => {
-    if (!panel) {
-      setShelfTop(null);
-      return;
-    }
-    const targetBtn =
-      panel === 'color'
-        ? colorBtnRef.current
-        : panel === 'size'
-        ? sizeBtnRef.current
-        : brushBtnRef.current;
-    if (targetBtn) {
-      const top = targetBtn.offsetTop + targetBtn.offsetHeight / 2;
-      setShelfTop(top);
-    }
-  }, [panel]);
 
   const activeTriggerRef =
     panel === 'color'
@@ -311,7 +293,12 @@ export const ProRail: React.FC<ProRailProps> = ({
                   ? isLight ? 'border-neutral-900 ring-2 ring-neutral-900/40 shadow-xs' : 'border-white ring-2 ring-white/40 shadow-xs'
                   : isLight ? 'border-black/15' : 'border-white/20'
               }`}
-              style={{ background: activeColor }}
+              style={{
+                background: (brushSettings?.previewUrl || brushSettings?.matcapUrl)
+                  ? `url(${brushSettings.previewUrl || brushSettings.matcapUrl}) center/cover no-repeat`
+                  : activeColor,
+                boxShadow: brushSettings?.materialType === 'glow' ? `0 0 10px ${activeColor}` : undefined,
+              }}
             />
             <span className="paperrocket-studio-quick-label">Color</span>
             </button>
@@ -428,10 +415,7 @@ export const ProRail: React.FC<ProRailProps> = ({
             ref={shelfRef}
             theme={theme}
             padding={panel === 'brush' ? 'standard' : 'tight'}
-            style={shelfTop !== null ? { top: `${shelfTop}px`, transform: 'translateY(-50%)' } : undefined}
-            className={`paperrocket-studio-shelf ${panel === 'brush' ? 'paperrocket-studio-shelf--brush' : 'paperrocket-studio-shelf--compact'} pointer-events-auto absolute left-full ml-3 z-50 animate-in fade-in slide-in-from-left-2 duration-150 ${
-              shelfTop === null ? 'top-1/2 -translate-y-1/2' : ''
-            } ${
+            className={`paperrocket-studio-shelf ${panel === 'brush' ? 'paperrocket-studio-shelf--brush' : 'paperrocket-studio-shelf--compact'} pointer-events-auto absolute left-full ml-3 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150 ${
               panel === 'color'
                 ? 'w-[154px]'
                 : panel === 'size'
@@ -448,10 +432,17 @@ export const ProRail: React.FC<ProRailProps> = ({
                     <div className="flex items-center gap-1.5">
                       <span
                         className="w-3.5 h-3.5 rounded-full border border-black/15 dark:border-white/20 shadow-xs shrink-0"
-                        style={{ background: currentBrushSettings.color || '#000000' }}
+                        style={{
+                          background: (currentBrushSettings.previewUrl || currentBrushSettings.matcapUrl)
+                            ? `url(${currentBrushSettings.previewUrl || currentBrushSettings.matcapUrl}) center/cover no-repeat`
+                            : activeColor,
+                          boxShadow: currentBrushSettings.materialType === 'glow' ? `0 0 8px ${activeColor}` : undefined,
+                        }}
                       />
-                      <span className="font-mono text-[10px] font-bold tracking-tight opacity-75">
-                        {(currentBrushSettings.color || '#000000').toUpperCase()}
+                      <span className="font-mono text-[10px] font-bold tracking-tight opacity-75 truncate max-w-[85px]">
+                        {currentBrushSettings.activeLookName && currentBrushSettings.activeLookName !== 'Flat Paint'
+                          ? currentBrushSettings.activeLookName
+                          : activeColor.toUpperCase()}
                       </span>
                     </div>
                     {/* Quick Native Color Picker */}
@@ -465,7 +456,18 @@ export const ProRail: React.FC<ProRailProps> = ({
                         onChange={(e) => {
                           const newColor = e.target.value;
                           if (setBrushSettings) {
-                            setBrushSettings((p) => ({ ...p, color: newColor }));
+                            setBrushSettings((p) => ({
+                              ...p,
+                              color: newColor,
+                              solidColor: newColor,
+                              materialType: 'shadeless',
+                              shaderEffect: undefined,
+                              customShader: undefined,
+                              matcapUrl: undefined,
+                              previewUrl: undefined,
+                              matcapTexture: undefined,
+                              activeLookName: 'Flat Paint',
+                            }));
                           }
                         }}
                         className="sr-only"
@@ -477,7 +479,11 @@ export const ProRail: React.FC<ProRailProps> = ({
                   {/* Preset Swatches with Selection Indicator */}
                   <div className="grid grid-cols-3 gap-2.5 py-1 justify-items-center">
                     {quickColors.map((color) => {
-                      const isSelected = activeColor.toLowerCase() === color.toLowerCase();
+                      const isEquippedShaderOrMatcap = Boolean(currentBrushSettings.previewUrl || currentBrushSettings.matcapUrl);
+                      const isSelected =
+                        !isEquippedShaderOrMatcap &&
+                        (currentBrushSettings.activeLookName === 'Flat Paint' || !currentBrushSettings.activeLookName) &&
+                        activeColor.toLowerCase() === color.toLowerCase();
                       const isWhite = color.toLowerCase() === '#ffffff';
                       const isLightColor = color === '#ffffff' || color === '#f59e0b';
                       return (
@@ -494,6 +500,7 @@ export const ProRail: React.FC<ProRailProps> = ({
                               shaderEffect: undefined,
                               customShader: undefined,
                               matcapUrl: undefined,
+                              previewUrl: undefined,
                               matcapTexture: undefined,
                               activeLookName: 'Flat Paint',
                             }));
@@ -525,6 +532,26 @@ export const ProRail: React.FC<ProRailProps> = ({
                         </button>
                       );
                     })}
+                  </div>
+
+                  {/* Quick Opacity Slider */}
+                  <div className="flex items-center gap-1.5 px-1 py-1 border-t border-black/10 dark:border-white/10">
+                    <span className="text-[10px] font-mono font-bold opacity-75 w-7 shrink-0 text-right">
+                      {Math.round((currentBrushSettings.opacity ?? 1) * 100)}%
+                    </span>
+                    <input
+                      type="range"
+                      min="0.05"
+                      max="1"
+                      step="0.05"
+                      value={currentBrushSettings.opacity ?? 1}
+                      onChange={(e) => {
+                        const val = parseFloat(e.target.value);
+                        setBrushSettings?.((prev) => ({ ...prev, opacity: val }));
+                      }}
+                      className="w-full h-1.5 accent-neutral-900 dark:accent-white bg-black/10 dark:bg-white/20 rounded-lg cursor-pointer"
+                      title="Brush Opacity"
+                    />
                   </div>
 
                   {/* More Colors Button -> Opens Full Color Studio */}
@@ -600,7 +627,7 @@ export const ProRail: React.FC<ProRailProps> = ({
                         <div className={`paperrocket-brush-glyph h-11 w-11 shrink-0 rounded-lg grid place-items-center ${
                           isLight ? 'bg-white/70' : 'bg-white/[0.07]'
                         }`}>
-                          <BrushShapeGlyph brushId={preset.id} profile={preset.profile} patternType={preset.patternType} boxSize={32} />
+                          <BrushShapeGlyph brushId={preset.id} profile={preset.profile} materialType={preset.materialType} patternType={preset.patternType} boxSize={32} />
                         </div>
                         <span className="min-w-0 flex-1">
                           <span

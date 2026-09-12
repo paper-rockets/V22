@@ -118,8 +118,28 @@ export class MaterialCache {
           matcapTex = loader.load(settings.matcapUrl);
         } catch (_) {}
       }
+      if (!matcapTex) {
+        if (!MaterialCache.fallbackWhiteTexture) {
+          const fbCanvas = document.createElement('canvas');
+          fbCanvas.width = 128;
+          fbCanvas.height = 128;
+          const fbCtx = fbCanvas.getContext('2d');
+          if (fbCtx) {
+            const grad = fbCtx.createRadialGradient(48, 38, 4, 64, 64, 64);
+            grad.addColorStop(0, '#ffffff');
+            grad.addColorStop(0.5, '#c0c8d8');
+            grad.addColorStop(1, '#606878');
+            fbCtx.fillStyle = grad;
+            fbCtx.beginPath();
+            fbCtx.arc(64, 64, 64, 0, Math.PI * 2);
+            fbCtx.fill();
+            MaterialCache.fallbackWhiteTexture = new THREE.CanvasTexture(fbCanvas);
+          }
+        }
+        matcapTex = MaterialCache.fallbackWhiteTexture;
+      }
       material = new THREE.MeshMatcapMaterial({
-        color: color,
+        color: 0xffffff,
         matcap: matcapTex || null,
         transparent: !isOpaque,
         opacity: effectiveOpacity,

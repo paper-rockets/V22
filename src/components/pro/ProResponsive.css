@@ -199,8 +199,8 @@
   }
 
   .paperrocket-context-panel {
-    left: auto;
-    right: 16px;
+    left: 72px;
+    right: auto;
     bottom: 84px;
     width: min(344px, calc(100vw - 96px));
     max-height: min(64dvh, 680px);

@@ -101,7 +101,13 @@ export const Viewport: React.FC<ViewportProps> = ({
   const [metadata, setMetadata] = useState<ModelMetadata | null>(null);
   const [isOrbiting, setIsOrbiting] = useState<boolean>(false);
   const [touchDist, setTouchDist] = useState<number | null>(null);
-  const [isStylusDetected, setIsStylusDetected] = useState<boolean>(false);
+  const [isStylusDetected, setIsStylusDetected] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('remix3d.hasStylus') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [isPanMode, setIsPanMode] = useState<boolean>(false);
 
   // Floating Navigation Pod Auto-Hide State
@@ -451,6 +457,9 @@ export const Viewport: React.FC<ViewportProps> = ({
       setIsOrbiting(false); // Hard guarantee: stylus never triggers orbit
 
       setIsStylusDetected(true);
+      try {
+        localStorage.setItem('remix3d.hasStylus', 'true');
+      } catch (_) {}
       onStylusDetected?.(true);
       lastStylusHoverPos.current.x = e.clientX;
       lastStylusHoverPos.current.y = e.clientY;
@@ -584,7 +593,7 @@ export const Viewport: React.FC<ViewportProps> = ({
         penActiveRef.current ||
         penInProximityRef.current ||
         activePenIdRef.current !== null ||
-        (now - lastPenEventTimeRef.current < 500);
+        (now - lastPenEventTimeRef.current < 1200);
 
       // Hardware Palm Rejection: If pen is active, in proximity, or recently used, drop touch
       if (isPenNear || isPenDrawingRef.current) {
@@ -788,6 +797,8 @@ export const Viewport: React.FC<ViewportProps> = ({
     if (cursorGroupRef.current && (tool === 'brush' || tool === 'eraser') && !rulerDrag?.active) {
       if (e.pointerType === 'pen' && isPenDrawingRef.current) {
         if (cursorSvgRef.current) cursorSvgRef.current.style.display = 'none';
+      } else if (e.pointerType === 'touch' && (isStylusDetected || !fingerPenMode)) {
+        if (cursorSvgRef.current) cursorSvgRef.current.style.display = 'none';
       } else {
         cursorGroupRef.current.setAttribute('transform', `translate(${e.clientX}, ${e.clientY})`);
         if (cursorSvgRef.current) cursorSvgRef.current.style.display = 'block';
@@ -816,6 +827,12 @@ export const Viewport: React.FC<ViewportProps> = ({
     // BRANCH 1: STYLUS / PEN MOVE (STRICT DRAWING, NO CAMERA INTERFERENCE)
     // -----------------------------------------------------------------------
     if (e.pointerType === 'pen') {
+      if (!isStylusDetected) {
+        setIsStylusDetected(true);
+        try {
+          localStorage.setItem('remix3d.hasStylus', 'true');
+        } catch (_) {}
+      }
       lastPenEventTimeRef.current = Date.now();
       penActiveRef.current = true;
       penInProximityRef.current = true;

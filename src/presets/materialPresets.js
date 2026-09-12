@@ -6,7 +6,7 @@ import { GRASSWORKS_MATERIAL_PRESETS } from './grassworksShaders';
 import { REZE_MATERIAL_PRESETS } from './rezeShaders';
 
 // High-Quality Procedural MatCap Canvas Generator
-function createMatCap(drawFn) {
+export function createMatCap(drawFn) {
   const canvas = document.createElement('canvas');
   canvas.width = 512;
   canvas.height = 512;

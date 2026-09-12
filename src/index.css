@@ -83,10 +83,11 @@ canvas {
 
 @media (min-width: 640px) {
   .paperrocket-library-tray {
-    left: 88px !important;
+    left: 50% !important;
     right: auto !important;
-    bottom: 20px !important;
-    width: 420px !important;
+    bottom: max(20px, calc(16px + env(safe-area-inset-bottom))) !important;
+    transform: translateX(-50%) !important;
+    width: min(calc(100vw - 32px), 440px) !important;
     height: 56vh !important;
     height: 56dvh !important;
     max-height: 620px;
@@ -310,10 +311,14 @@ canvas {
 }
 
 .paperrocket-pro-panel[data-theme="light"] .paperrocket-pro-content button[class~="bg-neutral-900"] {
-  color: rgb(12 74 96) !important;
-  background: rgb(14 165 233 / 0.14) !important;
-  border-color: rgb(2 132 199 / 0.8) !important;
+  color: #ffffff !important;
+  background: #171717 !important;
+  border-color: #171717 !important;
   font-weight: 700 !important;
+}
+
+.paperrocket-pro-panel[data-theme="light"] input[type="range"] {
+  accent-color: #171717;
 }
 
 .paperrocket-pro-content input[type="range"] {
@@ -544,10 +549,13 @@ html.light .pr-surface button:is(
 }
 /* light theme — active button */
 html.light .pr-surface button[class~="bg-neutral-900"]{
-  color:rgb(12 74 96) !important;
-  background:rgb(14 165 233 / .14) !important;
-  border-color:rgb(2 132 199 / .80) !important;
-  font-weight:700 !important;
+  color: #ffffff !important;
+  background: #171717 !important;
+  border-color: #171717 !important;
+  font-weight: 700 !important;
+}
+html.light .pr-surface input[type="range"]{
+  accent-color: #171717 !important;
 }
 
 /* 5 · Text inputs inside floating surfaces float too. */
@@ -745,3 +753,18 @@ html.light .paperrocket-sheet-header,
     max-height: none !important;
   }
 }
+
+/* Dynamic UI Scale Control */
+:root {
+  --remix-ui-scale: 1;
+}
+
+.paperrocket-studio-mode-group,
+.paperrocket-studio-quick-group,
+.paperrocket-studio-shelf,
+.paperrocket-pro-panel,
+.paperrocket-context-panel,
+.paperrocket-library-tray {
+  zoom: var(--remix-ui-scale, 1);
+}
+

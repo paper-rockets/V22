@@ -12,3 +12,4 @@ crates/**/target/
 scripts/*.png
 scripts/screenshots/
 screenshots/
+ALL_SCREENSHOTS/

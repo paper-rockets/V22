@@ -1,4 +1,4 @@
-﻿/**
+/**
  * @license
  * Project Serialization Engine
  * 
@@ -24,6 +24,7 @@ export interface ProjectSerializationState {
   activeModelId: string | null;
   gridHelper: THREE.GridHelper | null;
   modelWireframeOpacity: number;
+  showPlane?: boolean;
   uvEngine: UVPaintingEngine | null;
   getLayersSnapshot: () => Layer[];
   selectStroke: (id: string | null) => any;
@@ -139,6 +140,7 @@ export class ProjectSerializer {
       activeModelName: state.activeModelName,
       activeModelId: state.activeModelId ?? undefined,
       showGrid: state.gridHelper?.visible ?? true,
+      showPlane: state.showPlane ?? true,
       showWireframe: state.modelWireframeOpacity > 0,
       undoStack: serializedUndoStack,
       historyUndoStack: serializedHistoryUndoStack,

@@ -1,0 +1,25 @@
+=============================================================
+REMIX 3D STUDIO - AUDIT, GALLERY & CELLULAR ACCESS LINKS
+=============================================================
+
+1. AUDIT & NOTES REVIEW PAGE (Draw, highlight & add notes on your phone):
+   https://respected-tutorials-ddr-technical.trycloudflare.com/audit
+
+2. GALLERY (View & download all 64 pictures on your phone):
+   https://respected-tutorials-ddr-technical.trycloudflare.com/gallery
+
+3. LIVE 3D APP on your phone:
+   https://respected-tutorials-ddr-technical.trycloudflare.com/?device=s25ultra
+
+4. AT HOME (On same Wi-Fi):
+   Audit Page: http://192.168.0.22:3002/audit
+   Gallery:    http://192.168.0.22:3002/gallery
+   3D App:     http://192.168.0.22:3002/?device=s25ultra
+
+5. On this computer:
+   Audit Page: http://localhost:3002/audit
+   Gallery:    http://localhost:3002/gallery
+   3D App:     http://localhost:3002/?device=s25ultra
+
+Port: 3002
+=============================================================

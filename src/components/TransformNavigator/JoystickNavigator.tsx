@@ -365,49 +365,6 @@ export const JoystickNavigator: React.FC<JoystickNavigatorProps> = ({
           {isRepositioning && <span className="jn-drag-hint">Moving</span>}
         </div>
 
-        {/* Top layout strip: Sphere | Disc | Petal | Collar */}
-        <div className="rig-strip" role="tablist" aria-label="Navigator style">
-          <button
-            type="button"
-            className="rig-chip"
-            onClick={() => {
-              onLayoutChange('sphere');
-              haptics.trigger('light');
-            }}
-          >
-            Sphere
-          </button>
-          <button
-            type="button"
-            className={`rig-chip ${layout === 'disc' ? 'on' : ''}`}
-            onClick={() => {
-              onLayoutChange('disc');
-              haptics.trigger('light');
-            }}
-          >
-            Disc
-          </button>
-          <button
-            type="button"
-            className={`rig-chip ${layout === 'petal' ? 'on' : ''}`}
-            onClick={() => {
-              onLayoutChange('petal');
-              haptics.trigger('light');
-            }}
-          >
-            Petal
-          </button>
-          <button
-            type="button"
-            className={`rig-chip ${layout === 'collar' ? 'on' : ''}`}
-            onClick={() => {
-              onLayoutChange('collar');
-              haptics.trigger('light');
-            }}
-          >
-            Collar
-          </button>
-        </div>
 
         {/* View presets strip: front | side | top | angle */}
         <div className="rig-strip" aria-label="Camera view presets">

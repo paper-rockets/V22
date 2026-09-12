@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import {
   Box,
   FolderOpen,
+  Grid,
   Maximize2,
   Minimize2,
   MoreHorizontal,
@@ -30,6 +31,8 @@ interface StudioTopStripProps {
   onOpenSessions?: () => void;
   isGizmoActive?: boolean;
   onToggleGizmo?: () => void;
+  showPlane?: boolean;
+  onTogglePlane?: () => void;
 }
 
 export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
@@ -46,6 +49,8 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
   onOpenSessions,
   isGizmoActive,
   onToggleGizmo,
+  showPlane = true,
+  onTogglePlane,
 }) => {
   const ink = theme === 'light' ? 'text-neutral-800' : 'text-white/90';
   const button = `pointer-events-auto shrink-0 min-w-[44px] min-h-[44px] w-11 h-11 grid place-items-center rounded-xl transition-colors hover:bg-current/[0.045] active:bg-current/[0.075] ${ink}`;
@@ -208,8 +213,8 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
           type="button"
           onClick={openShapes}
           className={`${button} hidden md:grid`}
-          aria-label="Shape Snapping"
-          title="Shape Snapping (Auto-Shapes)"
+          aria-label="Drawing Aids"
+          title="Drawing Aids: Steady, Predictive, and Ruler"
         >
           <Square className="w-[17px] h-[17px] sm:w-[19px] sm:h-[19px]" strokeWidth={1.7} />
         </button>
@@ -218,10 +223,21 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
             type="button"
             onClick={onOpenScaffolding}
             className={`${button} hidden md:grid`}
-            aria-label="3D Armatures & Guides"
-            title="3D Armatures & Guides (Mannequins, Head Cage, Car, Limbs)"
+            aria-label="3D Forms"
+            title="3D Forms: surfaces and mannequins to draw on"
           >
             <User className="w-[17px] h-[17px] sm:w-[19px] sm:h-[19px] text-sky-400" strokeWidth={1.7} />
+          </button>
+        )}
+        {onTogglePlane && (
+          <button
+            type="button"
+            onClick={onTogglePlane}
+            className={`${button} hidden md:grid ${showPlane ? 'text-emerald-400 hover:text-emerald-300' : 'opacity-60'}`}
+            aria-label={showPlane ? 'Hide Canvas Plane' : 'Show Canvas Plane'}
+            title={showPlane ? 'Hide Canvas Plane' : 'Show Canvas Plane'}
+          >
+            <Grid className="w-[17px] h-[17px] sm:w-[19px] sm:h-[19px]" strokeWidth={1.7} />
           </button>
         )}
         <button
@@ -272,6 +288,8 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
         onToggleFullscreen={handleToggleFullscreen}
         isGizmoActive={isGizmoActive}
         onToggleGizmo={onToggleGizmo}
+        showPlane={showPlane}
+        onTogglePlane={onTogglePlane}
       />
     </header>
   );

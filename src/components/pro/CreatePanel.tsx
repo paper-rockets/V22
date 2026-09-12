@@ -127,11 +127,11 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
         </div>
       </div>
 
-      {/* 2. DRAWING GUIDES & ARMATURES */}
+      {/* 2. DRAWING GUIDES & MANNEQUINS */}
       {(onOpenScaffolding || onOpenBentGuide) && (
         <div className={cardClass}>
           <div className="flex items-center justify-between">
-            <div className={subHeadingClass}>Drawing Guides & Armatures</div>
+            <div className={subHeadingClass}>Drawing Guides & Mannequins</div>
             <span className="text-[10px] opacity-65 font-medium">Snap & Sketch</span>
           </div>
 
@@ -148,11 +148,11 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                     ? 'bg-white border-black/10 hover:bg-neutral-200/50 text-neutral-900 shadow-xs'
                     : 'bg-black/30 border-white/10 hover:bg-white/10 text-neutral-100 shadow-xs'
                 }`}
-                title="Open 3D Armatures (Human figure, head cage, car, limb guides)"
+                title="Open 3D Mannequins (Human figure, head cage, car, limb guides)"
               >
                 <User className="w-4 h-4 shrink-0 text-sky-400" />
                 <div className="flex flex-col text-left leading-tight overflow-hidden">
-                  <span className="text-xs font-semibold truncate">3D Armatures</span>
+                  <span className="text-xs font-semibold truncate">3D Mannequins</span>
                   <span className="text-[9.5px] opacity-65 truncate">Mannequin & Forms</span>
                 </div>
               </button>

@@ -69,8 +69,17 @@ export const DeviceSimulatorFrame: React.FC<DeviceSimulatorFrameProps> = ({
     return 'none';
   }, [initialDevice]);
 
+  const initialOrientation = useMemo<DeviceOrientation>(() => {
+    if (typeof window === 'undefined') return 'portrait';
+    const params = new URLSearchParams(window.location.search);
+    const o = params.get('orientation')?.toLowerCase();
+    if (o === 'landscape') return 'landscape';
+    if (o === 'portrait') return 'portrait';
+    return 'portrait';
+  }, []);
+
   const [device, setDevice] = useState<SimulatedDevice>(initialResolved);
-  const [orientation, setOrientation] = useState<DeviceOrientation>('portrait');
+  const [orientation, setOrientation] = useState<DeviceOrientation>(initialOrientation);
   const [fitMode, setFitMode] = useState<'fit' | 'actual'>('fit');
   const [containerDimensions, setContainerDimensions] = useState<{ width: number; height: number }>({
     width: typeof window !== 'undefined' ? window.innerWidth : 1280,
@@ -222,29 +231,50 @@ export const DeviceSimulatorFrame: React.FC<DeviceSimulatorFrameProps> = ({
       </header>
 
       <main className="flex-1 flex items-center justify-center p-3 relative overflow-hidden bg-[#0d0e12]">
-        <div
-          className="relative transition-all duration-200 shadow-2xl overflow-hidden bg-black flex flex-col"
-          style={{
-            width: `${frameWidth}px`,
-            height: `${frameHeight}px`,
-            borderRadius: config.bezelRadius,
-            border: config.bezelBorder,
-            boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08)',
-          }}
-        >
-          {config.hasPunchHole && isPortrait && (
-            <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-[#080808] border border-neutral-700/40 z-[99999] pointer-events-none shadow-inner flex items-center justify-center">
-              <div className="w-1.5 h-1.5 rounded-full bg-[#031326] opacity-70" />
+        <div className="relative flex items-center justify-center">
+          <div
+            className="relative transition-all duration-200 shadow-2xl overflow-hidden bg-black flex flex-col"
+            style={{
+              width: `${frameWidth}px`,
+              height: `${frameHeight}px`,
+              borderRadius: config.bezelRadius,
+              border: config.bezelBorder,
+              boxShadow: '0 25px 60px -15px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.08)',
+            }}
+          >
+            {config.hasPunchHole && isPortrait && (
+              <div className="absolute top-2.5 left-1/2 -translate-x-1/2 w-3.5 h-3.5 rounded-full bg-[#080808] border border-neutral-700/40 z-[99999] pointer-events-none shadow-inner flex items-center justify-center">
+                <div className="w-1.5 h-1.5 rounded-full bg-[#031326] opacity-70" />
+              </div>
+            )}
+
+            {!config.hasPunchHole && (
+              <div className={`absolute ${isPortrait ? 'top-1.5 left-1/2 -translate-x-1/2' : 'top-1 left-1/2 -translate-x-1/2'} w-2.5 h-2.5 rounded-full bg-[#0c0d10] border border-neutral-700/30 z-[99999] pointer-events-none flex items-center justify-center`}>
+                <div className="w-1 h-1 rounded-full bg-[#031326] opacity-60" />
+              </div>
+            )}
+
+            <div className="w-full h-full relative overflow-hidden bg-neutral-900">
+              {children}
+            </div>
+          </div>
+
+          {/* S-Pen Silo / Magnetic Dock representation for Tab S6 Lite */}
+          {device === 's6lite' && (
+            <div
+              className={`absolute flex items-center justify-center pointer-events-none z-[99999] ${
+                isPortrait
+                  ? '-right-4 top-1/2 -translate-y-1/2 h-36 w-3'
+                  : '-right-4 top-1/2 -translate-y-1/2 h-44 w-3'
+              } rounded-full bg-gradient-to-b from-neutral-800 via-neutral-600 to-neutral-800 border border-neutral-600/60 shadow-lg`}
+              title="Samsung S-Pen Stylus Magnetic Dock"
+            >
+              <div className="w-1 h-4/5 rounded-full bg-neutral-900/80 flex flex-col items-center justify-between py-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                <div className="w-0.5 h-6 rounded-sm bg-neutral-400/80" />
+              </div>
             </div>
           )}
-
-          {!config.hasPunchHole && isPortrait && (
-            <div className="absolute top-1.5 left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-[#0c0d10] border border-neutral-700/30 z-[99999] pointer-events-none" />
-          )}
-
-          <div className="w-full h-full relative overflow-hidden bg-neutral-900">
-            {children}
-          </div>
         </div>
       </main>
 

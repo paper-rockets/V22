@@ -28,7 +28,7 @@ import {
   rgbToHsv,
 } from '../core/colorMath';
 import { normalizeHexColor } from '../core/materialCache';
-import { ALL_MATERIAL_PRESETS, PRESET_CATEGORIES } from '../presets/materialPresets';
+import { ALL_MATERIAL_PRESETS, PRESET_CATEGORIES, createMatCap } from '../presets/materialPresets';
 import { BrushSettings } from '../types';
 import { MenuSegmentedToggle, getMenuSurfaceClasses } from './ui/MenuPrimitives';
 
@@ -68,6 +68,18 @@ const QUICK_SHADER_NAMES = [
   'Toon Manga Ink & White',
 ];
 const QUICK_SHADER_LABELS = ['Clay', 'Toon', 'Gloss', 'Prism', 'Water', 'Metal', 'Copper', 'Glow', 'Lava', 'Ink'];
+const PRESET_REPRESENTATIVE_COLORS: Record<string, string> = {
+  'Flat Graphic White': '#ffffff',
+  'Toon Classic 2-Tone': '#e0e7ff',
+  'Crystal Clear Glass': '#67e8f9',
+  'Prism Rainbow Glass': '#f472b6',
+  'Summer Ocean Water': '#38bdf8',
+  'Polished Gold Ingot': '#facc15',
+  'Burnished Copper': '#fb923c',
+  'Electric Neon Cyan': '#00f7ff',
+  'Hot Molten Lava': '#ff4500',
+  'Toon Manga Ink & White': '#27272a',
+};
 const DEFAULT_VERTEX_SHADER = `
 precision mediump float;
 varying vec3 v_normal;
@@ -167,6 +179,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
       customShader: undefined,
       matcapUrl: undefined,
       matcapTexture: undefined,
+      previewUrl: undefined,
       activeLookName: 'Flat Paint',
     });
   }, [onApplyBrushSettings, onChangeColor]);
@@ -303,16 +316,30 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
   const applyPreset = (preset: any) => {
     if (!preset) return;
     setSelectedPresetId(preset.id);
+
+    const representativeColor =
+      preset.color ||
+      PRESET_REPRESENTATIVE_COLORS[preset.name] ||
+      (preset.category === 'Bright Colors' ? '#00f7ff' : undefined) ||
+      '#00f7ff';
+
+    lastSolidColorRef.current = representativeColor;
+
+    const previewUrl = preset.url || (typeof preset.generate === 'function' ? createMatCap(preset.generate) : undefined);
+
     if (preset.type === 'effect') {
       if (shaderTarget === 'brush') {
+        const activeColor = preset.color || representativeColor;
+        onChangeColor(activeColor);
         onApplyBrushSettings?.({
           materialType: 'animated_fx',
           shaderEffect: preset.effect,
           customShader: undefined,
-          matcapUrl: undefined,
+          matcapUrl: previewUrl,
+          previewUrl: previewUrl,
           matcapTexture: undefined,
-          color: preset.color,
-          solidColor: lastSolidColorRef.current,
+          color: activeColor,
+          solidColor: activeColor,
           roughness: 0.35,
           metalness: 0,
           emissiveIntensity: 1.5,
@@ -325,20 +352,23 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
     }
     if (preset.type === 'shader') {
       if (shaderTarget === 'brush') {
+        const activeColor = representativeColor;
+        onChangeColor(activeColor);
         onApplyBrushSettings?.({
           materialType: 'animated_fx',
           shaderEffect: 'anime_cel',
           customShader: { id: preset.id, name: preset.name, vertexShader: preset.vertexShader, fragmentShader: preset.fragmentShader },
           // White is neutral for shaders that expose a color uniform; shaders
           // with authored colors keep their own palette unchanged.
-          color: '#ffffff',
-          solidColor: lastSolidColorRef.current,
+          color: activeColor,
+          solidColor: activeColor,
           roughness: 0.35,
           metalness: 0,
           emissiveIntensity: 1,
           opacity: 1,
           patternType: 'none',
-          matcapUrl: undefined,
+          matcapUrl: previewUrl,
+          previewUrl: previewUrl,
           matcapTexture: undefined,
           activeLookName: preset.name,
         });
@@ -360,36 +390,33 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
       }
       return;
     }
-    const image = new Image();
-    image.crossOrigin = 'anonymous';
-    image.onload = () => {
-      const canvas = document.createElement('canvas');
-      canvas.width = 512;
-      canvas.height = 512;
-      const context = canvas.getContext('2d');
-      if (!context) return;
-      context.drawImage(image, 0, 0, 512, 512);
-      const texture = new THREE.CanvasTexture(canvas);
+
+    const applyMatcapTextureAndSettings = (texture: THREE.Texture, url?: string, sampleCtx?: CanvasRenderingContext2D | null) => {
       texture.needsUpdate = true;
-      let authoredColor = '#ffffff';
-      try {
-        const pixel = context.getImageData(256, 256, 1, 1).data;
-        authoredColor = rgbToHex(pixel[0], pixel[1], pixel[2]);
-      } catch {
-        // The material still applies when a remote image does not allow sampling.
+      let authoredColor = representativeColor;
+      if (sampleCtx) {
+        try {
+          const pixel = sampleCtx.getImageData(256, 256, 1, 1).data;
+          if (pixel[3] > 0 && (pixel[0] > 0 || pixel[1] > 0 || pixel[2] > 0)) {
+            authoredColor = rgbToHex(pixel[0], pixel[1], pixel[2]);
+          }
+        } catch (_) {}
       }
+      lastSolidColorRef.current = authoredColor;
       if (shaderTarget === 'brush') {
+        onChangeColor(authoredColor);
         onApplyBrushSettings?.({
           materialType: 'matcap',
-          matcapUrl: preset.url,
+          matcapUrl: url,
+          previewUrl: url,
           matcapTexture: texture,
           customShader: undefined,
           shaderEffect: undefined,
           color: authoredColor,
-          solidColor: lastSolidColorRef.current,
+          solidColor: authoredColor,
           roughness: 0.5,
           metalness: 0,
-          emissiveIntensity: 0,
+          emissiveIntensity: preset.name?.toLowerCase().includes('glow') || preset.category === 'Bright Colors' ? 1.0 : 0,
           opacity: 1,
           patternType: 'none',
           activeLookName: preset.name,
@@ -398,7 +425,37 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
         onApplyToModel?.(new THREE.MeshMatcapMaterial({ matcap: texture, color: 0xffffff }));
       }
     };
-    image.src = preset.url;
+
+    if (typeof preset.generate === 'function') {
+      const canvas = document.createElement('canvas');
+      canvas.width = 512;
+      canvas.height = 512;
+      const context = canvas.getContext('2d');
+      if (context) {
+        preset.generate(context, 512, 512);
+        const dataUrl = canvas.toDataURL('image/png');
+        const texture = new THREE.CanvasTexture(canvas);
+        applyMatcapTextureAndSettings(texture, dataUrl, context);
+        return;
+      }
+    }
+
+    if (preset.url) {
+      const image = new Image();
+      image.crossOrigin = 'anonymous';
+      image.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const context = canvas.getContext('2d');
+        if (!context) return;
+        context.drawImage(image, 0, 0, 512, 512);
+        const texture = new THREE.CanvasTexture(canvas);
+        applyMatcapTextureAndSettings(texture, preset.url, context);
+      };
+      image.src = preset.url;
+      return;
+    }
   };
 
   if (!isOpen) return null;

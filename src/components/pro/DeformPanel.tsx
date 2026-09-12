@@ -295,11 +295,11 @@ export const DeformPanel: React.FC<DeformPanelProps> = ({
                   ? 'bg-white hover:bg-neutral-100 border-black/10 text-neutral-800 shadow-xs'
                   : 'bg-black/30 hover:bg-white/10 border-white/10 text-neutral-200 shadow-xs'
               }`}
-              title="3D Armatures & Form Guides"
+              title="3D Mannequins & Form Guides"
             >
               <User className="w-4 h-4 shrink-0 text-sky-400" />
               <div className="flex flex-col text-left leading-tight overflow-hidden">
-                <span className="text-xs font-semibold truncate">3D Armatures</span>
+                <span className="text-xs font-semibold truncate">3D Mannequins</span>
                 <span className="text-[9.5px] opacity-65 truncate">Mannequins & Forms</span>
               </div>
             </button>
@@ -307,12 +307,12 @@ export const DeformPanel: React.FC<DeformPanelProps> = ({
         </div>
       </div>
 
-      {/* 4. Simplify & Decimate */}
+      {/* 4. Simplify Lines */}
       <div className={cardClass}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <Scissors className={`w-3.5 h-3.5 ${isLight ? 'text-neutral-900' : 'text-neutral-200'}`} />
-            <span className={subHeadingClass}>Simplify & Decimate</span>
+            <span className={subHeadingClass}>Simplify Lines</span>
           </div>
           <span className="font-mono text-[9px] font-bold">
             {Math.round((decimateTolerance / 0.02) * 100)}%

@@ -171,7 +171,11 @@ export const CurveDecimateModal: React.FC<CurveDecimateModalProps> = ({
             </button>
             <button
               onClick={handleApplyDecimation}
-              className="flex-1 py-2 px-3 rounded-xl bg-neutral-900 hover:bg-neutral-800 dark:bg-white dark:hover:bg-neutral-100 active:scale-95 text-white dark:text-neutral-900 text-xs font-bold flex items-center justify-center gap-1.5 shadow-md transition-all"
+              className={`flex-1 py-2 px-3 rounded-xl active:scale-95 text-xs font-bold flex items-center justify-center gap-1.5 shadow-md transition-all ${
+                isLight
+                  ? 'bg-neutral-900 hover:bg-neutral-800 text-white'
+                  : 'bg-white hover:bg-neutral-100 text-neutral-900'
+              }`}
             >
               <Scissors className="w-4 h-4" />
               <span>Simplify Lines</span>
