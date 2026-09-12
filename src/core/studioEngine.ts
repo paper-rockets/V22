@@ -33,13 +33,33 @@ import {
   ProjectSaveData,
   ActiveGuideReference,
 } from '../types';
-import { ShapeSnappingEngine, ShapeSnapResult } from './shapeSnapping';
+import {
+  DEFAULT_SHAPE_SNAP_TOLERANCE,
+  ShapeSnappingEngine,
+  ShapeSnapResult,
+  SnapOptions,
+} from './shapeSnapping';
+import { refitStrokePoints, RefitOptions } from './strokeFitting';
+
+/**
+ * Predictive Stroke levels 1 to 5. Each step decimates a little harder, allows
+ * the fitted curve to sit a little further from the drawn samples, and averages
+ * over a wider window first -- so level 1 keeps almost every wiggle and level 5
+ * keeps only the gesture.
+ */
+const REFIT_LEVELS: RefitOptions[] = [
+  { simplifyRatio: 0.006, errorRatio: 0.004, smoothRatio: 0.004, cornerAngle: Math.PI / 4 },
+  { simplifyRatio: 0.010, errorRatio: 0.006, smoothRatio: 0.008, cornerAngle: Math.PI / 4 },
+  { simplifyRatio: 0.014, errorRatio: 0.009, smoothRatio: 0.013, cornerAngle: Math.PI / 4 },
+  { simplifyRatio: 0.020, errorRatio: 0.013, smoothRatio: 0.019, cornerAngle: Math.PI / 4 },
+  { simplifyRatio: 0.028, errorRatio: 0.020, smoothRatio: 0.027, cornerAngle: Math.PI / 4 },
+];
 import { ConformalBeadGenerator } from './conformalBeadGenerator';
 import { MaterialCache, normalizeHexColor } from './materialCache';
 import { UVPaintingEngine } from './uvPaintingEngine';
 import { PostProcessingEngine } from './postProcessingEngine';
 import { ProgressiveRayTracer } from './ProgressiveRayTracer';
-import { PathTracingProgressInfo } from '../types';
+import { PathTracingProgressInfo, SmoothingAlgorithm } from '../types';
 import { SampleModelFactory } from './sampleModels';
 import { StrokeSmoother } from './strokeSmoother';
 import { globalShaderRegistry } from './animatedShaders';
@@ -57,6 +77,7 @@ import {
 } from '../types';
 import { PrimitiveGenerator } from './primitiveGenerator';
 import { modelLoader, LoadResult } from './modelLoader';
+import { ModelStorage } from './modelStorage';
 import { webgpuPipeline } from './webgpuPipeline';
 import { ensureGeometryLinearVertexColors, oklabMix } from './colorMath';
 import { modelExporter } from './modelExporter';
@@ -293,6 +314,8 @@ export class StudioEngine {
   private quickShapeAnchorScreen: { x: number; y: number } | null = null;
   private quickShapeInitialDist: number = 0.05;
   private quickShapeInitialAngle: number = 0.0;
+  /** Where the pen really was, before the Steady Stroke tether held it back. */
+  private lastRawScreen: { x: number; y: number; pressure: number } | null = null;
 
   // Brush Visual Projection Decal
   private cursorDecal: THREE.Mesh;
@@ -1427,7 +1450,13 @@ export class StudioEngine {
         curr = curr.parent;
       }
 
-      if (topChild && topChild !== this.strokeRoot) {
+      if (
+        topChild &&
+        topChild !== this.strokeRoot &&
+        topChild !== this.drawingPlaneMesh &&
+        topChild.name !== 'DrawingPlaneCanvas' &&
+        !topChild.name?.includes('DrawingPlane')
+      ) {
         this.selectStroke(null);
         this.setActiveSelectedModel(topChild.uuid);
         this.notifyModelsChanged();
@@ -1809,6 +1838,73 @@ export class StudioEngine {
   }
 
   /**
+   * How Steady Stroke and Predictive Stroke are configured for this brush.
+   *
+   * Steady Stroke is a tether: the higher the level, the longer the offset
+   * between the cursor and the stroke. Predictive Stroke is a level from 1 to
+   * 5: every level refits the drawn path to curves (the higher it is, the more
+   * of the path is treated as tremor), and from level 4 it also recognises when
+   * the whole stroke meant to be a line, circle, ellipse, triangle or
+   * rectangle. The magnet aligns a recognised line to the nearest right angle
+   * or diagonal, and can be turned off for deliberate slight angles.
+   */
+  private getStabilization(settings: BrushSettings): {
+    algorithm: SmoothingAlgorithm;
+    strength: number;
+    tetherRadius: number;
+    predictiveOn: boolean;
+    predictiveLevel: number;
+    recognizeShapes: boolean;
+    angleSnapping: boolean;
+    tolerance: number;
+  } {
+    const steadyLevel = THREE.MathUtils.clamp(settings.steadyStrokeLevel ?? 0, 0, 200);
+    const usingTether = steadyLevel > 0;
+    // Level 200 is a leash about a sixth of the screen across -- enough for the
+    // long calligraphic sweeps the highest settings are for.
+    const tetherRadius = (steadyLevel / 200) * 0.34;
+    const predictiveLevel = THREE.MathUtils.clamp(Math.round(settings.predictiveLevel ?? 3), 1, 5);
+    return {
+      algorithm: usingTether ? 'lazy' : settings.smoothingAlgorithm || 'streamline',
+      strength: settings.smoothingStrength ?? 0.55,
+      tetherRadius,
+      predictiveOn: settings.shapeSnapping === true,
+      predictiveLevel,
+      // Levels 1 to 3 only tidy the line. Shape recognition joins in at 4.
+      recognizeShapes: predictiveLevel >= 4,
+      angleSnapping: settings.angleSnapping !== false,
+      tolerance:
+        settings.shapeSnapTolerance ?? (predictiveLevel >= 5 ? 0.45 : DEFAULT_SHAPE_SNAP_TOLERANCE),
+    };
+  }
+
+  /**
+   * Screen axes in world space, so a fitted line can be snapped to the
+   * horizontal, vertical or diagonal the person was actually aiming at.
+   */
+  private getSnapOptions(angleSnapping: boolean): SnapOptions {
+    if (!angleSnapping) return {};
+    const right = new THREE.Vector3();
+    const up = new THREE.Vector3();
+    this.camera.matrixWorld.extractBasis(right, up, new THREE.Vector3());
+    return { screenRight: right, screenUp: up };
+  }
+
+  /**
+   * Predictive Stroke, stage one: refit the drawn path to curves.
+   *
+   * Decimate away the samples that carry no information, keep genuine corners,
+   * and least-squares fit cubic curves to what is left. The tremor is gone
+   * because the fitted curve never had it -- and unlike damping the input, this
+   * costs no lag, because the stroke has already been drawn.
+   */
+  private refitActiveStroke(level: number): void {
+    if (this.activePoints.length < 8) return;
+    const refitted = refitStrokePoints(this.activePoints, REFIT_LEVELS[level - 1]);
+    if (refitted.length >= 3) this.activePoints = refitted;
+  }
+
+  /**
    * Start a new paint stroke with smoothing and predictive latency compensation
    */
   public startStroke(
@@ -1839,23 +1935,29 @@ export class StudioEngine {
     this.quickShapeBasePoints = null;
     this.quickShapeCenter = null;
     this.quickShapeAnchorScreen = null;
+    this.quickShapeInitialDist = 0.05;
+    this.quickShapeInitialAngle = 0;
 
     // Reset smoothing filter state for clean stroke start
     this.strokeSmoother.reset();
+    const stab = this.getStabilization(settings);
+    this.lastRawScreen = { x: screenX, y: screenY, pressure };
     const smoothed = this.strokeSmoother.processPoint(
       screenX,
       screenY,
       pressure,
-      settings.smoothingAlgorithm || 'streamline',
-      settings.smoothingStrength ?? 0.55
+      stab.algorithm,
+      stab.strength,
+      performance.now(),
+      stab.tetherRadius
     );
 
     this.lastScreenCoords = { x: smoothed.x, y: smoothed.y };
     this.lastCapturePoint = null;
     this.isOverAir = false;
 
-    // Handle Vacuum Eraser Mode: purges whole continuous strokes upon intersection
-    if (tool === 'eraser' && settings.eraserMode === 'vacuum') {
+    // Handle Eraser Mode: purges whole continuous strokes upon intersection
+    if (tool === 'eraser') {
       this.activeVacuumPurgedBatch = [];
       this.purgeStrokesIntersecting(smoothed.x, smoothed.y, (settings.size || 0.035) * 1.5);
       return;
@@ -1921,17 +2023,22 @@ export class StudioEngine {
   ): void {
     if (!this.isDrawing) return;
 
-    // Apply real-time smoothing for smooth surface drawing
+    // Apply live stabilization: the Steady Stroke tether when it is on, or the
+    // brush preset's own damping filter otherwise.
+    const stab = this.getStabilization(settings);
+    this.lastRawScreen = { x: screenX, y: screenY, pressure };
     const smoothed = this.strokeSmoother.processPoint(
       screenX,
       screenY,
       pressure,
-      settings.smoothingAlgorithm || 'streamline',
-      settings.smoothingStrength ?? 0.55
+      stab.algorithm,
+      stab.strength,
+      performance.now(),
+      stab.tetherRadius
     );
 
-    // Vacuum Eraser continuous sweep
-    if (tool === 'eraser' && settings.eraserMode === 'vacuum') {
+    // Eraser continuous sweep
+    if (tool === 'eraser') {
       this.purgeStrokesIntersecting(smoothed.x, smoothed.y, (settings.size || 0.035) * 1.5);
       return;
     }
@@ -1941,27 +2048,50 @@ export class StudioEngine {
     const targetPressure = smoothed.pressure;
 
     // QuickShape / Hold-to-Snap Active Manipulation
+    //
+    // The adjustment is measured from the shape's own centre, not from the
+    // finger's anchor point: dragging away from the centre grows the shape and
+    // swinging around it rotates. Measuring from the anchor meant a one-pixel
+    // wobble was read as a full atan2 angle, so a snapped circle span-rotated
+    // the instant you held still, and the old scale term grew one way and
+    // shrank at half speed the other.
     if (this.quickShapeActive && this.quickShapeBasePoints && this.quickShapeCenter && this.quickShapeAnchorScreen) {
-      const curDx = targetX - this.quickShapeAnchorScreen.x;
-      const curDy = targetY - this.quickShapeAnchorScreen.y;
-      const curDist = Math.hypot(curDx, curDy);
-      const scale = 1.0 + curDist * 4.0 * (curDx >= 0 ? 1 : -0.5);
-      const rotAngle = Math.atan2(curDy, curDx);
+      const centerScreen = this.quickShapeCenter.clone().project(this.camera);
+      const curDx = targetX - centerScreen.x;
+      const curDy = targetY - centerScreen.y;
+      const curDist = Math.max(1e-4, Math.hypot(curDx, curDy));
+
+      // Dead zone: below this the hand is just resting, so hold the shape still.
+      const travel = Math.hypot(targetX - this.quickShapeAnchorScreen.x, targetY - this.quickShapeAnchorScreen.y);
+      if (travel < 0.012) {
+        return;
+      }
+
+      const scale = THREE.MathUtils.clamp(curDist / this.quickShapeInitialDist, 0.15, 6.0);
+      let rotAngle = Math.atan2(curDy, curDx) - this.quickShapeInitialAngle;
+      // Keep the rotation on the short way round so it never spins past PI.
+      rotAngle = Math.atan2(Math.sin(rotAngle), Math.cos(rotAngle));
 
       const avgNorm = this.quickShapeBasePoints[0]?.normal || new THREE.Vector3(0, 1, 0);
+      // The shape turns around its surface normal. When that normal points away
+      // from the camera the same turn looks mirrored on screen, so flip the
+      // angle and the shape always follows the finger.
+      this.camera.getWorldDirection(_camDirScratch);
+      const facing = avgNorm.dot(_camDirScratch) > 0 ? -1 : 1;
       this.activePoints = ShapeSnappingEngine.transformSnappedPoints(
         this.quickShapeBasePoints,
         this.quickShapeCenter,
         scale,
-        rotAngle,
+        rotAngle * facing,
         avgNorm
       );
       this.updateActiveStrokeGeometry(settings, symmetry);
       return;
     }
 
-    // QuickShape Hold-to-Snap Detection Timer
-    if (settings.shapeSnapping && !this.quickShapeActive && this.activePoints.length >= 5) {
+    // Dwell detection: holding still at the end of a stroke, at a level that
+    // recognises shapes, offers the shape before the pen is even lifted.
+    if (stab.predictiveOn && stab.recognizeShapes && !this.quickShapeActive && this.activePoints.length >= 5) {
       if (this.holdToSnapTimer) {
         clearTimeout(this.holdToSnapTimer);
       }
@@ -1969,11 +2099,14 @@ export class StudioEngine {
       const anchorY = targetY;
       this.holdToSnapTimer = setTimeout(() => {
         if (this.isDrawing && this.activePoints.length >= 5 && !this.quickShapeActive) {
+          // Same two stages as on release: tidy the path, then read its intent.
+          const tidied = refitStrokePoints(this.activePoints, REFIT_LEVELS[stab.predictiveLevel - 1]);
           const snapRes = ShapeSnappingEngine.snapStroke(
-            this.activePoints,
-            settings.shapeSnapTolerance ?? 0.18
+            tidied,
+            stab.tolerance,
+            this.getSnapOptions(stab.angleSnapping)
           );
-          if (snapRes.detectedShape !== 'none' && snapRes.confidence >= 0.55) {
+          if (snapRes.detectedShape !== 'none') {
             this.quickShapeActive = true;
             this.quickShapeResult = snapRes;
             this.quickShapeBasePoints = snapRes.snappedPoints.map((p) => ({
@@ -1983,13 +2116,20 @@ export class StudioEngine {
             }));
             this.quickShapeCenter = snapRes.center || snapRes.snappedPoints[0].position.clone();
             this.quickShapeAnchorScreen = { x: anchorX, y: anchorY };
+            const snapCenterScreen = this.quickShapeCenter.clone().project(this.camera);
+            const anchorDx = anchorX - snapCenterScreen.x;
+            const anchorDy = anchorY - snapCenterScreen.y;
+            // Floor the reference distance so a snap that happens with the pen
+            // sitting on the shape's centre cannot divide scale by ~zero.
+            this.quickShapeInitialDist = Math.max(0.02, Math.hypot(anchorDx, anchorDy));
+            this.quickShapeInitialAngle = Math.atan2(anchorDy, anchorDx);
             this.activePoints = snapRes.snappedPoints;
             this.updateActiveStrokeGeometry(settings, symmetry);
             this.onShapeSnapped?.(snapRes);
             haptics.trigger('snap');
           }
         }
-      }, 450);
+      }, 400);
     }
 
     if (!this.lastScreenCoords) {
@@ -1999,6 +2139,13 @@ export class StudioEngine {
     const dx = targetX - this.lastScreenCoords.x;
     const dy = targetY - this.lastScreenCoords.y;
     const screenDist = Math.hypot(dx, dy);
+
+    // While the pen wobbles inside the Steady Stroke leash the brush does not
+    // move at all. Nothing has changed, so skip the raycast and the geometry
+    // rebuild rather than piling up points on top of each other.
+    if (stab.tetherRadius > 0 && screenDist < 1e-5 && this.activePoints.length > 0) {
+      return;
+    }
 
     const isSpatial = settings.drawingMode === 'spatial_3d' || tool === 'free_brush';
     const isDrawingPlane = isSpatial || (this.lastHitMesh !== null && (this.lastHitMesh === this.drawingPlaneMesh || this.lastHitMesh.name === 'DrawingPlaneCanvas'));
@@ -2041,7 +2188,7 @@ export class StudioEngine {
         if (missStreak >= 6) {
           if (this.activePoints.length > 0) {
             // Commit active segment so stroke does NOT bridge through empty air
-            this.commitActiveSegment(settings, tool);
+            this.commitActiveSegment(settings, tool, true, symmetry);
           }
           this.isOverAir = true;
           this.lastCapturePoint = null;
@@ -2080,7 +2227,7 @@ export class StudioEngine {
 
         if (isDiscontinuous) {
           if (this.activePoints.length > 0) {
-            this.commitActiveSegment(settings, tool);
+            this.commitActiveSegment(settings, tool, true, symmetry);
           }
           this.isOverAir = false;
           this.lastCapturePoint = null;
@@ -2154,8 +2301,29 @@ export class StudioEngine {
   /**
    * Commits the current active segment into the permanent stroke list and stroke batch
    */
-  private commitActiveSegment(settings: BrushSettings, tool: ToolType): void {
+  /**
+   * Bank the piece of stroke drawn so far.
+   *
+   * `tidy` matters when a stroke gets broken up mid-draw -- running off the
+   * canvas, or across a gap in the model. Each piece is committed on the spot,
+   * so Predictive Stroke has to clean each one as it goes; tidying only at the
+   * end would leave every piece but the last exactly as drawn.
+   */
+  private commitActiveSegment(
+    settings: BrushSettings,
+    tool: ToolType,
+    tidy: boolean = false,
+    symmetry: SymmetryMode = 'none'
+  ): void {
     if (this.activePoints.length === 0 || this.activeStrokeMeshes.length === 0) return;
+
+    if (tidy) {
+      const stab = this.getStabilization(settings);
+      if (stab.predictiveOn) {
+        this.refitActiveStroke(stab.predictiveLevel);
+        this.updateActiveStrokeGeometry(settings, symmetry);
+      }
+    }
 
     const strokeId = 'stroke_' + Math.random().toString(36).substring(2, 9);
     const descriptor: StrokeDescriptor = {
@@ -2189,15 +2357,47 @@ export class StudioEngine {
     symmetry: SymmetryMode = 'none'
   ): void {
     if (!this.isDrawing) return;
+
+    // Let the Steady Stroke tether run out to where the pen actually finished,
+    // so a long offset does not simply cut the end off the mark.
+    const endStab = this.getStabilization(settings);
+    if (
+      endStab.tetherRadius > 0 &&
+      this.lastRawScreen &&
+      this.lastScreenCoords &&
+      tool !== 'eraser' &&
+      this.strokeSmoother.tetherLag(this.lastRawScreen.x, this.lastRawScreen.y) > 0.004
+    ) {
+      const from = { x: this.lastScreenCoords.x, y: this.lastScreenCoords.y };
+      const to = this.lastRawScreen;
+      this.strokeSmoother.releaseTether();
+      // Walk the last of the leash out in short steps. Covering it in one jump
+      // reads to the rest of the engine as the pen having leapt across the
+      // model, which breaks the stroke and leaves the tail as a stray dab.
+      const steps = Math.max(2, Math.ceil(Math.hypot(to.x - from.x, to.y - from.y) / 0.02));
+      for (let k = 1; k <= steps; k++) {
+        const t = k / steps;
+        this.addStrokePoint(
+          from.x + (to.x - from.x) * t,
+          from.y + (to.y - from.y) * t,
+          settings,
+          tool,
+          to.pressure,
+          symmetry
+        );
+      }
+    }
+
     this.isDrawing = false;
     this.lastScreenCoords = null;
     this.lastCapturePoint = null;
     this.isOverAir = false;
     this.lastHitMesh = null;
+    this.lastRawScreen = null;
     this.strokeSmoother.reset();
 
-    // Vacuum Eraser finalize
-    if (tool === 'eraser' && settings.eraserMode === 'vacuum') {
+    // Eraser finalize
+    if (tool === 'eraser') {
       if (this.activeVacuumPurgedBatch.length > 0) {
         const action = {
           type: 'erase' as const,
@@ -2235,22 +2435,33 @@ export class StudioEngine {
     }
 
     if (this.quickShapeActive) {
-      // Shape was interactively adjusted during hold; commit the adjusted geometry
+      // Shape was interactively adjusted during the dwell; commit as adjusted.
       this.quickShapeActive = false;
       this.quickShapeBasePoints = null;
       this.quickShapeCenter = null;
       this.quickShapeAnchorScreen = null;
-    } else if (settings.shapeSnapping && this.activePoints.length >= 5) {
-      // Algorithmic Geometric Shape Snapping fallback for fast draw & release
-      const snapResult = ShapeSnappingEngine.snapStroke(
-        this.activePoints,
-        settings.shapeSnapTolerance ?? 0.18
-      );
-      if (snapResult.detectedShape !== 'none' && snapResult.confidence >= 0.6) {
-        this.activePoints = snapResult.snappedPoints;
-        this.updateActiveStrokeGeometry(settings, symmetry);
-        this.onShapeSnapped?.(snapResult);
+    } else if (endStab.predictiveOn && this.activePoints.length >= 5) {
+      // Predictive Stroke proper, in two stages.
+      //
+      // One: refit the drawn path to curves, which removes tremor without ever
+      // having held the mark back. Two: if the level is high enough, ask what
+      // the whole trajectory meant -- a line, circle, ellipse, triangle or
+      // rectangle -- and take that shape only when it genuinely fits better
+      // than the freehand curve does.
+      this.refitActiveStroke(endStab.predictiveLevel);
+
+      if (endStab.recognizeShapes) {
+        const snapResult = ShapeSnappingEngine.snapStroke(
+          this.activePoints,
+          endStab.tolerance,
+          this.getSnapOptions(endStab.angleSnapping)
+        );
+        if (snapResult.detectedShape !== 'none') {
+          this.activePoints = snapResult.snappedPoints;
+          this.onShapeSnapped?.(snapResult);
+        }
       }
+      this.updateActiveStrokeGeometry(settings, symmetry);
     }
 
     // Straight Line / Ruler Mode Constraint
@@ -2307,9 +2518,12 @@ export class StudioEngine {
     symmetry: SymmetryMode = 'none'
   ): ShapeSnapResult | null {
     if (this.activePoints.length < 5) return null;
+    const stab = this.getStabilization(settings);
+    this.refitActiveStroke(stab.predictiveLevel);
     const snapResult = ShapeSnappingEngine.snapStroke(
       this.activePoints,
-      settings.shapeSnapTolerance ?? 0.18
+      stab.tolerance,
+      this.getSnapOptions(stab.angleSnapping)
     );
     if (snapResult.detectedShape !== 'none') {
       this.activePoints = snapResult.snappedPoints;
@@ -2987,6 +3201,7 @@ export class StudioEngine {
       activeModelId: this.activeModelId,
       gridHelper: this.gridHelper,
       modelWireframeOpacity: this.modelWireframeOpacity,
+      showPlane: this.drawingPlaneMesh ? this.drawingPlaneMesh.visible : true,
       uvEngine: this.uvEngine,
       getLayersSnapshot: () => this.getLayersSnapshot(),
       selectStroke: (id: string | null) => this.selectStroke(id),
@@ -3015,6 +3230,38 @@ export class StudioEngine {
    * Import project from ProjectSaveData and recreate all strokes & layers
    */
   public async importProjectData(project: ProjectSaveData): Promise<void> {
+    if (project.showPlane !== undefined) {
+      this.toggleDrawingPlane(project.showPlane);
+    }
+    if (project.activeModelId || project.activeModelName) {
+      const presets = SampleModelFactory.getPresets();
+      const preset = presets.find(
+        (p) =>
+          (project.activeModelId && p.id === project.activeModelId) ||
+          (project.activeModelName && p.name.toLowerCase() === project.activeModelName.toLowerCase())
+      );
+      if (preset) {
+        try {
+          await this.loadPresetModel(preset.id, undefined, 'clear');
+        } catch (e) {
+          console.warn('Failed to restore preset model during project import:', e);
+        }
+      } else {
+        try {
+          const savedList = await ModelStorage.getAllModels();
+          const saved = savedList.find(
+            (m) =>
+              (project.activeModelId && m.id === project.activeModelId) ||
+              (project.activeModelName && m.name.toLowerCase() === project.activeModelName.toLowerCase())
+          );
+          if (saved) {
+            await this.loadGLTF(saved.blob, saved.name, undefined, 'clear');
+          }
+        } catch (e) {
+          console.warn('Failed to restore stored model during project import:', e);
+        }
+      }
+    }
     await projectSerializer.importProjectData(this.getSerializationState(), project);
   }
 

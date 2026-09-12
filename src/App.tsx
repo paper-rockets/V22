@@ -126,6 +126,7 @@ const DEFAULT_BRUSH_SETTINGS: BrushSettings = {
   opacity: 1.0,
   color: '#000000',
   solidColor: '#000000',
+  eraserMode: 'vacuum',
   roughness: 0.8,
   metalness: 0.0,
   emissiveIntensity: 0.0,
@@ -149,7 +150,10 @@ const DEFAULT_BRUSH_SETTINGS: BrushSettings = {
   chiselAngle: 45,
   aspectRatio: 3.5,
   shapeSnapping: false,
-  shapeSnapTolerance: 0.14,
+  shapeSnapTolerance: undefined,
+  predictiveLevel: 3,
+  angleSnapping: true,
+  steadyStrokeLevel: 0,
 };
 
 const DEFAULT_POST_SETTINGS: PostProcessSettings = {
@@ -402,6 +406,10 @@ export function App() {
     } catch (_) {}
   }, []);
 
+  useEffect(() => {
+    document.documentElement.style.setProperty('--remix-ui-scale', uiScale.toString());
+  }, [uiScale]);
+
   const [perfectView, setPerfectView] = useState<PerfectViewInfo>({
     isPerfect: false,
     view: null,
@@ -541,7 +549,13 @@ export function App() {
     try {
       const savedProject = await loadAutoSaveProject();
       if (savedProject) {
-        engine.importProjectData(savedProject);
+        await engine.importProjectData(savedProject);
+        if (savedProject.activeModelName) {
+          setActiveModelName(savedProject.activeModelName);
+        }
+        if (savedProject.activeModelId) {
+          setActiveModelId(savedProject.activeModelId);
+        }
         if (savedProject.layers && savedProject.layers.length > 0) {
           setLayers(savedProject.layers);
           setActiveLayerId(savedProject.layers[0].id);
@@ -551,6 +565,9 @@ export function App() {
         }
         if (savedProject.showGrid !== undefined) {
           setShowGrid(savedProject.showGrid);
+        }
+        if (savedProject.showPlane !== undefined) {
+          setShowPlane(savedProject.showPlane);
         }
         if (savedProject.showWireframe !== undefined) {
           setShowWireframe(savedProject.showWireframe);
@@ -756,7 +773,10 @@ export function App() {
       const typeLabels: Record<string, string> = {
         line: 'Straight Line',
         circle: 'Perfect Circle',
+        ellipse: 'Clean Ellipse',
         arc: 'Circular Arc',
+        triangle: 'Triangle',
+        rectangle: 'Rectangle',
         polygon: 'Closed Polygon',
       };
       const shapeType = result.detectedShape;
@@ -916,8 +936,14 @@ export function App() {
         if (projectData.showWireframe !== undefined) {
           setShowWireframe(projectData.showWireframe);
         }
-        if (projectData.name) {
-          setActiveModelName(projectData.name);
+        if (projectData.activeModelName || projectData.name) {
+          setActiveModelName(projectData.activeModelName || projectData.name);
+        }
+        if (projectData.activeModelId) {
+          setActiveModelId(projectData.activeModelId);
+        }
+        if (projectData.showPlane !== undefined) {
+          setShowPlane(projectData.showPlane);
         }
         haptics.trigger('success');
       } catch (err) {
@@ -1098,8 +1124,14 @@ export function App() {
     if (session.projectData.showWireframe !== undefined) {
       setShowWireframe(session.projectData.showWireframe);
     }
-    if (session.name) {
-      setActiveModelName(session.name);
+    if (session.projectData.activeModelName || session.name) {
+      setActiveModelName(session.projectData.activeModelName || session.name);
+    }
+    if (session.projectData.activeModelId) {
+      setActiveModelId(session.projectData.activeModelId);
+    }
+    if (session.projectData.showPlane !== undefined) {
+      setShowPlane(session.projectData.showPlane);
     }
     haptics.trigger('success');
   }, [engine]);
@@ -1366,6 +1398,8 @@ export function App() {
         onOpenSessions={() => setIsSessionModalOpen(true)}
         isGizmoActive={gizmoMode !== 'Hidden' && activeController !== 'hidden' && showStudioNavigator}
         onToggleGizmo={handleToggleGizmo}
+        showPlane={showPlane}
+        onTogglePlane={handleTogglePlane}
       />
 
       {/* Omnipresent Safety & Recovery Anchor: "Lost? Tap to return to artwork" */}
@@ -1871,7 +1905,7 @@ export function App() {
         onToggleStats={setShowPerformanceStats}
       />
 
-      {/* Shape Snapping (Auto-Shapes) Sheet accessible from top menu */}
+      {/* Plain-language stroke assistance: predictive cleanup, ruler, and smoothing. */}
       <ShapesSheet brushSettings={brushSettings} setBrushSettings={setBrushSettings} theme={theme} />
 
       {/* Auto-Save Status Notification Toast */}

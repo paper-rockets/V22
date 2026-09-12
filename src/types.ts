@@ -200,7 +200,7 @@ export type StrokeProfile = 'tube' | 'ribbon' | 'marker' | 'conformal';
 
 export type PatternType = 'none' | 'dot' | 'line' | 'cross' | 'terrazzo' | 'stipple';
 
-export type SmoothingAlgorithm = 'none' | 'streamline' | 'exponential';
+export type SmoothingAlgorithm = 'none' | 'streamline' | 'exponential' | 'lazy';
 
 export type RenderMode = 'draft' | 'render';
 
@@ -270,6 +270,7 @@ export interface BrushSettings {
   shaderEffect?: AnimatedShaderEffect; // 27 animated GLSL shader effects
   animatedEffect?: AnimatedShaderEffect; // alias for shaderEffect
   matcapUrl?: string; // Data URL or asset path for MatCap
+  previewUrl?: string; // Data URL or asset path for shader / matcap preview indicator
   matcapTexture?: THREE.Texture; // Cached CanvasTexture / Texture instance
   customShader?: {
     id?: string;
@@ -301,8 +302,11 @@ export interface BrushSettings {
   raycastSeamBridging?: boolean; // Micro-jitter raycast fallback across geometry seams
   // Eraser & Drafting Snapping Extensions (Phase 3)
   eraserMode?: EraserMode; // 'cutout' (negative-space mask) vs 'vacuum' (whole-stroke continuous purge)
-  shapeSnapping?: boolean; // Algorithmic geometric shape snapping (line, circle, arc, polygon)
+  shapeSnapping?: boolean; // Predictive Stroke master switch
   shapeSnapTolerance?: number; // Geometric fitting confidence threshold (0.1 to 0.5)
+  predictiveLevel?: number; // Predictive Stroke level 1-5: higher smooths more; 4+ recognizes shapes
+  angleSnapping?: boolean; // Predictive Stroke magnet: align lines to 0/45 degrees
+  steadyStrokeLevel?: number; // Steady Stroke offset between cursor and stroke, 0-200 (0 = off)
   // Spatial Independence vs Surface Snapping
   drawingMode?: 'surface' | 'spatial_3d'; // 'surface' = snaps to 3D model, 'spatial_3d' = free 3D air drawing
   spatialDepth?: number; // Distance plane for free 3D drawing
@@ -583,6 +587,7 @@ export interface ProjectSaveData {
   brushSettings?: Partial<BrushSettings>;
   skySettings?: Partial<SkySettings>;
   showGrid?: boolean;
+  showPlane?: boolean;
   showWireframe?: boolean;
   // Non-destructive history and texture state
   undoStack?: Array<{ type: 'create' | 'erase'; strokes: StrokeDescriptor[] }>;
