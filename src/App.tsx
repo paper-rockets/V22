@@ -149,9 +149,13 @@ const DEFAULT_BRUSH_SETTINGS: BrushSettings = {
   patternContrast: 1.0,
   chiselAngle: 45,
   aspectRatio: 3.5,
-  shapeSnapping: false,
+  // Predictive Stroke is on out of the box: smoothing every stroke is the point
+  // of it, and a cleaner line is what most people want without going looking
+  // for a setting. Replacing strokes with shapes stays off until asked for.
+  shapeSnapping: true,
   shapeSnapTolerance: undefined,
   predictiveLevel: 3,
+  shapeRecognition: false,
   angleSnapping: true,
   steadyStrokeLevel: 0,
 };

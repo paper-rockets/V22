@@ -29,10 +29,10 @@ const RECOGNISES = ['Lines', 'Circles', 'Ovals', 'Arcs', 'Triangles', 'Rectangle
 
 const PREDICTIVE_HINTS: Record<number, string> = {
   1: 'Barely tidies. Keeps almost every wiggle you drew.',
-  2: 'Light tidying. Good for detail work.',
+  2: 'Light tidying. Good for small detail work.',
   3: 'Smooths the line without changing what you drew.',
-  4: 'Smooths, and swaps a stroke for the shape it was meant to be.',
-  5: 'Smooths hard, and reads shapes from rough sketches.',
+  4: 'Smooths more. Small detail gets rounded off.',
+  5: 'Smooths hard. Keeps the sweep, drops the detail.',
 };
 
 const STEADY_PRESETS = [0, 25, 60, 120, 181];
@@ -47,7 +47,7 @@ export const ShapesSheet: React.FC<ShapesSheetProps> = ({
   const straightOnly = brushSettings.straightLineMode ?? false;
   const level = Math.round(brushSettings.predictiveLevel ?? 3);
   const steadyLevel = Math.round(brushSettings.steadyStrokeLevel ?? 0);
-  const magnetOn = brushSettings.angleSnapping !== false;
+  const shapesOn = brushSettings.shapeRecognition === true;
 
   const soft = isLight ? 'bg-neutral-100 border-neutral-200' : 'bg-white/5 border-neutral-800';
   const accent = isLight
@@ -147,7 +147,8 @@ export const ShapesSheet: React.FC<ShapesSheetProps> = ({
           <div className="min-w-0 flex-1">
             <div className="text-sm font-bold">Predictive Stroke</div>
             <div className="text-[10px] leading-4 opacity-65">
-              Cleans the line up after you lift your pen, so nothing lags while you draw.
+              Smooths your line after you lift your pen, so a shaky hand still draws a clean
+              stroke and nothing lags while you draw.
             </div>
           </div>
           {predictiveOn && !straightOnly && <Check className="h-4 w-4 shrink-0" strokeWidth={2.5} />}
@@ -185,11 +186,11 @@ export const ShapesSheet: React.FC<ShapesSheetProps> = ({
           <button
             type="button"
             role="switch"
-            aria-checked={magnetOn}
+            aria-checked={shapesOn}
             disabled={!predictiveOn || straightOnly}
-            onClick={() => update({ angleSnapping: !magnetOn })}
+            onClick={() => update({ shapeRecognition: !shapesOn })}
             className={`mt-2 flex w-full items-center gap-2 rounded-xl border p-2 text-left transition-colors ${
-              magnetOn
+              shapesOn
                 ? isLight
                   ? 'border-neutral-900 bg-neutral-900 text-white'
                   : 'border-white bg-white text-neutral-950'
@@ -200,19 +201,14 @@ export const ShapesSheet: React.FC<ShapesSheetProps> = ({
           >
             <Magnet className="h-4 w-4 shrink-0" strokeWidth={1.8} />
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-bold">Snap to angles</div>
+              <div className="text-xs font-bold">Also turn strokes into shapes</div>
               <div className="text-[10px] leading-4 opacity-70">
-                Straightens a near-level line, and squares up a near-square box. Turn off to keep a
-                slight tilt you meant.
+                Off by default. Turn it on and a rough circle becomes a circle, a rough box becomes
+                a box. Anything else is left as you drew it.
               </div>
             </div>
           </button>
 
-          {level < 4 && (
-            <div className="mt-2 text-[10px] leading-4 opacity-60">
-              Levels 1 to 3 only tidy the line. Choose 4 or 5 to also turn strokes into shapes.
-            </div>
-          )}
         </div>
       </div>
 
@@ -244,7 +240,7 @@ export const ShapesSheet: React.FC<ShapesSheetProps> = ({
 
       <div className="pb-1 pt-3">
         <div className="mb-1.5 text-[11px] font-bold opacity-60">
-          Shapes Predictive Stroke can read
+          Shapes it can read, when that is turned on
         </div>
         <div className="flex flex-wrap gap-1.5">
           {RECOGNISES.map((r) => (

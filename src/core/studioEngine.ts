@@ -1842,11 +1842,11 @@ export class StudioEngine {
    *
    * Steady Stroke is a tether: the higher the level, the longer the offset
    * between the cursor and the stroke. Predictive Stroke is a level from 1 to
-   * 5: every level refits the drawn path to curves (the higher it is, the more
-   * of the path is treated as tremor), and from level 4 it also recognises when
-   * the whole stroke meant to be a line, circle, ellipse, triangle or
-   * rectangle. The magnet aligns a recognised line to the nearest right angle
-   * or diagonal, and can be turned off for deliberate slight angles.
+   * 5, which refits the drawn path to clean curves: the higher the level, the
+   * more of the path is treated as tremor. Shape recognition is a separate
+   * switch on top of that -- when it is on, a stroke that clearly meant to be a
+   * line, circle, ellipse, triangle or rectangle is replaced by that shape, and
+   * the level also decides how rough a sketch still counts as one.
    */
   private getStabilization(settings: BrushSettings): {
     algorithm: SmoothingAlgorithm;
@@ -1870,11 +1870,13 @@ export class StudioEngine {
       tetherRadius,
       predictiveOn: settings.shapeSnapping === true,
       predictiveLevel,
-      // Levels 1 to 3 only tidy the line. Shape recognition joins in at 4.
-      recognizeShapes: predictiveLevel >= 4,
+      // Smoothing is the job. Replacing a stroke with a circle or a box is a
+      // separate, deliberate choice, off unless asked for -- a stroke silently
+      // turning into something else is startling when all you wanted was a
+      // cleaner line.
+      recognizeShapes: settings.shapeRecognition === true,
       angleSnapping: settings.angleSnapping !== false,
-      tolerance:
-        settings.shapeSnapTolerance ?? (predictiveLevel >= 5 ? 0.45 : DEFAULT_SHAPE_SNAP_TOLERANCE),
+      tolerance: settings.shapeSnapTolerance ?? [0.08, 0.15, 0.24, 0.35, 0.48][predictiveLevel - 1],
     };
   }
 

@@ -170,7 +170,24 @@ export class ShapeSnappingEngine {
       if (arc) candidates.push(arc);
     }
 
-    if (candidates.length === 0) return NONE_RESULT(points, 'Freeform Stroke');
+    // A shape has to account for the whole journey, not just pass near it.
+    // A scribble can be hugged closely by a many-cornered polyline -- the
+    // distances come out small while the pen travelled several times further
+    // than the shape's own outline. Comparing the two lengths catches that.
+    const viable = candidates.filter((c) => {
+      let fittedLength = 0;
+      const pts = c.result.snappedPoints;
+      for (let i = 1; i < pts.length; i++) {
+        fittedLength += this.toPlane(plane, pts[i].position).distanceTo(
+          this.toPlane(plane, pts[i - 1].position)
+        );
+      }
+      return fittedLength > 1e-9 && pathLength <= fittedLength * 1.7;
+    });
+
+    if (viable.length === 0) return NONE_RESULT(points, 'Freeform Stroke');
+    candidates.length = 0;
+    candidates.push(...viable);
 
     // Every candidate was measured the same way, so they can be compared
     // directly -- after charging each one for the freedom it had.
@@ -416,6 +433,7 @@ export class ShapeSnappingEngine {
     if (edges.length !== cornerIdx.length + 1) return null;
     if (edges.length < 2 || cornerIdx.length === 0) return null;
 
+
     // An open stroke only becomes a corner shape if it really turns a corner.
     // Otherwise a shaky straight line comes back as a bent one.
     if (!isClosedLoop) {
@@ -449,30 +467,41 @@ export class ShapeSnappingEngine {
       vertices.push(projectOnLine(edges[edges.length - 1], flat[n - 1]));
     }
 
+    const rmsAgainst = (shape: THREE.Vector2[]): number => {
+      let sumSq = 0;
+      for (const p of flat) {
+        let nearest = Infinity;
+        const limit = isClosedLoop ? shape.length : shape.length - 1;
+        for (let i = 0; i < limit; i++) {
+          nearest = Math.min(
+            nearest,
+            this.pointToSegment2D(p, shape[i], shape[(i + 1) % shape.length])
+          );
+        }
+        sumSq += nearest * nearest;
+      }
+      return Math.sqrt(sumSq / flat.length) / Math.max(scale, 1e-9);
+    };
+
     let shaped = vertices;
     let detected: DetectedShapeType = 'polygon';
+    let normalizedError = rmsAgainst(vertices);
     if (isClosedLoop && vertices.length === 3) detected = 'triangle';
     else if (isClosedLoop && vertices.length === 4) {
+      detected = 'rectangle';
       const squared = squareUpQuad(vertices, this.screenBasisInPlane(plane, ctx.options));
       if (squared) {
-        shaped = squared;
-        detected = 'rectangle';
+        // Squaring up moves the corners, which can only add to the measured
+        // error. Judged on that inflated number, a box drawn a few degrees off
+        // level was rejected outright -- the tidying made the shape fail. Keep
+        // whichever version actually describes the stroke better.
+        const squaredError = rmsAgainst(squared);
+        if (squaredError <= normalizedError * 1.6) {
+          shaped = squared;
+          normalizedError = Math.min(normalizedError, squaredError);
+        }
       }
     }
-
-    // Error against the shape actually produced, including any squaring-up.
-    let sumSq = 0;
-    for (const p of flat) {
-      let nearest = Infinity;
-      const limit = isClosedLoop ? shaped.length : shaped.length - 1;
-      for (let i = 0; i < limit; i++) {
-        const a = shaped[i];
-        const b = shaped[(i + 1) % shaped.length];
-        nearest = Math.min(nearest, this.pointToSegment2D(p, a, b));
-      }
-      sumSq += nearest * nearest;
-    }
-    const normalizedError = Math.sqrt(sumSq / flat.length) / Math.max(scale, 1e-9);
 
     const perStep = 12;
     const snapped: StrokePoint[] = [];
@@ -836,10 +865,11 @@ function squareUpQuad(
   // diagonal, is almost always meant to be exactly that. Left off, a deliberate
   // slight tilt survives.
   if (basis) {
-    const screenAngle = Math.atan2(
-      Math.sin(angle) * basis.right.y + Math.cos(angle) * basis.right.x,
-      Math.sin(angle) * basis.up.y + Math.cos(angle) * basis.up.x
-    );
+    // The edge direction, read against the screen's own axes. Feeding atan2 its
+    // arguments the wrong way round mirrors the angle, so the magnet was
+    // tilting boxes off square instead of squaring them up.
+    const dir = new THREE.Vector2(Math.cos(angle), Math.sin(angle));
+    const screenAngle = Math.atan2(dir.dot(basis.up), dir.dot(basis.right));
     const step = Math.PI / 4;
     const nearest = Math.round(screenAngle / step) * step;
     const delta = Math.atan2(Math.sin(nearest - screenAngle), Math.cos(nearest - screenAngle));

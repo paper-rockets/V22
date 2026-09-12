@@ -305,7 +305,8 @@ export interface BrushSettings {
   shapeSnapping?: boolean; // Predictive Stroke master switch
   shapeSnapTolerance?: number; // Geometric fitting confidence threshold (0.1 to 0.5)
   predictiveLevel?: number; // Predictive Stroke level 1-5: higher smooths more; 4+ recognizes shapes
-  angleSnapping?: boolean; // Predictive Stroke magnet: align lines to 0/45 degrees
+  shapeRecognition?: boolean; // Predictive Stroke extra: replace a stroke with the shape it meant
+  angleSnapping?: boolean; // Align a recognised line or box to 0/45 degrees
   steadyStrokeLevel?: number; // Steady Stroke offset between cursor and stroke, 0-200 (0 = off)
   // Spatial Independence vs Surface Snapping
   drawingMode?: 'surface' | 'spatial_3d'; // 'surface' = snaps to 3D model, 'spatial_3d' = free 3D air drawing
