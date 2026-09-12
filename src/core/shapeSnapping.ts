@@ -21,7 +21,7 @@
 
 import * as THREE from 'three';
 import { StrokePoint } from '../types';
-import { bestFitPlane, StrokePlane } from './strokeFitting';
+import { bestFitPlane, detectCorners, StrokePlane } from './strokeFitting';
 
 /**
  * Default eagerness, shared by the engine and the UI so the sheet cannot show
@@ -305,7 +305,9 @@ export class ShapeSnappingEngine {
     const normalizedError = rms / Math.max(semiMajor, 1e-9);
 
     const ratio = semiMinor / semiMajor;
-    const isCircle = ratio > 0.9;
+    // Near enough to round is round: smoothing a hand-drawn circle leaves it a
+    // percent or two out of true, and calling that an ellipse is pedantic.
+    const isCircle = ratio > 0.87;
     const radius = (semiMajor + semiMinor) / 2;
 
     const steps = 72;
@@ -353,7 +355,11 @@ export class ShapeSnappingEngine {
     const n = flat.length;
     if (n < 12) return null;
 
-    let cornerIdx = cornersByLocalTurn(flat, THREE.MathUtils.degToRad(52), 0.035);
+    let cornerIdx = detectCorners(
+      flat.map((p) => new THREE.Vector3(p.x, p.y, 0)),
+      THREE.MathUtils.degToRad(52),
+      0.035
+    );
     if (cornerIdx.length === 0) return null;
 
     // Wobble in a hand-drawn edge trips the corner detector more than once, so
@@ -500,6 +506,25 @@ export class ShapeSnappingEngine {
           shaped = squared;
           normalizedError = Math.min(normalizedError, squaredError);
         }
+      }
+    }
+
+    // A polygon's edges are a decent fraction of its outline. A smooth wave cut
+    // at every peak also produces "edges" that are individually near-straight,
+    // but each one is a short piece of a curve -- this is what stops a wave
+    // coming back as a many-sided shape.
+    {
+      let perimeter = 0;
+      const edgeLengths: number[] = [];
+      const limit = isClosedLoop ? shaped.length : shaped.length - 1;
+      for (let i = 0; i < limit; i++) {
+        const len = shaped[i].distanceTo(shaped[(i + 1) % shaped.length]);
+        edgeLengths.push(len);
+        perimeter += len;
+      }
+      if (perimeter < 1e-9) return null;
+      for (const len of edgeLengths) {
+        if (len / perimeter < 0.15) return null;
       }
     }
 
@@ -737,67 +762,6 @@ function fitLineTotalLeastSquares(pts: THREE.Vector2[]): Line2D | null {
   if (sxx + syy < 1e-16) return null;
   const theta = 0.5 * Math.atan2(2 * sxy, sxx - syy);
   return { point: mean, dir: new THREE.Vector2(Math.cos(theta), Math.sin(theta)) };
-}
-
-/**
- * Corners, told apart from curves by how concentrated the turn is.
- *
- * Total direction change is not enough: the two bends of an S can add up to
- * more than a right angle, which is why an S kept coming back as a polygon.
- * What makes a corner a corner is that the turn happens all at once. So the
- * direction is compared across a short, fixed span of the drawn path -- a
- * corner turns hard within it, a curve barely turns at all.
- */
-function cornersByLocalTurn(
-  flat: THREE.Vector2[],
-  thresholdRad: number,
-  spanRatio: number
-): number[] {
-  const n = flat.length;
-  if (n < 8) return [];
-  const cum = [0];
-  for (let i = 1; i < n; i++) cum.push(cum[i - 1] + flat[i].distanceTo(flat[i - 1]));
-  const pathLength = cum[n - 1];
-  if (pathLength < 1e-9) return [];
-  const span = pathLength * spanRatio;
-
-  const turns = new Float64Array(n);
-  for (let i = 0; i < n; i++) {
-    let back = i;
-    while (back > 0 && cum[i] - cum[back] < span) back--;
-    let fwd = i;
-    while (fwd < n - 1 && cum[fwd] - cum[i] < span) fwd++;
-    if (cum[i] - cum[back] < span * 0.6 || cum[fwd] - cum[i] < span * 0.6) continue;
-    const inDir = flat[i].clone().sub(flat[back]);
-    const outDir = flat[fwd].clone().sub(flat[i]);
-    if (inDir.lengthSq() < 1e-14 || outDir.lengthSq() < 1e-14) continue;
-    turns[i] = Math.acos(
-      THREE.MathUtils.clamp(inDir.normalize().dot(outDir.normalize()), -1, 1)
-    );
-  }
-
-  // Keep only the sharpest sample in each turn, so one corner is one corner.
-  // The window is found by walking two pointers along the path rather than
-  // rescanning every sample, which matters on a stylus reporting at 240Hz.
-  const corners: number[] = [];
-  let lo = 0;
-  let hi = 0;
-  for (let i = 0; i < n; i++) {
-    while (cum[i] - cum[lo] > span) lo++;
-    if (hi < i) hi = i;
-    while (hi < n - 1 && cum[hi + 1] - cum[i] <= span) hi++;
-    if (turns[i] < thresholdRad) continue;
-    let isPeak = true;
-    for (let k = lo; k <= hi; k++) {
-      if (k === i) continue;
-      if (turns[k] > turns[i] || (turns[k] === turns[i] && k < i)) {
-        isPeak = false;
-        break;
-      }
-    }
-    if (isPeak) corners.push(i);
-  }
-  return corners;
 }
 
 /** The corner sitting next to the shortest run of samples. */

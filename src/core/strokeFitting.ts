@@ -83,28 +83,72 @@ export function simplifyPath(points: THREE.Vector3[], epsilon: number): number[]
   return out;
 }
 
+/** Running total of distance travelled along a path. */
+export function cumulativeLengths(positions: THREE.Vector3[]): number[] {
+  const acc = [0];
+  for (let i = 1; i < positions.length; i++) {
+    acc.push(acc[i - 1] + positions[i].distanceTo(positions[i - 1]));
+  }
+  return acc;
+}
+
 /**
- * Corners are where direction changes sharply between successive simplified
- * segments. Everything else is a curve and gets to stay smooth.
- * Returns positions within `indices`, not raw point indices.
+ * Corners, told apart from curves by how concentrated the turn is.
+ *
+ * The direction is compared across a short, fixed span of the drawn path: a
+ * corner turns hard within it, a smooth curve barely turns at all. Measuring
+ * the turn between decimated points instead makes the answer depend on how
+ * coarsely the path was decimated -- which meant that turning the smoothing up
+ * manufactured corners out of a perfectly smooth curve, and a gentle wave came
+ * back as a zigzag of straight segments.
+ *
+ * Returns indices into `points`.
  */
 export function detectCorners(
   points: THREE.Vector3[],
-  indices: number[],
-  angleThresholdRad: number = Math.PI / 4
+  thresholdRad: number = Math.PI / 4,
+  spanRatio: number = 0.035
 ): number[] {
+  const n = points.length;
+  if (n < 8) return [];
+  const cum = cumulativeLengths(points);
+  const pathLength = cum[n - 1];
+  if (pathLength < 1e-9) return [];
+  const span = pathLength * spanRatio;
+
+  const turns = new Float64Array(n);
+  for (let i = 0; i < n; i++) {
+    let back = i;
+    while (back > 0 && cum[i] - cum[back] < span) back--;
+    let fwd = i;
+    while (fwd < n - 1 && cum[fwd] - cum[i] < span) fwd++;
+    if (cum[i] - cum[back] < span * 0.6 || cum[fwd] - cum[i] < span * 0.6) continue;
+    const inDir = points[i].clone().sub(points[back]);
+    const outDir = points[fwd].clone().sub(points[i]);
+    if (inDir.lengthSq() < 1e-14 || outDir.lengthSq() < 1e-14) continue;
+    turns[i] = Math.acos(
+      THREE.MathUtils.clamp(inDir.normalize().dot(outDir.normalize()), -1, 1)
+    );
+  }
+
+  // Keep only the sharpest sample in each turn, so one corner is one corner.
   const corners: number[] = [];
-  for (let k = 1; k < indices.length - 1; k++) {
-    const prev = points[indices[k - 1]];
-    const cur = points[indices[k]];
-    const next = points[indices[k + 1]];
-    const inDir = cur.clone().sub(prev);
-    const outDir = next.clone().sub(cur);
-    if (inDir.lengthSq() < 1e-12 || outDir.lengthSq() < 1e-12) continue;
-    inDir.normalize();
-    outDir.normalize();
-    const turn = Math.acos(THREE.MathUtils.clamp(inDir.dot(outDir), -1, 1));
-    if (turn > angleThresholdRad) corners.push(k);
+  let lo = 0;
+  let hi = 0;
+  for (let i = 0; i < n; i++) {
+    while (cum[i] - cum[lo] > span) lo++;
+    if (hi < i) hi = i;
+    while (hi < n - 1 && cum[hi + 1] - cum[i] <= span) hi++;
+    if (turns[i] < thresholdRad) continue;
+    let isPeak = true;
+    for (let k = lo; k <= hi; k++) {
+      if (k === i) continue;
+      if (turns[k] > turns[i] || (turns[k] === turns[i] && k < i)) {
+        isPeak = false;
+        break;
+      }
+    }
+    if (isPeak) corners.push(i);
   }
   return corners;
 }
@@ -507,14 +551,6 @@ export function sampleCubicPath(segments: CubicSegment[], spacing: number): THRE
 // Attribute transfer
 // ---------------------------------------------------------------------------
 
-export function cumulativeLengths(positions: THREE.Vector3[]): number[] {
-  const acc = [0];
-  for (let i = 1; i < positions.length; i++) {
-    acc.push(acc[i - 1] + positions[i].distanceTo(positions[i - 1]));
-  }
-  return acc;
-}
-
 /**
  * Rebuild whole stroke points on a new set of positions, carrying pressure,
  * normals, UVs and the rest across from the drawn samples by matching how far
@@ -596,14 +632,10 @@ export function refitStrokePoints(source: StrokePoint[], opts: RefitOptions): St
   const size = bounds.getSize(new THREE.Vector3()).length();
   const reference = Math.min(pathLength, Math.max(size * 6, 1e-7));
 
-  const epsilon = Math.max(1e-7, reference * opts.simplifyRatio);
-  const kept = simplifyPath(positions, epsilon);
-  if (kept.length < 3) return source;
+  // Corners are found on the path as drawn, at a fixed span, so the smoothing
+  // level cannot invent them.
+  const corners = detectCorners(positions, opts.cornerAngle, 0.035);
 
-  const corners = detectCorners(positions, kept, opts.cornerAngle);
-
-  // Sample spacing, so every window below can be set in drawn distance and then
-  // converted to however many samples that happens to be on this device.
   const spacingAvg = pathLength / Math.max(1, positions.length - 1);
   const smoothWindow = THREE.MathUtils.clamp(
     Math.round((opts.smoothRatio * reference) / Math.max(spacingAvg, 1e-9)),
@@ -611,18 +643,16 @@ export function refitStrokePoints(source: StrokePoint[], opts: RefitOptions): St
     40
   );
 
-  // A corner needs enough drawn samples on both sides to fit an edge through.
-  // Without this, a barely-decimated shaky path splits into runs of two or
-  // three points, and a cubic through three noisy points can fly anywhere.
+  // A corner needs enough drawn samples on either side to fit an edge through.
   const minRun = Math.max(6, smoothWindow * 2 + 2);
   const breaks: number[] = [0];
-  for (const slot of corners) {
-    const prevIdx = kept[breaks[breaks.length - 1]];
-    if (kept[slot] - prevIdx < minRun) continue;
-    if (kept[kept.length - 1] - kept[slot] < minRun) continue;
-    breaks.push(slot);
+  for (const idx of corners) {
+    if (idx - breaks[breaks.length - 1] < minRun) continue;
+    if (positions.length - 1 - idx < minRun) continue;
+    breaks.push(idx);
   }
-  breaks.push(kept.length - 1);
+  breaks.push(positions.length - 1);
+
   const errorTolerance = Math.max(1e-7, reference * opts.errorRatio);
   // Output density is capped: a refitted curve needs enough samples to look
   // smooth, not one per input sample. A 240Hz stylus can report thousands for
@@ -632,17 +662,21 @@ export function refitStrokePoints(source: StrokePoint[], opts: RefitOptions): St
 
   const fitted: THREE.Vector3[] = [];
   for (let b = 0; b < breaks.length - 1; b++) {
-    const startIdx = kept[breaks[b]];
-    const endIdx = kept[breaks[b + 1]];
+    const startIdx = breaks[b];
+    const endIdx = breaks[b + 1];
     if (endIdx - startIdx < 1) continue;
-    // Fit against every drawn sample in the run, not just the survivors, so the
-    // least-squares fit still sees the real trajectory.
     const raw = positions.slice(startIdx, endIdx + 1);
     // Average out sample-to-sample noise before fitting. Corners survive it
     // because they are run boundaries, not points inside a run.
-    const runPoints = smoothRun(raw, smoothWindow);
+    let runPoints = smoothRun(raw, smoothWindow);
+    // Only a very long run needs decimating before the fit, to bound the cost.
+    if (runPoints.length > 400) {
+      const kept = simplifyPath(runPoints, Math.max(1e-7, reference * opts.simplifyRatio));
+      if (kept.length >= 4) runPoints = kept.map((i) => runPoints[i]);
+    }
     const segments = fitCubicPath(runPoints, errorTolerance);
-    const sampled = segments.length > 0 ? sampleCubicPath(segments, spacing) : runPoints.map((p) => p.clone());
+    const sampled =
+      segments.length > 0 ? sampleCubicPath(segments, spacing) : runPoints.map((p) => p.clone());
     if (fitted.length > 0 && sampled.length > 0) sampled.shift();
     for (const p of sampled) fitted.push(p);
   }

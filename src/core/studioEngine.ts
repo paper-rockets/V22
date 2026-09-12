@@ -2102,7 +2102,10 @@ export class StudioEngine {
       this.holdToSnapTimer = setTimeout(() => {
         if (this.isDrawing && this.activePoints.length >= 5 && !this.quickShapeActive) {
           // Same two stages as on release: tidy the path, then read its intent.
-          const tidied = refitStrokePoints(this.activePoints, REFIT_LEVELS[stab.predictiveLevel - 1]);
+          const tidied = refitStrokePoints(
+            this.activePoints,
+            REFIT_LEVELS[Math.min(stab.predictiveLevel, 3) - 1]
+          );
           const snapRes = ShapeSnappingEngine.snapStroke(
             tidied,
             stab.tolerance,
@@ -2450,19 +2453,29 @@ export class StudioEngine {
       // the whole trajectory meant -- a line, circle, ellipse, triangle or
       // rectangle -- and take that shape only when it genuinely fits better
       // than the freehand curve does.
-      this.refitActiveStroke(endStab.predictiveLevel);
-
+      let recognised = false;
       if (endStab.recognizeShapes) {
-        const snapResult = ShapeSnappingEngine.snapStroke(
+        // Recognition reads a lightly tidied path, not the heavily smoothed
+        // one. Heavy smoothing exists to make a nice line, and it bends the
+        // geometry enough that a drawn circle starts fitting an oval better
+        // than a round one.
+        const forReading = refitStrokePoints(
           this.activePoints,
+          REFIT_LEVELS[Math.min(endStab.predictiveLevel, 3) - 1]
+        );
+        const snapResult = ShapeSnappingEngine.snapStroke(
+          forReading,
           endStab.tolerance,
           this.getSnapOptions(endStab.angleSnapping)
         );
         if (snapResult.detectedShape !== 'none') {
           this.activePoints = snapResult.snappedPoints;
           this.onShapeSnapped?.(snapResult);
+          recognised = true;
         }
       }
+      // A stroke that is not a shape still gets the smoothing asked for.
+      if (!recognised) this.refitActiveStroke(endStab.predictiveLevel);
       this.updateActiveStrokeGeometry(settings, symmetry);
     }
 
