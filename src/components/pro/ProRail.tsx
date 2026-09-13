@@ -577,6 +577,24 @@ export const ProRail: React.FC<ProRailProps> = ({
                       <span>{label}</span>
                     </button>
                   ))}
+
+                  <div className="pt-2 mt-1 border-t border-black/10 dark:border-white/10 w-full">
+                    <label className="flex items-center justify-between gap-2 px-1.5 py-1 cursor-pointer select-none text-[11px] font-medium rounded-lg hover:bg-black/5 dark:hover:bg-white/5">
+                      <span className="text-[10px] leading-tight">Stick & draw in air</span>
+                      <input
+                        type="checkbox"
+                        checked={currentBrushSettings.stickAndAirDraw || false}
+                        onChange={(e) => {
+                          haptics.trigger('light');
+                          setBrushSettings?.((prev) => ({
+                            ...prev,
+                            stickAndAirDraw: e.target.checked,
+                          }));
+                        }}
+                        className="w-3.5 h-3.5 rounded accent-neutral-900 dark:accent-white cursor-pointer shrink-0"
+                      />
+                    </label>
+                  </div>
                 </div>
               )}
 

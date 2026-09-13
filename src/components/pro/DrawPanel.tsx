@@ -702,6 +702,20 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
                   className="w-4 h-4 rounded accent-neutral-900 dark:accent-white cursor-pointer"
                 />
               </label>
+
+              {/* Stick to surface & draw in air */}
+              <label className="flex items-center justify-between min-h-[44px] cursor-pointer border-t border-black/5 dark:border-white/5 pt-1">
+                <div>
+                  <span className="text-[11px] font-medium block">Stick to Surface & Draw in Air</span>
+                  <span className="text-[9.5px] opacity-60 block">Draw on 3D models and continue in mid-air in the same stroke</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={brushSettings.stickAndAirDraw || false}
+                  onChange={(e) => updateSetting('stickAndAirDraw', e.target.checked)}
+                  className="w-4 h-4 rounded accent-neutral-900 dark:accent-white cursor-pointer"
+                />
+              </label>
             </div>
 
             {/* Eraser Mode: Cutout vs Vacuum */}

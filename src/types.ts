@@ -314,6 +314,7 @@ export interface BrushSettings {
   // Spatial Independence vs Surface Snapping
   drawingMode?: 'surface' | 'spatial_3d'; // 'surface' = snaps to 3D model, 'spatial_3d' = free 3D air drawing
   spatialDepth?: number; // Distance plane for free 3D drawing
+  stickAndAirDraw?: boolean; // Toggle: stick to surface and draw in air at same time
 }
 
 export interface PostProcessSettings {

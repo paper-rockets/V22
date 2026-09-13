@@ -304,6 +304,8 @@ export class StudioEngine {
   private lastScreenCoords: { x: number; y: number } | null = null;
   private lastCapturePoint: StrokePoint | null = null;
   private isOverAir: boolean = false;
+  private currentDrawingDepth: number = 0;
+  private lastSurfaceWorldPoint: THREE.Vector3 = new THREE.Vector3();
   public get selectedStrokeId(): string | null { return this.strokePipeline.selectedStrokeId; }
   public set selectedStrokeId(id: string | null) { this.strokePipeline.selectedStrokeId = id; }
   public get clipboardStrokes(): StrokeDescriptor[] { return this.strokePipeline.clipboardStrokes; }
@@ -1826,9 +1828,13 @@ export class StudioEngine {
    */
   public updateCursor(screenX: number, screenY: number, brushSize: number, settings?: BrushSettings, tool?: ToolType): void {
     const isSpatial = settings?.drawingMode === 'spatial_3d' || tool === 'free_brush';
-    const result = isSpatial
+    let result = isSpatial
       ? this.raycastSpatialPlane(screenX, screenY, settings?.spatialDepth ?? 0)
       : this.raycastModel(screenX, screenY);
+
+    if ((!result || !result.hit) && settings?.stickAndAirDraw) {
+      result = this.raycastSpatialPlane(screenX, screenY, settings?.spatialDepth ?? 0);
+    }
 
     if (result && result.worldPoint) {
       this.cursorDecal.visible = true;
@@ -2036,16 +2042,27 @@ export class StudioEngine {
     }
 
     const isSpatial = settings.drawingMode === 'spatial_3d' || tool === 'free_brush';
-    const rayResult = isSpatial
+    const isDual = !!settings.stickAndAirDraw;
+    let rayResult = isSpatial
       ? this.raycastSpatialPlane(smoothed.x, smoothed.y, settings.spatialDepth ?? 0)
       : this.raycastModel(smoothed.x, smoothed.y, settings);
+
+    if ((!rayResult || !rayResult.hit) && isDual) {
+      rayResult = this.raycastSpatialPlane(smoothed.x, smoothed.y, settings.spatialDepth ?? 0);
+    }
 
     if (!rayResult || !rayResult.hit) {
       this.isOverAir = true;
       return;
     }
 
+    this.currentDrawingDepth = rayResult.distance || 0;
     this.lastHitMesh = rayResult.mesh || null;
+    if (rayResult.worldPoint) {
+      this.lastSurfaceWorldPoint.copy(rayResult.worldPoint);
+    } else {
+      this.lastSurfaceWorldPoint.copy(this.cameraTarget);
+    }
 
     // UV Texture Brush Mode
     if (tool === 'uv_brush' && rayResult.hit && rayResult.uv) {
@@ -2069,12 +2086,13 @@ export class StudioEngine {
       }
     }
 
+    const isSurfaceHit = !isSpatial && (rayResult.mesh !== undefined);
     const firstPoint: StrokePoint = {
       position: startPointPos,
       normal: rayResult.normal.clone(),
       surfaceOffset: settings.surfaceOffset || 0.0045,
       pressure: smoothed.pressure,
-      isSurfaceHit: !isSpatial,
+      isSurfaceHit,
       uv: rayResult.uv ? rayResult.uv.clone() : undefined,
       time: performance.now(),
       rayDistance: rayResult.distance,
@@ -2085,7 +2103,7 @@ export class StudioEngine {
     // Instantiate symmetry stroke meshes
     const symmetryCount = this.getSymmetryCount(symmetry);
     for (let s = 0; s < symmetryCount; s++) {
-      const mat = this.materialCache.getStrokeMaterial(settings, !isSpatial, layer.opacity, layer.blendMode || 'normal');
+      const mat = this.materialCache.getStrokeMaterial(settings, !isSpatial && !isDual, layer.opacity, layer.blendMode || 'normal');
       const mesh = new THREE.Mesh(new THREE.BufferGeometry(), mat);
       mesh.renderOrder = 10 + (this.strokeSequenceIndex % 20000);
       this.strokeRoot.add(mesh);
@@ -2260,6 +2278,7 @@ export class StudioEngine {
     }
 
     const isSpatial = settings.drawingMode === 'spatial_3d' || tool === 'free_brush';
+    const isDual = !!settings.stickAndAirDraw;
     const isDrawingPlane = isSpatial || (this.lastHitMesh !== null && (this.lastHitMesh === this.drawingPlaneMesh || this.lastHitMesh.name === 'DrawingPlaneCanvas'));
 
     // Sub-sample screen movements so fast sweeps calculate surface contact points smoothly.
@@ -2280,7 +2299,7 @@ export class StudioEngine {
       const currY = this.lastScreenCoords.y + dy * alpha;
       const currPressure = targetPressure;
 
-      const rayResult = isSpatial
+      let rayResult = isSpatial
         ? this.raycastSpatialPlane(currX, currY, settings.spatialDepth ?? 0)
         : this.raycastModel(currX, currY, settings);
 
@@ -2292,32 +2311,68 @@ export class StudioEngine {
         continue;
       }
 
-      // AIR GAP DETECTION: Ray missed model in free air (only in surface mode).
+      // AIR GAP DETECTION OR MID-AIR DUAL DRAWING:
       if (!rayResult || !rayResult.hit) {
-        missStreak++;
-        if (missStreak >= 2) {
-          if (this.activePoints.length > 0) {
-            // Commit active segment so stroke does NOT bridge through empty air
-            this.commitActiveSegment(settings, tool, true, symmetry);
+        if (isDual) {
+          _ndcScratch.set(currX, currY);
+          this.raycaster.setFromCamera(_ndcScratch, this.camera);
+
+          this.camera.getWorldDirection(_planeNormalScratch);
+          _planeNormalScratch.negate().normalize();
+          _planeScratch.setFromNormalAndCoplanarPoint(_planeNormalScratch, this.lastSurfaceWorldPoint);
+
+          const hit = this.raycaster.ray.intersectPlane(_planeScratch, _rayHitScratch);
+          if (!hit) {
+            this.raycaster.ray.at(this.currentDrawingDepth || 5.0, _rayHitScratch);
           }
-          this.isOverAir = true;
-          this.lastCapturePoint = null;
+
+          _worldPointScratch.copy(_rayHitScratch);
+          _invModelMatrix.copy(this.modelRoot.matrixWorld).invert();
+          _localPointScratch.copy(_worldPointScratch).applyMatrix4(_invModelMatrix);
+          _localNormalScratch.copy(_planeNormalScratch).transformDirection(_invModelMatrix).normalize();
+
+          const fallbackResult = this.raycastResult;
+          fallbackResult.hit = true;
+          fallbackResult.point = _localPointScratch;
+          fallbackResult.worldPoint = _worldPointScratch;
+          fallbackResult.normal = _localNormalScratch;
+          fallbackResult.worldNormal = _planeNormalScratch;
+          fallbackResult.uv = _uvScratch.set(0.5, 0.5);
+          fallbackResult.mesh = undefined;
+          fallbackResult.distance = this.raycaster.ray.origin.distanceTo(_worldPointScratch);
+
+          rayResult = fallbackResult;
+        } else {
+          missStreak++;
+          if (missStreak >= 2) {
+            if (this.activePoints.length > 0) {
+              // Commit active segment so stroke does NOT bridge through empty air
+              this.commitActiveSegment(settings, tool, true, symmetry);
+            }
+            this.isOverAir = true;
+            this.lastCapturePoint = null;
+          }
+          continue;
         }
-        continue;
       }
 
       const prevHitMesh = this.lastHitMesh;
       if (rayResult.mesh) {
         this.lastHitMesh = rayResult.mesh;
+        this.currentDrawingDepth = rayResult.distance;
+        if (rayResult.worldPoint) {
+          this.lastSurfaceWorldPoint.copy(rayResult.worldPoint);
+        }
       }
 
       // SURFACE / SPATIAL HIT
+      const isSurfaceHit = !isSpatial && (rayResult.mesh !== undefined);
       const newPoint: StrokePoint = {
         position: rayResult.point.clone(),
         normal: rayResult.normal.clone(),
         surfaceOffset: settings.surfaceOffset || 0.002,
         pressure: currPressure,
-        isSurfaceHit: !isSpatial,
+        isSurfaceHit,
         uv: rayResult.uv ? rayResult.uv.clone() : undefined,
         time: performance.now(),
         rayDistance: rayResult.distance,
@@ -2352,9 +2407,9 @@ export class StudioEngine {
 
         if (this.isOverAir) {
           isDiscontinuous = true;
-        } else if (hitDrawingPlaneJump) {
+        } else if (hitDrawingPlaneJump && !isDual) {
           isDiscontinuous = true;
-        } else if (!onPlane) {
+        } else if (!onPlane && !isDual) {
           // On 3D models: detect true occlusion boundaries, silhouette jumps, or sharp normal flips.
           // Drawing fast across the continuous surface of the same mesh will NOT break the stroke.
           const depthJump =
@@ -2369,6 +2424,14 @@ export class StudioEngine {
           const isSharpFlip = normalDot < -0.7;
 
           if (meshChanged || isDepthOcclusion || isSharpFlip) {
+            isDiscontinuous = true;
+          }
+        } else if (isDual) {
+          const depthJump =
+            this.lastCapturePoint.rayDistance !== undefined && newPoint.rayDistance !== undefined
+              ? Math.abs(this.lastCapturePoint.rayDistance - newPoint.rayDistance)
+              : 0;
+          if (depthJump > 1.5) {
             isDiscontinuous = true;
           }
         }
@@ -2391,7 +2454,7 @@ export class StudioEngine {
 
         const symmetryCount = this.getSymmetryCount(symmetry);
         for (let s = 0; s < symmetryCount; s++) {
-          const mat = this.materialCache.getStrokeMaterial(settings, true, this.activeLayerOpacity);
+          const mat = this.materialCache.getStrokeMaterial(settings, !isSpatial && !isDual, this.activeLayerOpacity);
           const mesh = new THREE.Mesh(new THREE.BufferGeometry(), mat);
           mesh.renderOrder = 10 + (this.strokeSequenceIndex % 20000);
           this.strokeRoot.add(mesh);
@@ -2797,7 +2860,7 @@ export class StudioEngine {
         // Undoing an erase -> restore the purged strokes
         for (const strokeDesc of action.strokes) {
           const meshes: THREE.Mesh[] = [];
-          const mat = this.materialCache.getStrokeMaterial(strokeDesc.settings, true, 1.0);
+          const mat = this.materialCache.getStrokeMaterial(strokeDesc.settings, !strokeDesc.settings.stickAndAirDraw, 1.0);
           const geom = this.beadGenerator.generateGeometry(strokeDesc.points, strokeDesc.settings, this.targetMeshes);
           const mesh = new THREE.Mesh(geom, mat);
           mesh.renderOrder = 10 + ((strokeDesc.settings.strokeSequenceIndex ?? this.strokes.size) % 20000);
@@ -2853,7 +2916,7 @@ export class StudioEngine {
 
           const meshes: THREE.Mesh[] = [];
           const layerBlendMode = layer ? layer.blendMode || 'normal' : 'normal';
-          const mat = this.materialCache.getStrokeMaterial(strokeDesc.settings, true, layerOpacity, layerBlendMode);
+          const mat = this.materialCache.getStrokeMaterial(strokeDesc.settings, !strokeDesc.settings.stickAndAirDraw, layerOpacity, layerBlendMode);
           const geom = this.beadGenerator.generateGeometry(strokeDesc.points, strokeDesc.settings, this.targetMeshes);
           const mesh = new THREE.Mesh(geom, mat);
           mesh.visible = layerVisible;
