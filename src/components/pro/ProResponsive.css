@@ -17,7 +17,7 @@
 
 .paperrocket-studio-rail-inner { display: contents; }
 
-/* Scene tools: Select, Create, Deform, Layers. */
+/* Four persistent work modes. Everything else is contextual. */
 .paperrocket-studio-mode-group {
   position: fixed;
   top: 50%;
@@ -54,14 +54,14 @@
 
 .paperrocket-studio-mode-label { display: none; }
 
-/* Drawing tools stay centered at the bottom. */
+/* Five equally weighted drawing controls stay centered at the bottom. */
 .paperrocket-studio-quick-group {
   position: fixed;
   left: 50%;
   bottom: max(7px, env(safe-area-inset-bottom));
   display: grid;
-  grid-template-columns: repeat(7, minmax(0, 1fr));
-  width: min(calc(100% - 16px), 536px);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  width: min(calc(100% - 16px), 360px);
   min-height: 62px;
   padding: 4px;
   gap: 2px;
@@ -72,6 +72,39 @@
   transform: translateX(-50%);
   transition: transform 180ms ease-out, opacity 180ms ease-out;
   pointer-events: auto;
+}
+
+.paperrocket-placement-choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 4px;
+}
+
+.paperrocket-placement-choice {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-width: 0;
+  min-height: 64px;
+  padding: 7px 5px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: inherit;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: .01em;
+  transition: background-color 150ms ease-out, color 150ms ease-out;
+}
+
+.paperrocket-placement-choice[data-active='true'] {
+  background: rgb(255 255 255 / 12%);
+}
+
+.paperrocket-studio-rail[data-theme='light'] .paperrocket-placement-choice[data-active='true'] {
+  background: rgb(35 28 20 / 9%);
 }
 
 .paperrocket-studio-rail[data-theme='light'] .paperrocket-studio-quick-group {
@@ -184,6 +217,16 @@
 }
 
 @media (min-width: 700px) {
+  .paperrocket-studio-quick-group {
+    grid-template-columns: repeat(5, minmax(72px, 1fr));
+    width: min(calc(100% - 24px), 430px);
+    min-height: 62px;
+  }
+
+  .paperrocket-studio-shelf {
+    bottom: calc(78px + env(safe-area-inset-bottom)) !important;
+  }
+
   .paperrocket-studio-rail[data-dock-position='auto'] .paperrocket-studio-mode-group {
     left: 10px;
     right: auto;
@@ -215,7 +258,8 @@
 
 .paperrocket-brush-card:focus-visible,
 .paperrocket-studio-mode:focus-visible,
-.paperrocket-studio-quick:focus-visible {
+.paperrocket-studio-quick:focus-visible,
+.paperrocket-placement-choice:focus-visible {
   outline: 2px solid currentColor;
   outline-offset: 2px;
 }

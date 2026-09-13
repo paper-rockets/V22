@@ -5,12 +5,13 @@ import {
   Grid,
   Maximize2,
   Minimize2,
+  Move3d,
+  Moon,
   Palette,
   Ruler,
   Save,
   Settings,
   Square,
-  User,
   X,
   Sun,
 } from 'lucide-react';
@@ -28,12 +29,13 @@ interface StudioTopMoreMenuProps {
   onToggleModelDisplay?: () => void;
   onOpenShapes: () => void;
   onOpenSettings: () => void;
-  onOpenScaffolding?: () => void;
+  onOpenDeform: () => void;
   onToggleFullscreen: () => void;
   isGizmoActive?: boolean;
   onToggleGizmo?: () => void;
   showPlane?: boolean;
   onTogglePlane?: () => void;
+  onToggleTheme?: () => void;
 }
 
 interface ActionButtonProps {
@@ -75,12 +77,13 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
   onToggleModelDisplay,
   onOpenShapes,
   onOpenSettings,
-  onOpenScaffolding,
+  onOpenDeform,
   onToggleFullscreen,
   isGizmoActive = true,
   onToggleGizmo,
   showPlane = true,
   onTogglePlane,
+  onToggleTheme,
 }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
   const isLight = theme === 'light';
@@ -131,7 +134,7 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
   };
 
   return (
-    <div className="pointer-events-auto fixed inset-0 z-[70] md:hidden">
+    <div className="pointer-events-auto fixed inset-0 z-[70]">
       <div
         className="absolute inset-0 h-full w-full cursor-default bg-black/45"
         aria-hidden="true"
@@ -143,7 +146,7 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="studio-more-title"
-        className={`absolute inset-x-0 bottom-0 rounded-t-2xl px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-2xl ${
+        className={`absolute inset-x-0 bottom-0 mx-auto max-w-[560px] rounded-t-2xl px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-2xl sm:bottom-3 sm:rounded-2xl ${
           isLight ? 'bg-white text-neutral-900' : 'bg-[#15171c] text-white'
         }`}
       >
@@ -175,9 +178,7 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
             <ActionButton icon={<Palette className="h-5 w-5 text-sky-400" strokeWidth={1.7} />} label="Model Display" description="Texture, Clay & Opacity" onSelect={select(onToggleModelDisplay)} isLight={isLight} />
           )}
           <ActionButton icon={<Ruler className="h-5 w-5" strokeWidth={1.7} />} label="Drawing Aids" description="Steady, predictive, and ruler" onSelect={select(onOpenShapes)} isLight={isLight} />
-          {onOpenScaffolding && (
-            <ActionButton icon={<User className="h-5 w-5 text-sky-400" strokeWidth={1.7} />} label="3D Forms" description="Surfaces and mannequins" onSelect={select(onOpenScaffolding)} isLight={isLight} />
-          )}
+          <ActionButton icon={<Move3d className="h-5 w-5" strokeWidth={1.7} />} label="Edit & Deform" description="Bend, mirror, and simplify" onSelect={select(onOpenDeform)} isLight={isLight} />
           {onTogglePlane && (
             <ActionButton
               icon={<CanvasSheetIcon className="h-5 w-5 text-emerald-400" strokeWidth={1.7} />}
@@ -188,6 +189,15 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
             />
           )}
           <ActionButton icon={<Settings className="h-5 w-5" strokeWidth={1.7} />} label="Settings" description="Studio preferences" onSelect={select(onOpenSettings)} isLight={isLight} />
+          {onToggleTheme && (
+            <ActionButton
+              icon={isLight ? <Moon className="h-5 w-5" strokeWidth={1.7} /> : <Sun className="h-5 w-5" strokeWidth={1.7} />}
+              label={isLight ? 'Dark mode' : 'Light mode'}
+              description={isLight ? 'Reduce workspace glare' : 'Brighten the workspace'}
+              onSelect={select(onToggleTheme)}
+              isLight={isLight}
+            />
+          )}
           {onToggleGizmo && (
             <ActionButton
               icon={<Compass className="h-5 w-5 text-sky-400" strokeWidth={1.7} />}

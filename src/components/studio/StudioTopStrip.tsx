@@ -35,6 +35,7 @@ interface StudioTopStripProps {
   onToggleGizmo?: () => void;
   showPlane?: boolean;
   onTogglePlane?: () => void;
+  onToggleTheme?: () => void;
 }
 
 const CanvasSheetIcon = Grid;
@@ -56,6 +57,7 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
   onToggleGizmo,
   showPlane = true,
   onTogglePlane,
+  onToggleTheme,
 }) => {
   const ink = theme === 'light' ? 'text-neutral-800' : 'text-white/90';
   const button = `pointer-events-auto shrink-0 min-w-[44px] min-h-[44px] w-11 h-11 grid place-items-center rounded-xl transition-colors hover:bg-current/[0.045] active:bg-current/[0.075] ${ink}`;
@@ -147,15 +149,16 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
 
   const openShapes = useCallback(() => toggleSheet('shapes'), []);
   const openSettings = useCallback(() => toggleSheet('settings'), []);
+  const openDeform = useCallback(() => toggleSheet('deform'), []);
   const closeMore = useCallback(() => setMoreOpen(false), []);
 
   return (
     <header className={`studio-top-strip fixed inset-x-0 top-0 ${moreOpen ? 'z-50' : 'z-30'} flex h-[calc(3.5rem+env(safe-area-inset-top))] items-end justify-between px-1.5 pb-0 pt-[env(safe-area-inset-top)] sm:h-[calc(4rem+env(safe-area-inset-top))] sm:px-4 pl-[max(0.375rem,env(safe-area-inset-left))] pr-[max(0.375rem,env(safe-area-inset-right))] pointer-events-none select-none`}>
       <button
         type="button"
-        onClick={onOpenModelLibrary}
+        onClick={onOpenSessions || onOpenModelLibrary}
         className={`pointer-events-auto studio-top-strip-left shrink inline-flex items-center gap-1.5 sm:gap-2 h-11 min-h-[44px] min-w-[44px] px-2.5 sm:px-3 rounded-xl transition-colors hover:bg-current/[0.045] active:bg-current/[0.075] ${ink}`}
-        aria-label="Open model library"
+        aria-label="Open projects"
       >
         <Box className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" strokeWidth={1.7} />
         <span className="text-[11px] sm:text-[13px] font-medium tracking-[0.01em] whitespace-nowrap truncate max-w-[64px] sm:max-w-[160px]">
@@ -185,7 +188,7 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
           <button
             type="button"
             onClick={onQuickSave}
-            className={`${button} hidden md:grid`}
+            className={`${button} hidden`}
             aria-label="Quick Save Session (Ctrl+S)"
             title="Quick Save Session (Ctrl+S)"
           >
@@ -196,7 +199,7 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
           <button
             type="button"
             onClick={onOpenSessions}
-            className={`${button} hidden md:grid`}
+            className={`${button} hidden`}
             aria-label="Project Sessions"
             title="Project Sessions"
           >
@@ -207,7 +210,7 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
           <button
             type="button"
             onClick={onOpenIllumination}
-            className={`${button} hidden text-amber-400 hover:text-amber-300 md:grid`}
+            className={`${button} hidden text-amber-400 hover:text-amber-300`}
             aria-label="Studio Illumination"
             title="Studio Illumination"
           >
@@ -218,7 +221,7 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
           <button
             type="button"
             onClick={onToggleModelDisplay}
-            className={`${button} hidden text-sky-400 hover:text-sky-300 md:grid`}
+            className={`${button} hidden text-sky-400 hover:text-sky-300`}
             aria-label="3D Model Display: Texture & Clay"
             title="3D Model Display: Texture, White Clay & Opacity"
           >
@@ -228,7 +231,7 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
         <button
           type="button"
           onClick={openShapes}
-          className={`${button} hidden md:grid`}
+          className={`${button} hidden`}
           aria-label="Drawing Aids"
           title="Drawing Aids: Steady, Predictive, and Ruler"
         >
@@ -238,7 +241,7 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
           <button
             type="button"
             onClick={onOpenScaffolding}
-            className={`${button} hidden md:grid`}
+            className={`${button} hidden`}
             aria-label="3D Forms"
             title="3D Forms: surfaces and mannequins to draw on"
           >
@@ -249,7 +252,7 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
           <button
             type="button"
             onClick={onTogglePlane}
-            className={`${button} hidden md:grid ${showPlane ? 'text-emerald-400 hover:text-emerald-300' : 'opacity-60'}`}
+            className={`${button} hidden ${showPlane ? 'text-emerald-400 hover:text-emerald-300' : 'opacity-60'}`}
             aria-label={showPlane ? 'Hide Canvas Plane' : 'Show Canvas Plane'}
             title={showPlane ? 'Hide Canvas Plane' : 'Show Canvas Plane'}
           >
@@ -259,7 +262,7 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
         <button
           type="button"
           onClick={openSettings}
-          className={`${button} hidden md:grid`}
+          className={`${button} hidden`}
           aria-label="Settings"
           title="Settings"
         >
@@ -268,7 +271,7 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
         <button
           type="button"
           onClick={handleToggleFullscreen}
-          className={`${button} hidden shrink-0 md:grid`}
+          className={`${button} hidden shrink-0`}
           aria-label={isFsActive ? 'Exit Full Screen' : 'Full Screen'}
           title={isFsActive ? 'Exit Full Screen' : 'Full Screen'}
         >
@@ -281,7 +284,7 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
         <button
           type="button"
           onClick={() => setMoreOpen(true)}
-          className={`${button} md:hidden`}
+          className={`${button}`}
           aria-label="More actions"
           aria-haspopup="dialog"
           aria-expanded={moreOpen}
@@ -301,12 +304,13 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
         onToggleModelDisplay={onToggleModelDisplay}
         onOpenShapes={openShapes}
         onOpenSettings={openSettings}
-        onOpenScaffolding={onOpenScaffolding}
+        onOpenDeform={openDeform}
         onToggleFullscreen={handleToggleFullscreen}
         isGizmoActive={isGizmoActive}
         onToggleGizmo={onToggleGizmo}
         showPlane={showPlane}
         onTogglePlane={onTogglePlane}
+        onToggleTheme={onToggleTheme}
       />
     </header>
   );

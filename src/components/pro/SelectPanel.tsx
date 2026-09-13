@@ -133,14 +133,14 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
 
   return (
     <div className="space-y-2 text-xs select-none">
-      {/* 1. SELECTION TOOLS: Pointer vs Lasso */}
+      {/* Choose an action, then narrow what can be selected. */}
       <div className={cardClass}>
-        <div className={subHeadingClass}>Selection Tool</div>
+        <div className={subHeadingClass}>How to select</div>
         <div className="grid grid-cols-2 gap-1.5">
           <button
             type="button"
             onClick={handlePointerSelect}
-            className={`h-8 min-h-[32px] px-2.5 py-1 rounded-lg border flex items-center justify-center gap-1.5 font-semibold transition-all ${
+            className={`min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center justify-center gap-1.5 font-semibold transition-all ${
               (tool === 'pointer' || tool === 'select') && selectionMode === 'pointer'
                 ? isLight
                   ? 'bg-neutral-900 border-neutral-900 text-white shadow-sm'
@@ -151,13 +151,13 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
             }`}
           >
             <MousePointer2 className="w-3.5 h-3.5" />
-            <span>Pointer</span>
+            <span>Tap</span>
           </button>
 
           <button
             type="button"
             onClick={handleLassoSelect}
-            className={`h-8 min-h-[32px] px-2.5 py-1 rounded-lg border flex items-center justify-center gap-1.5 font-semibold transition-all ${
+            className={`min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center justify-center gap-1.5 font-semibold transition-all ${
               (tool === 'pointer' || tool === 'select') && selectionMode === 'lasso'
                 ? isLight
                   ? 'bg-neutral-900 border-neutral-900 text-white shadow-sm'
@@ -175,30 +175,15 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
 
       {/* 2. TARGET SCOPE */}
       <div className={cardClass}>
-        <div className="flex items-center justify-between">
-          <div className={subHeadingClass}>Select From</div>
-          <button
-            type="button"
-            onClick={handleResetTransform}
-            className={`h-6 px-1.5 py-0.5 rounded-md text-[10px] font-semibold flex items-center gap-1 transition-colors ${
-              isLight
-                ? 'text-neutral-600 hover:text-neutral-950 hover:bg-neutral-200/60'
-                : 'text-neutral-400 hover:text-white hover:bg-white/10'
-            }`}
-            title="Reset position, rotation, and scale"
-          >
-            <RotateCcw className="w-3 h-3" />
-            <span>Reset</span>
-          </button>
-        </div>
+        <div className={subHeadingClass}>What to select</div>
 
         <div className="grid grid-cols-2 gap-1.5">
           {[
-            { id: 'active_layer' as const, label: 'Layer' },
-            { id: 'model' as const, label: 'Model' },
-            { id: 'strokes' as const, label: 'Curves' },
-            { id: 'guide' as const, label: 'Guides' },
             { id: 'all' as const, label: 'Everything' },
+            { id: 'active_layer' as const, label: 'Current Layer' },
+            { id: 'strokes' as const, label: 'Strokes' },
+            { id: 'model' as const, label: 'Model' },
+            { id: 'guide' as const, label: 'Guides' },
           ].map((scope) => (
             <button
               key={scope.id}
@@ -207,7 +192,7 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
                 haptics.trigger('light');
                 onSelectTargetScope(scope.id);
               }}
-              className={`h-8 min-h-[32px] px-2 py-1 rounded-lg border text-center font-medium transition-all text-xs ${
+              className={`min-h-[44px] px-2 py-1 rounded-lg border text-center font-medium transition-all text-xs ${
                 scope.id === 'all' ? 'col-span-2' : ''
               } ${
                 targetScope === scope.id
@@ -237,7 +222,7 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
               haptics.trigger('light');
               onToggleGizmo();
             }}
-            className={`w-full h-8 min-h-[32px] px-2.5 py-1 rounded-lg border flex items-center justify-between font-medium text-xs transition-colors ${
+            className={`w-full min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center justify-between font-medium text-xs transition-colors ${
               isGizmoActive
                 ? isLight
                   ? 'bg-neutral-900 border-neutral-900 text-white'
@@ -261,7 +246,7 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
               haptics.trigger('light');
               onToggleLock();
             }}
-            className={`w-full h-8 min-h-[32px] px-2.5 py-1 rounded-lg border flex items-center justify-between font-medium text-xs transition-colors ${
+            className={`w-full min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center justify-between font-medium text-xs transition-colors ${
               isGizmoLocked
                 ? isLight
                   ? 'bg-neutral-900 border-neutral-900 text-white'
@@ -285,7 +270,7 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
               haptics.trigger('light');
               setSoftSelection((prev) => !prev);
             }}
-            className={`w-full h-8 min-h-[32px] px-2.5 py-1 rounded-lg border flex items-center justify-between font-medium text-xs transition-colors ${
+            className={`w-full min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center justify-between font-medium text-xs transition-colors ${
               softSelection
                 ? isLight
                   ? 'bg-neutral-900 border-neutral-900 text-white'
@@ -300,6 +285,20 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
               <span>Soft Selection Falloff</span>
             </div>
             <span className="text-[10px] font-mono opacity-80">{softSelection ? 'On' : 'Off'}</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleResetTransform}
+            className={`w-full min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center gap-1.5 font-medium text-xs transition-colors ${
+              isLight
+                ? 'bg-white border-black/10 text-neutral-700 hover:bg-neutral-200/40'
+                : 'bg-black/30 border-white/10 text-neutral-300 hover:bg-white/5'
+            }`}
+            title="Reset position, rotation, and scale"
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+            <span>Reset Transform</span>
           </button>
         </div>
 

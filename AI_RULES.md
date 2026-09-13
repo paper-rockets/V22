@@ -2,7 +2,7 @@
 
 ## 1. Stay in THIS folder only
 - You work ONLY inside this exact folder:
-  E:\X\AiStudio Workflow\V21
+  E:\X\AiStudio Workflow\V22
 - Before you change anything, print the full path of the folder you are about to edit and confirm it matches the line above.
 - Never edit, or read-in-order-to-change, or run anything in any other folder.
 - If a task seems to need another folder, STOP and ask me in plain words.

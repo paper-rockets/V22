@@ -474,7 +474,13 @@ export function App() {
   }, [engine]);
 
   // Phase 3 Color Studio, Holistic DNA & Shape Snapping States
-  const [isColorStudioOpen, setIsColorStudioOpen] = useState<boolean>(false);
+  const [isColorStudioOpen, setIsColorStudioOpen] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('remix3d.colorStudioPinned') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [activeDNA, setActiveDNA] = useState<HolisticStrokeDNA | null>(null);
   const [snappedShapeNotice, setSnappedShapeNotice] = useState<string | null>(null);
 
@@ -1213,6 +1219,7 @@ export function App() {
         onToggleGizmo={handleToggleGizmo}
         showPlane={showPlane}
         onTogglePlane={handleTogglePlane}
+        onToggleTheme={handleToggleTheme}
       />
 
       {/* Omnipresent Safety & Recovery Anchor: "Lost? Tap to return to artwork" */}
@@ -1244,6 +1251,7 @@ export function App() {
             onToggleLock={() => setIsGizmoLocked((prev) => !prev)}
             targetScope={targetScope}
             onSelectTargetScope={handleSelectTargetScope}
+            activeGuide={activeGuide}
             onGizmoReset={handleGizmoReset}
             onOpenColorStudio={() => {
               closeSheet();

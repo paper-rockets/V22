@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ProMode, useOpenSheet, closeSheet, openSheetId } from '../studio/panelStore';
 import { haptics } from '../../utils/haptics';
-import { ToolType, BrushSettings } from '../../types';
+import { ToolType, BrushSettings, ActiveGuideReference, TransformTargetScope } from '../../types';
 import { RealBrushSizeControl } from '../common/RealBrushSizeControl';
 import {
   CURATED_BRUSHES,
@@ -15,15 +15,16 @@ import {
   Palette,
   GripHorizontal,
   Ruler,
+  Layers2,
+  Orbit,
+  Spline,
 } from 'lucide-react';
 import {
   IcPointer,
   IcCreate,
-  IcDeform,
   IcLayers,
   IcDraw,
   IcErase,
-  IcMirror,
   IcBrushRibbon,
 } from './StudioIcons';
 import { useDismissibleSurface } from '../../hooks/useDismissibleSurface';
@@ -35,6 +36,7 @@ import {
   StudioDockPreferences,
 } from '../studio/studioDockPreferences';
 import { StudioEngine } from '../../core/studioEngine';
+import { DrawPanelSection, requestDrawPanelSection } from './drawPanelNavigation';
 import './ProResponsive.css';
 
 export interface ProRailProps {
@@ -48,6 +50,9 @@ export interface ProRailProps {
   isIlluminationOpen?: boolean;
   engine?: StudioEngine | null;
   onOpenCustomMirror?: () => void;
+  activeGuide?: ActiveGuideReference | null;
+  targetScope?: TransformTargetScope;
+  onSelectTargetScope?: (scope: TransformTargetScope) => void;
 }
 
 interface ModeButton {
@@ -57,9 +62,9 @@ interface ModeButton {
 }
 
 const MODES: ModeButton[] = [
+  { id: 'draw', label: 'Draw', icon: IcDraw },
   { id: 'select', label: 'Select', icon: IcPointer },
-  { id: 'create', label: 'Create', icon: IcCreate },
-  { id: 'deform', label: 'Deform', icon: IcDeform },
+  { id: 'create', label: 'Add', icon: IcCreate },
   { id: 'layers', label: 'Layers', icon: IcLayers },
 ];
 
@@ -84,21 +89,25 @@ export const ProRail: React.FC<ProRailProps> = ({
   isIlluminationOpen = false,
   engine,
   onOpenCustomMirror,
+  activeGuide = null,
+  targetScope = 'all',
+  onSelectTargetScope,
 }) => {
   const openSheet = useOpenSheet();
   const light = theme === 'light';
   const isLight = light;
   const rootRef = useRef<HTMLElement>(null);
   const shelfRef = useRef<HTMLDivElement>(null);
+  const placementBtnRef = useRef<HTMLButtonElement>(null);
   const colorBtnRef = useRef<HTMLButtonElement>(null);
   const sizeBtnRef = useRef<HTMLButtonElement>(null);
   const brushBtnRef = useRef<HTMLButtonElement>(null);
-  const straightBtnRef = useRef<HTMLButtonElement>(null);
 
-  const [panel, setPanel] = useState<'color' | 'size' | 'brush' | 'straight' | null>(null);
+  const [panel, setPanel] = useState<'placement' | 'color' | 'size' | 'brush' | 'straight' | null>(null);
   const [isDesktopExpanded, setIsDesktopExpanded] = useState(true);
   const [dockPreferences, setDockPreferences] = useState<StudioDockPreferences>(readStudioDockPreferences);
   const [dockHidden, setDockHidden] = useState(false);
+  const [activeDrawSection, setActiveDrawSection] = useState<DrawPanelSection | null>(null);
   const [recentColors, setRecentColors] = useState<string[]>(() => {
     try {
       const stored = JSON.parse(localStorage.getItem('remix3d.recentColors') || '[]');
@@ -148,14 +157,14 @@ export const ProRail: React.FC<ProRailProps> = ({
   }, [dockPreferences.autoHide, openSheet, panel]);
 
   const activeTriggerRef =
-    panel === 'color'
+    panel === 'placement'
+      ? placementBtnRef
+      : panel === 'color'
       ? colorBtnRef
       : panel === 'size'
       ? sizeBtnRef
       : panel === 'brush'
       ? brushBtnRef
-      : panel === 'straight'
-      ? straightBtnRef
       : undefined;
 
   useDismissibleSurface({
@@ -175,6 +184,46 @@ export const ProRail: React.FC<ProRailProps> = ({
 
   const activeBrush = getActiveCuratedBrush(currentBrushSettings);
   const displayedBrushes = QUICK_BRUSH_IDS.flatMap((id) => CURATED_BRUSHES.filter((brush) => brush.id === id));
+  const placement: 'surface' | 'space' | 'guide' =
+    activeGuide && targetScope === 'guide'
+      ? 'guide'
+      : currentBrushSettings.drawingMode === 'spatial_3d'
+        ? 'space'
+        : 'surface';
+  const PlacementIcon = placement === 'surface' ? Layers2 : placement === 'space' ? Orbit : Spline;
+
+  const selectPlacement = (nextPlacement: 'surface' | 'space' | 'guide') => {
+    haptics.trigger('light');
+    setTool?.('brush');
+    setPanel(null);
+
+    if (nextPlacement === 'guide') {
+      if (!activeGuide) {
+        openSheetId('create');
+        return;
+      }
+      setBrushSettings?.((previous) => ({ ...previous, drawingMode: 'surface' }));
+      onSelectTargetScope?.('guide');
+      closeSheet();
+      return;
+    }
+
+    setBrushSettings?.((previous) => ({
+      ...previous,
+      drawingMode: nextPlacement === 'space' ? 'spatial_3d' : 'surface',
+    }));
+    if (targetScope === 'guide') onSelectTargetScope?.('all');
+    closeSheet();
+  };
+
+  const openDrawSection = (section: DrawPanelSection) => {
+    haptics.trigger('light');
+    setTool?.('brush');
+    setPanel(null);
+    setActiveDrawSection(section);
+    if (openSheet !== 'draw') openSheetId('draw');
+    requestDrawPanelSection(section);
+  };
 
 
 
@@ -203,7 +252,9 @@ export const ProRail: React.FC<ProRailProps> = ({
           {/* Studio Modes: Select, Draw, Create, Deform, Layers */}
           <div className="paperrocket-studio-mode-group">
             {MODES.map(({ id, label, icon: Icon }) => {
-              const isActive = openSheet === id;
+              const isActive =
+                openSheet === id ||
+                (id === 'draw' && !openSheet && (tool === 'brush' || tool === 'free_brush' || tool === 'eraser' || tool === 'eyedropper'));
               return (
                 <button
                   key={id}
@@ -246,62 +297,24 @@ export const ProRail: React.FC<ProRailProps> = ({
 
           <div className="paperrocket-studio-quick-group">
             <button
+              ref={placementBtnRef}
               type="button"
               data-pro-rail-button="true"
-              data-active={openSheet === 'draw' && tool === 'brush' ? 'true' : 'false'}
+              data-active={panel === 'placement' ? 'true' : 'false'}
               onClick={() => {
                 haptics.trigger('light');
-                setTool?.('brush');
-                setPanel(null);
-                if (openSheet === 'draw') closeSheet();
-                else openSheetId('draw');
+                closeSheet();
+                setPanel((previous) => (previous === 'placement' ? null : 'placement'));
               }}
-              className="paperrocket-studio-quick paperrocket-studio-quick--draw rounded-xl flex items-center justify-center active:scale-95 transition-colors border-0 bg-transparent"
-              aria-label="Draw"
-              title="Draw"
+              className="paperrocket-studio-quick rounded-xl flex items-center justify-center active:scale-95 transition-colors border-0 bg-transparent"
+              aria-label={`Draw placement: ${placement}`}
+              aria-expanded={panel === 'placement'}
+              title="Choose where to draw"
             >
-              <IcDraw className="h-[21px] w-[21px]" strokeWidth={1.7} />
-              <span className="paperrocket-studio-quick-label">Draw</span>
-            </button>
-
-            <button
-              ref={straightBtnRef}
-              type="button"
-              data-pro-rail-button="true"
-              data-tour="straight-btn"
-              data-active={brushSettings?.straightLineMode ? 'true' : 'false'}
-              onClick={() => {
-                haptics.trigger('light');
-                const isCurrentlyActive = Boolean(brushSettings?.straightLineMode);
-                if (isCurrentlyActive && panel === 'straight') {
-                  setBrushSettings?.((prev) => ({
-                    ...prev,
-                    straightLineMode: false,
-                  }));
-                  setPanel(null);
-                } else {
-                  setTool?.('brush');
-                  closeSheet();
-                  setBrushSettings?.((prev) => ({
-                    ...prev,
-                    straightLineMode: true,
-                    angleSnapping: prev.angleSnapping !== false,
-                    profile: 'ribbon',
-                    brushShape: 'chisel',
-                    brushWidthMultiplier:
-                      prev.brushWidthMultiplier && prev.brushWidthMultiplier >= 3.0
-                        ? prev.brushWidthMultiplier
-                        : 6.0,
-                  }));
-                  setPanel('straight');
-                }
-              }}
-              className="paperrocket-studio-quick paperrocket-studio-quick--straight rounded-xl flex items-center justify-center active:scale-95 transition-colors border-0 bg-transparent"
-              aria-label="Straight lines"
-              title="Straight lines & stairs"
-            >
-              <Ruler className="h-[21px] w-[21px]" strokeWidth={1.7} />
-              <span className="paperrocket-studio-quick-label">Straight</span>
+              <PlacementIcon className="h-[21px] w-[21px]" strokeWidth={1.7} />
+              <span className="paperrocket-studio-quick-label">
+                {placement === 'surface' ? 'Surface' : placement === 'space' ? 'Space' : 'Guide'}
+              </span>
             </button>
 
             <button
@@ -322,24 +335,20 @@ export const ProRail: React.FC<ProRailProps> = ({
               <span className="paperrocket-studio-quick-label">Erase</span>
             </button>
 
-            {/* Color swatch disc */}
+            {/* Draw shortcuts open the same contextual panel as the Draw mode. */}
             <button
             ref={colorBtnRef}
             type="button"
             data-pro-rail-button="true"
-            data-active={panel === 'color' ? 'true' : 'false'}
-            onClick={() => {
-              haptics.trigger('light');
-              closeSheet();
-              setPanel((prev) => (prev === 'color' ? null : 'color'));
-            }}
+            data-active={openSheet === 'draw' && activeDrawSection === 'style' ? 'true' : 'false'}
+            onClick={() => openDrawSection('style')}
             className="paperrocket-studio-quick paperrocket-studio-quick--color rounded-xl flex items-center justify-center active:scale-95 transition-transform border-0 bg-transparent"
             aria-label="Color"
             title="Color"
           >
             <span
               className={`w-7 h-7 rounded-full border transition-all ${
-                panel === 'color'
+                openSheet === 'draw' && activeDrawSection === 'style'
                   ? isLight ? 'border-neutral-900 ring-2 ring-neutral-900/40 shadow-xs' : 'border-white ring-2 ring-white/40 shadow-xs'
                   : isLight ? 'border-black/15' : 'border-white/20'
               }`}
@@ -358,14 +367,10 @@ export const ProRail: React.FC<ProRailProps> = ({
             ref={sizeBtnRef}
             type="button"
             data-pro-rail-button="true"
-            data-active={panel === 'size' ? 'true' : 'false'}
-            onClick={() => {
-              haptics.trigger('light');
-              closeSheet();
-              setPanel((prev) => (prev === 'size' ? null : 'size'));
-            }}
+            data-active={openSheet === 'draw' && activeDrawSection === 'size' ? 'true' : 'false'}
+            onClick={() => openDrawSection('size')}
             className={`paperrocket-studio-quick paperrocket-studio-quick--size rounded-xl flex items-center justify-center active:scale-95 transition-colors border-0 bg-transparent ${
-              panel === 'size'
+              openSheet === 'draw' && activeDrawSection === 'size'
                 ? isLight
                   ? 'text-neutral-950 font-bold'
                   : 'text-white font-bold'
@@ -377,7 +382,7 @@ export const ProRail: React.FC<ProRailProps> = ({
             title={`Size: ${activeBrush.name}`}
           >
             <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
-              panel === 'size'
+               openSheet === 'draw' && activeDrawSection === 'size'
                 ? isLight ? 'border-neutral-900' : 'border-white'
                 : isLight ? 'border-neutral-400' : 'border-white/40'
             }`}>
@@ -401,17 +406,10 @@ export const ProRail: React.FC<ProRailProps> = ({
             ref={brushBtnRef}
             type="button"
             data-pro-rail-button="true"
-            data-active={panel === 'brush' ? 'true' : 'false'}
-            onClick={() => {
-              haptics.trigger('light');
-              if (setTool) {
-                setTool('brush');
-              }
-              closeSheet();
-              setPanel((prev) => (prev === 'brush' ? null : 'brush'));
-            }}
+            data-active={openSheet === 'draw' && activeDrawSection === 'brushes' ? 'true' : 'false'}
+            onClick={() => openDrawSection('brushes')}
             className={`paperrocket-studio-quick paperrocket-studio-quick--brush rounded-xl flex items-center justify-center active:scale-95 transition-colors border-0 bg-transparent ${
-              panel === 'brush'
+              openSheet === 'draw' && activeDrawSection === 'brushes'
                 ? isLight
                   ? 'text-neutral-950 font-bold'
                   : 'text-white font-bold'
@@ -426,23 +424,6 @@ export const ProRail: React.FC<ProRailProps> = ({
             <span className="paperrocket-studio-quick-label">Brush</span>
             </button>
 
-            <button
-              type="button"
-              data-pro-rail-button="true"
-              data-active={openSheet === 'deform' ? 'true' : 'false'}
-              onClick={() => {
-                haptics.trigger('light');
-                setPanel(null);
-                if (openSheet === 'deform') closeSheet();
-                else openSheetId('deform');
-              }}
-              className="paperrocket-studio-quick paperrocket-studio-quick--symmetry rounded-xl flex items-center justify-center active:scale-95 transition-colors border-0 bg-transparent"
-              aria-label="Symmetry"
-              title="Symmetry and mirror"
-            >
-              <IcMirror className="h-[21px] w-[21px]" strokeWidth={1.7} />
-              <span className="paperrocket-studio-quick-label">Symmetry</span>
-            </button>
           </div>
 
           <button
@@ -472,13 +453,47 @@ export const ProRail: React.FC<ProRailProps> = ({
             } pointer-events-auto absolute left-full ml-3 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150 ${
               panel === 'color'
                 ? 'w-[154px]'
-                : panel === 'size'
+              : panel === 'size'
                 ? 'w-[154px]'
+                : panel === 'placement'
+                ? 'w-[264px]'
                 : panel === 'straight'
                 ? 'w-[264px]'
                 : 'w-[320px] max-w-[calc(100vw-88px)]'
             }`}
           >
+
+              {panel === 'placement' && (
+                <div className="paperrocket-placement-choices" role="group" aria-label="Choose where to draw">
+                  {([
+                    ['surface', 'Surface', Layers2],
+                    ['space', 'Space', Orbit],
+                    ['guide', 'Guide', Spline],
+                  ] as const).map(([option, label, Icon]) => (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => selectPlacement(option)}
+                      className="paperrocket-placement-choice"
+                      data-active={placement === option ? 'true' : 'false'}
+                      aria-pressed={placement === option}
+                      aria-label={
+                        option === 'surface'
+                          ? 'Draw on a surface'
+                          : option === 'space'
+                            ? 'Draw in open space'
+                            : activeGuide
+                              ? `Draw on ${activeGuide.name}`
+                              : 'Choose a drawing guide'
+                      }
+                      title={option === 'guide' && !activeGuide ? 'Choose a guide from Add' : undefined}
+                    >
+                      <Icon className="h-5 w-5" strokeWidth={1.7} />
+                      <span>{label}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
 
               {/* Color Panel */}
               {panel === 'color' && (

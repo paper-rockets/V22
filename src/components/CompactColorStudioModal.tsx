@@ -10,6 +10,7 @@ import {
   Layers,
   Paintbrush,
   Palette,
+  Pin,
   Pipette,
   Sliders,
   SunMedium,
@@ -113,6 +114,13 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
 }) => {
   const isLight = theme === 'light';
   const [activeTab, setActiveTab] = useState<TabType>('wheel');
+  const [isPinned, setIsPinned] = useState(() => {
+    try {
+      return localStorage.getItem('remix3d.colorStudioPinned') === 'true';
+    } catch {
+      return false;
+    }
+  });
   const [copiedHex, setCopiedHex] = useState(false);
   const [secondaryColor, setSecondaryColor] = useState('#f43f5e');
   const [hsv, setHsv] = useState({ h: 200, s: 0.8, v: 0.9 });
@@ -166,6 +174,16 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
       setShaderRimPower(value);
       onApplyBrushSettings?.({ emissiveIntensity: value });
     }
+  };
+
+  const togglePinned = () => {
+    setIsPinned((previous) => {
+      const next = !previous;
+      try {
+        localStorage.setItem('remix3d.colorStudioPinned', String(next));
+      } catch {}
+      return next;
+    });
   };
 
   useEffect(() => {
@@ -501,9 +519,12 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
 
   return createPortal(
     <div
-      className="paperrocket-modal-overlay fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-150"
+      data-pinned={isPinned ? 'true' : 'false'}
+      className={`paperrocket-modal-overlay paperrocket-color-studio-overlay--side fixed inset-0 z-50 flex items-center justify-start p-3 sm:p-4 animate-in fade-in duration-150 ${
+        isPinned ? 'pointer-events-none' : ''
+      }`}
       onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
+        if (!isPinned && e.target === e.currentTarget) onClose();
       }}
     >
       <section
@@ -511,7 +532,8 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
         data-theme={theme}
         aria-label="Color studio"
         onClick={(event) => event.stopPropagation()}
-        className={`paperrocket-color-studio relative flex max-h-[calc(100dvh-24px)] w-[calc(100vw-24px)] max-w-[580px] flex-col overflow-hidden rounded-[16px] border select-none ${shell}`}
+        className={`paperrocket-color-studio pointer-events-auto relative flex w-[calc(100vw-24px)] max-w-[332px] flex-col overflow-hidden rounded-[16px] border select-none ${shell}`}
+        style={{ maxHeight: 'min(68dvh, 620px)' }}
       >
         <header className={`flex min-h-14 items-center justify-between border-b px-3 ${divider}`}>
           <div className="flex min-w-0 items-center gap-2.5">
@@ -531,6 +553,20 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
             </div>
           </div>
           <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={togglePinned}
+              className={`grid h-11 w-11 place-items-center rounded-xl ${
+                isPinned
+                  ? isLight ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-950'
+                  : ghostButton
+              }`}
+              aria-label={isPinned ? 'Unpin color studio' : 'Keep color studio open'}
+              aria-pressed={isPinned}
+              title={isPinned ? 'Return to modal view' : 'Keep open while drawing'}
+            >
+              <Pin className="h-4 w-4" />
+            </button>
             {onSampleFromScreen && <button type="button" onClick={onSampleFromScreen} className={`grid h-11 w-11 place-items-center rounded-xl ${ghostButton}`} aria-label="Sample color"><Pipette className="h-4 w-4" /></button>}
             <button type="button" onClick={() => { navigator.clipboard.writeText(currentColor); setCopiedHex(true); window.setTimeout(() => setCopiedHex(false), 1200); }} className={`grid h-11 w-11 place-items-center rounded-xl ${ghostButton}`} aria-label="Copy hex">
               {copiedHex ? <Check className="h-4 w-4 text-neutral-900 dark:text-white" /> : <Copy className="h-4 w-4" />}
@@ -540,8 +576,8 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
         </header>
 
         <div className="min-h-0 flex-1 overflow-y-auto studio-scroll px-3 py-3">
-          {activeTab === 'wheel' && <div className="grid gap-3 sm:grid-cols-[190px_minmax(0,1fr)] sm:items-start">
-            <div className="flex justify-center sm:pt-1"><canvas ref={wheelCanvasRef} style={{ width: WHEEL_SIZE, height: WHEEL_SIZE }} onPointerDown={handleWheelPointerDown} onPointerMove={handleWheelPointerMove} onPointerUp={handleWheelPointerUp} onPointerCancel={handleWheelPointerUp} className="touch-none cursor-crosshair" /></div>
+          {activeTab === 'wheel' && <div className="grid gap-3">
+            <div className="flex justify-center"><canvas ref={wheelCanvasRef} style={{ width: WHEEL_SIZE, height: WHEEL_SIZE }} onPointerDown={handleWheelPointerDown} onPointerMove={handleWheelPointerMove} onPointerUp={handleWheelPointerUp} onPointerCancel={handleWheelPointerUp} className="touch-none cursor-crosshair" /></div>
             <div className="space-y-3 min-w-0">
               {slider('Saturation', `${Math.round(hsv.s * 100)}%`, <input type="range" min="0" max="100" value={Math.round(hsv.s * 100)} onChange={(event) => applyHsv({ ...hsv, s: Number(event.target.value) / 100 })} className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`} />)}
               {slider('Lightness', `${Math.round(hsv.v * 100)}%`, <input type="range" min="0" max="100" value={Math.round(hsv.v * 100)} onChange={(event) => applyHsv({ ...hsv, v: Number(event.target.value) / 100 })} className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`} />)}
@@ -551,7 +587,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
               </div>
               <button type="button" onClick={() => setShowPalettes((shown) => !shown)} className={`flex h-10 w-full items-center justify-between border-t text-xs font-semibold ${divider} ${ghostButton}`}><span className="flex items-center gap-2"><Layers className="h-4 w-4" /> Palettes</span><ChevronDown className={`h-4 w-4 ${showPalettes ? 'rotate-180' : ''}`} /></button>
             </div>
-            {showPalettes && <div className="space-y-2 pb-1 sm:col-span-2">
+            {showPalettes && <div className="space-y-2 pb-1">
               <select value={paletteName} onChange={(event) => setPaletteName(event.target.value as keyof typeof CURATED_PALETTES)} className={`h-11 w-full rounded-xl border px-3 text-xs outline-none ${field}`}>{Object.keys(CURATED_PALETTES).map((name) => <option key={name}>{name}</option>)}</select>
               <div className="grid grid-cols-7 gap-1.5">{CURATED_PALETTES[paletteName].map((color) => <button key={color} type="button" onClick={() => applyColor(color)} className={`h-10 rounded-lg border ${isLight ? 'border-black/15' : 'border-white/15'}`} style={{ backgroundColor: color }} aria-label={`Use ${color}`} />)}</div>
             </div>}

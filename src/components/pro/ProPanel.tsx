@@ -18,6 +18,7 @@ import {
   ModelDisplayMode,
   LiquifySettings,
   Layer,
+  ActiveGuideReference,
 } from '../../types';
 
 export interface ProPanelProps {
@@ -61,13 +62,14 @@ export interface ProPanelProps {
   onClearLayerStrokes?: (layerId: string) => void;
   onMergeLayerDown?: (layerId: string) => void;
   onBeforeDestructiveAction?: (title: string, description: string, actionLabel: string, action: () => Promise<void> | void) => void;
+  activeGuide?: ActiveGuideReference | null;
   theme?: 'light' | 'dark';
 }
 
 const MODE_TITLES: Record<ProMode, string> = {
   select: 'Select',
   draw: 'Draw',
-  create: 'Create',
+  create: 'Add',
   deform: 'Deform',
   layers: 'Layers',
 };
@@ -201,13 +203,9 @@ export const ProPanel: React.FC<ProPanelProps> = ({
         {mode === 'draw' && brushSettings && (
           <DrawPanel
             engine={engine}
-            tool={tool}
-            setTool={setTool}
             brushSettings={brushSettings}
             setBrushSettings={setBrushSettings}
             onOpenColorStudio={onOpenColorStudio}
-            onOpenScaffolding={onOpenScaffolding}
-            onOpenBentGuide={onOpenBentGuide}
             theme={theme}
           />
         )}
