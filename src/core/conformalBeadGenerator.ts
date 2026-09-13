@@ -373,8 +373,9 @@ export class ConformalBeadGenerator {
       // Compute binormal as tangent cross normal (lateral axis across stroke ribbon width)
       const binorm = _vecPool.get().crossVectors(t, norm).normalize();
 
-      // Smooth phase continuity: prevent sudden 180-degree flipping between consecutive samples
-      if (i > 0) {
+      // Smooth phase continuity in free 3D space: prevent sudden 180-degree flipping between consecutive samples
+      // On surfaces, norm is strictly anchored to the surface normal and must never flip upside down
+      if (!isSurfaceSample && i > 0) {
         const prevBinorm = binormals[i - 1];
         if (binorm.dot(prevBinorm) < 0) {
           binorm.negate();
