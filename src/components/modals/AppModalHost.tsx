@@ -328,10 +328,14 @@ export const AppModalHost: React.FC<AppModalHostProps> = ({
           isOpen={isColorStudioOpen}
           onClose={() => setIsColorStudioOpen(false)}
           currentColor={brushSettings.color || '#000000'}
-          onChangeColor={(hex) => setBrushSettings((prev) => ({ ...prev, color: hex }))}
-          onApplyBrushSettings={(newSettings) =>
-            setBrushSettings((prev) => ({ ...prev, ...newSettings }))
-          }
+          onChangeColor={(hex) => {
+            setBrushSettings((prev) => ({ ...prev, color: hex, solidColor: hex }));
+            setTool('brush');
+          }}
+          onApplyBrushSettings={(newSettings) => {
+            setBrushSettings((prev) => ({ ...prev, ...newSettings }));
+            setTool('brush');
+          }}
           onApplyToModel={(mat) => engine?.setModelCustomMaterial(mat)}
           onSampleFromScreen={() => {
             setIsColorStudioOpen(false);

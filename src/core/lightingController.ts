@@ -165,6 +165,17 @@ export class LightingController {
     };
   }
 
+  private updateStudioExposure(): void {
+    const modeBase: Record<StudioLightingState['mode'], number> = {
+      studio: 1.04,
+      north: 0.92,
+      softbox: 1.1,
+      silhouette: 0.68,
+    };
+    const intensityResponse = 0.72 + Math.max(0.2, Math.min(2.5, this.studioLightingState.intensity)) * 0.2;
+    this.renderer.toneMappingExposure = Math.max(0.58, Math.min(1.38, modeBase[this.studioLightingState.mode] * intensityResponse));
+  }
+
   public setStudioLightingMode(mode: 'studio' | 'north' | 'softbox' | 'silhouette'): void {
     this.ensureBaselineLighting();
     this.studioLightingState.mode = mode;
@@ -248,6 +259,7 @@ export class LightingController {
         this.studioLightingState.intensity = 2.4;
         break;
     }
+    this.updateStudioExposure();
     this.onDirty();
   }
 
@@ -298,6 +310,7 @@ export class LightingController {
     if (this.hemiLight) {
       this.hemiLight.intensity = Math.max(0.15, safeIntensity * 0.35);
     }
+    this.updateStudioExposure();
     this.onDirty();
   }
 
@@ -310,6 +323,7 @@ export class LightingController {
     if (this.hemiLight) {
       this.hemiLight.color.set(colorHex);
     }
+    this.updateStudioExposure();
     this.onDirty();
   }
 
@@ -482,6 +496,7 @@ export class LightingController {
       const contactMaterial = contactShadow?.material as THREE.MeshBasicMaterial | undefined;
       if (contactMaterial) contactMaterial.opacity = 0.72;
     }
+    this.updateStudioExposure();
     this.onDirty();
   }
 

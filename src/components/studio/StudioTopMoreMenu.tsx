@@ -5,13 +5,9 @@ import {
   Grid,
   Maximize2,
   Minimize2,
-  Move3d,
   Moon,
-  Palette,
-  Ruler,
   Save,
   Settings,
-  Square,
   X,
   Sun,
 } from 'lucide-react';
@@ -146,7 +142,7 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
         role="dialog"
         aria-modal="true"
         aria-labelledby="studio-more-title"
-        className={`absolute inset-x-0 bottom-0 mx-auto max-w-[560px] rounded-t-2xl px-4 pb-[max(1rem,env(safe-area-inset-bottom))] pt-3 shadow-2xl sm:bottom-3 sm:rounded-2xl ${
+        className={`absolute right-3 top-[calc(env(safe-area-inset-top)+3.25rem)] max-h-[calc(100dvh-4.5rem)] w-[min(360px,calc(100vw-1.5rem))] overflow-y-auto rounded-2xl px-3 pb-3 pt-2 shadow-2xl ${
           isLight ? 'bg-white text-neutral-900' : 'bg-[#15171c] text-white'
         }`}
       >
@@ -164,7 +160,7 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
           </button>
         </div>
 
-        <div className="grid grid-cols-2 gap-2" aria-label="Studio actions">
+        <div className="grid grid-cols-1 gap-2" aria-label="Studio actions">
           {onQuickSave && (
             <ActionButton icon={<Save className="h-5 w-5" strokeWidth={1.7} />} label="Save" description="Quick save" onSelect={select(onQuickSave)} isLight={isLight} />
           )}
@@ -172,13 +168,8 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
             <ActionButton icon={<FolderOpen className="h-5 w-5" strokeWidth={1.7} />} label="Projects" description="Save & Backup" onSelect={select(onOpenSessions)} isLight={isLight} />
           )}
           {onOpenIllumination && (
-            <ActionButton icon={<Sun className="h-5 w-5 text-amber-400" strokeWidth={1.7} />} label="Lighting" description="Scene illumination" onSelect={select(onOpenIllumination)} isLight={isLight} />
+            <ActionButton icon={<Sun className="h-5 w-5 text-amber-400" strokeWidth={1.7} />} label="Scene lights" description="Illuminate the artwork" onSelect={select(onOpenIllumination)} isLight={isLight} />
           )}
-          {onToggleModelDisplay && (
-            <ActionButton icon={<Palette className="h-5 w-5 text-sky-400" strokeWidth={1.7} />} label="Model Display" description="Texture, Clay & Opacity" onSelect={select(onToggleModelDisplay)} isLight={isLight} />
-          )}
-          <ActionButton icon={<Ruler className="h-5 w-5" strokeWidth={1.7} />} label="Drawing Aids" description="Steady, predictive, and ruler" onSelect={select(onOpenShapes)} isLight={isLight} />
-          <ActionButton icon={<Move3d className="h-5 w-5" strokeWidth={1.7} />} label="Edit & Deform" description="Bend, mirror, and simplify" onSelect={select(onOpenDeform)} isLight={isLight} />
           {onTogglePlane && (
             <ActionButton
               icon={<CanvasSheetIcon className="h-5 w-5 text-emerald-400" strokeWidth={1.7} />}
@@ -192,8 +183,8 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
           {onToggleTheme && (
             <ActionButton
               icon={isLight ? <Moon className="h-5 w-5" strokeWidth={1.7} /> : <Sun className="h-5 w-5" strokeWidth={1.7} />}
-              label={isLight ? 'Dark mode' : 'Light mode'}
-              description={isLight ? 'Reduce workspace glare' : 'Brighten the workspace'}
+              label="Appearance"
+              description={isLight ? 'Switch to dark theme' : 'Switch to light theme'}
               onSelect={select(onToggleTheme)}
               isLight={isLight}
             />

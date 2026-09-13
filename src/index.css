@@ -270,7 +270,7 @@ html:not(.light) .pr-surface .paperrocket-toggle {
 }
 
 .paperrocket-color-studio-overlay--side {
-  padding-left: max(76px, calc(env(safe-area-inset-left) + 76px)) !important;
+  padding-left: max(72px, calc(env(safe-area-inset-left) + 72px)) !important;
   padding-right: 16px !important;
 }
 

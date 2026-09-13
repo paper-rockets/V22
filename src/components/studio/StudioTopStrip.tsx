@@ -4,7 +4,6 @@ import {
   Grid,
   Maximize2,
   Minimize2,
-  MoreHorizontal,
   Palette,
   Redo2,
   Ruler,
@@ -285,12 +284,12 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
           type="button"
           onClick={() => setMoreOpen(true)}
           className={`${button}`}
-          aria-label="More actions"
+          aria-label="Settings and more"
           aria-haspopup="dialog"
           aria-expanded={moreOpen}
           aria-controls="studio-top-more-menu"
         >
-          <MoreHorizontal className="h-5 w-5" strokeWidth={1.6} />
+          <Settings className="h-5 w-5" strokeWidth={1.6} />
         </button>
       </nav>
       <StudioTopMoreMenu

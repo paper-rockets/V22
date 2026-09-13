@@ -193,7 +193,7 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
     e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
     isDraggingHeader.current = true;
-    const currentX = panelPos?.x ?? 84;
+    const currentX = panelPos?.x ?? Math.max(8, window.innerWidth - 312);
     const currentY = panelPos?.y ?? 80;
     dragStart.current = {
       mouseX: e.clientX,
@@ -262,25 +262,25 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
     let pDir = { x: 0.5, y: 0.8, z: 0.55 };
 
     if (presetName === 'studio') {
-      pIntensity = 1.6;
-      pSoftness = 0.65;
+      pIntensity = 1.65;
+      pSoftness = 0.62;
       pColor = '#fff6ea';
       pDir = { x: 0.48, y: 0.8, z: 0.52 };
     } else if (presetName === 'north') {
-      pIntensity = 1.45;
-      pSoftness = 0.8;
-      pColor = '#e8f0fe';
-      pDir = { x: 0.1, y: 0.95, z: 0.3 };
+      pIntensity = 1.3;
+      pSoftness = 0.78;
+      pColor = '#c8dcff';
+      pDir = { x: -0.72, y: 0.68, z: 0.18 };
     } else if (presetName === 'softbox') {
-      pIntensity = 1.5;
-      pSoftness = 0.95;
-      pColor = '#fff8f2';
-      pDir = { x: 0.4, y: 0.65, z: 0.45 };
+      pIntensity = 1.85;
+      pSoftness = 1;
+      pColor = '#fff4e6';
+      pDir = { x: 0.32, y: 0.82, z: 0.38 };
     } else if (presetName === 'silhouette') {
-      pIntensity = 2.2;
-      pSoftness = 0.4;
-      pColor = '#fff6eb';
-      pDir = { x: -0.4, y: 0.5, z: -0.6 };
+      pIntensity = 2.35;
+      pSoftness = 0.28;
+      pColor = '#ffd7a8';
+      pDir = { x: -0.55, y: 0.38, z: -0.74 };
     }
 
     setIntensity(pIntensity);
@@ -314,7 +314,7 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
       className={`pr-surface fixed z-50 select-none pointer-events-auto transition-shadow ${
         panelPos && typeof window !== 'undefined' && window.innerWidth >= 640
           ? 'sm:w-[280px] sm:rounded-2xl sm:border sm:shadow-2xl'
-          : 'inset-x-0 bottom-0 w-full rounded-t-2xl sm:rounded-2xl border-t sm:border border-x shadow-2xl sm:w-[280px] sm:top-20 sm:left-[84px] sm:inset-x-auto sm:bottom-auto'
+          : 'inset-x-0 bottom-0 w-full rounded-t-2xl sm:rounded-2xl border-t sm:border border-x shadow-2xl sm:w-[300px] sm:top-16 sm:right-3 sm:left-auto sm:inset-x-auto sm:bottom-auto'
       } ${
         isLight
           ? 'bg-white/95 border-neutral-200 text-neutral-900 shadow-neutral-400/25'
@@ -336,7 +336,7 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
         {/* Mobile drag handle pill */}
         <div className="w-8 h-1 rounded-full bg-neutral-400/40 mx-auto mb-1 sm:hidden" />
         <div className="flex items-center justify-between w-full">
-          <span className="text-xs font-semibold tracking-wide">Studio Light</span>
+          <span className="text-xs font-semibold tracking-wide">Studio Lights</span>
           <StudioCloseButton
             onClick={() => {
               haptics.trigger('light');
@@ -429,10 +429,10 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
           <div className="grid grid-cols-2 gap-1 sm:gap-1.5">
             {(
               [
-                { id: 'studio', name: 'Studio' },
-                { id: 'north', name: 'North Light' },
-                { id: 'softbox', name: 'Softbox' },
-                { id: 'silhouette', name: 'Silhouette' },
+                { id: 'studio', name: 'Studio Key', note: 'Balanced' },
+                { id: 'north', name: 'North Window', note: 'Cool & soft' },
+                { id: 'softbox', name: 'Softbox', note: 'Clean & gentle' },
+                { id: 'silhouette', name: 'Rim Light', note: 'Dramatic edge' },
               ] as const
             ).map((preset) => {
               const isActive = activePreset === preset.id;
@@ -441,7 +441,7 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
                   key={preset.id}
                   type="button"
                   onClick={() => handleSelectPreset(preset.id)}
-                  className={`h-7 sm:h-8 px-1.5 sm:px-2 rounded-lg text-[11px] sm:text-xs font-medium border transition-all cursor-pointer flex items-center justify-center active:scale-95 ${
+                  className={`min-h-[46px] px-2 py-1.5 rounded-lg text-[11px] font-medium border transition-all cursor-pointer flex flex-col items-start justify-center active:scale-95 ${
                     isActive
                       ? isLight
                         ? 'border-amber-500 bg-amber-500/10 text-amber-900 font-semibold ring-1 ring-amber-500/30'
@@ -451,7 +451,8 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
                       : 'border-neutral-800 bg-neutral-900/60 hover:bg-neutral-800 text-neutral-300'
                   }`}
                 >
-                  {preset.name}
+                  <span className="font-semibold leading-tight">{preset.name}</span>
+                  <span className={`text-[9px] leading-tight ${isActive ? 'opacity-80' : 'text-neutral-400'}`}>{preset.note}</span>
                 </button>
               );
             })}
@@ -490,7 +491,7 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
           {/* Intensity / Brightness Slider */}
           <div className="space-y-0.5 sm:space-y-1">
             <div className="flex items-center justify-between text-[10px] sm:text-[11px]">
-              <span className="text-neutral-400 font-medium">Intensity</span>
+              <span className="text-neutral-400 font-medium">Brightness</span>
               <span className="font-mono font-semibold text-neutral-300">{intensity.toFixed(2)}x</span>
             </div>
             <input

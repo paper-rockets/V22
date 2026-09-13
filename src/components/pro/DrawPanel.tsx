@@ -28,6 +28,7 @@ import {
   applyCuratedBrush,
 } from '../../presets/curatedBrushes';
 import { BrushShapeGlyph } from '../studio/BrushShapeGlyph';
+import { BrushStrokePreview } from '../studio/BrushStrokePreview';
 import { RealBrushSizeControl } from '../common/RealBrushSizeControl';
 import { haptics } from '../../utils/haptics';
 import {
@@ -37,10 +38,10 @@ import {
 } from './drawPanelNavigation';
 
 const BRUSH_HELP: Record<string, string> = {
-  streamline_ink: 'Flat paint',
-  conformal_bead: 'Hugs models',
-  spatial_pipe: 'Round line',
-  chisel_marker: 'Wide edge',
+  streamline_ink: 'Everyday painting',
+  conformal_bead: 'Follows objects',
+  spatial_pipe: 'Raised 3D line',
+  chisel_marker: 'Broad stroke',
   neon_cable: 'Glowing tube',
   halftone_dot: 'Dot pattern',
   stipple_texture: 'Speckled',
@@ -48,6 +49,12 @@ const BRUSH_HELP: Record<string, string> = {
   crosshatch: 'Grid lines',
   terrazzo_fleck: 'Stone pattern',
   mask_cutout: 'Erase shape',
+};
+const BRUSH_LABELS: Record<string, string> = {
+  streamline_ink: 'Flat Brush',
+  conformal_bead: 'Surface Brush',
+  spatial_pipe: 'Round Brush',
+  chisel_marker: 'Wide Marker',
 };
 
 const ESSENTIAL_BRUSH_IDS = ['streamline_ink', 'conformal_bead', 'spatial_pipe', 'chisel_marker'];
@@ -153,7 +160,7 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
           haptics.trigger('medium');
           setBrushSettings((prev) => applyCuratedBrush(preset, prev));
         }}
-        className={`paperrocket-brush-card relative min-h-[64px] rounded-xl p-2 flex items-center gap-2 text-left transition-all active:scale-[0.98] border ${
+        className={`paperrocket-brush-card relative min-h-[58px] rounded-xl p-2 grid grid-cols-[minmax(96px,1.2fr)_minmax(92px,.8fr)] items-center gap-2.5 text-left transition-all active:scale-[0.98] border ${
           isSelected
             ? isLight
               ? 'border-neutral-900 bg-black/[0.08] shadow-xs ring-1 ring-neutral-900/60'
@@ -162,19 +169,19 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
               ? 'border-black/10 bg-white hover:border-black/20 text-neutral-800'
               : 'border-white/[0.06] bg-[#18191e] hover:border-white/20 hover:bg-[#1f2127] text-white/80'
         }`}
-        title={preset.description}
+        title={BRUSH_HELP[preset.id] || 'Creative brush'}
       >
         {isSelected && (
           <span className={`absolute right-1.5 top-1.5 grid h-4 w-4 place-items-center rounded-full ${isLight ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-950'}`}>
             <Check className="h-2.5 w-2.5" strokeWidth={3} />
           </span>
         )}
-        <div className={`h-10 w-10 shrink-0 rounded-lg grid place-items-center ${isLight ? 'bg-black/[0.04]' : 'bg-white/[0.07]'}`}>
-          <BrushShapeGlyph brushId={preset.id} profile={preset.profile} materialType={preset.materialType} patternType={preset.patternType} boxSize={30} />
+        <div className={`min-w-0 rounded-lg px-2 py-1 grid place-items-center ${isLight ? 'bg-black/[0.04]' : 'bg-white/[0.07]'}`}>
+          <BrushStrokePreview brushId={preset.id} />
         </div>
         <span className="min-w-0 flex-1">
           <span className={`block text-[11px] leading-[1.15] [overflow-wrap:normal] [word-break:normal] ${isSelected ? (isLight ? 'text-neutral-950 font-bold' : 'text-white font-bold') : 'opacity-80 font-medium'}`}>
-            {preset.name}
+            {BRUSH_LABELS[preset.id] || preset.name}
           </span>
           <span className={`mt-1 block text-[9px] leading-none ${isLight ? 'text-neutral-500' : 'text-white/45'}`}>
             {BRUSH_HELP[preset.id] || 'Creative brush'}
@@ -215,15 +222,14 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
   return (
     <div className="space-y-2 text-xs select-none">
       <div
-        className={`sticky top-0 z-10 grid grid-cols-3 gap-1 rounded-xl p-1 shadow-sm ${
+        className={`sticky top-0 z-10 grid grid-cols-2 gap-1 rounded-xl p-1 shadow-sm ${
           isLight ? 'bg-[#e8e4dd]' : 'bg-[#0d0f12]'
         }`}
         aria-label="Draw controls"
       >
         {([
-          ['paint', 'Style'],
-          ['brush', 'Brushes'],
-          ['advanced', 'Adjust'],
+          ['paint', 'Color'],
+          ['brush', 'Brush'],
         ] as const).map(([id, label]) => (
           <button
             key={id}
@@ -302,18 +308,13 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
       <div ref={colorSectionRef} className={cardClass}>
         <div className="flex items-center justify-between">
           <div className={subHeadingClass}>Color</div>
-          <div className="flex items-center gap-1.5">
-            <span className="rounded-full border border-black/10 dark:border-white/15 px-2 py-0.5 text-[9px] font-bold">
-              {brushSettings.activeLookName || (brushSettings.materialType === 'animated_fx' ? 'Animated FX' : brushSettings.materialType === 'shadeless' ? 'Flat Paint' : brushSettings.materialType)}
-            </span>
-            <span className="font-mono text-[11px] font-bold opacity-80">
-              {(brushSettings.solidColor || brushSettings.color || '#38bdf8').toUpperCase()}
-            </span>
-          </div>
+          <span className="font-mono text-[11px] font-bold opacity-80">
+            {(brushSettings.solidColor || brushSettings.color || '#38bdf8').toUpperCase()}
+          </span>
         </div>
 
-        {/* Quick Color Swatches */}
-        <div className="grid grid-cols-8 gap-1 pt-0.5">
+        {/* Same swatch language as the full Color Picker. */}
+        <div className="grid grid-cols-8 gap-1.5 pt-1">
           {['#2563eb', '#38bdf8', '#ef4444', '#f59e0b', '#10b981', '#a855f7', '#000000', '#ffffff'].map((hex) => {
             const isSelected =
               !brushSettings.previewUrl &&
@@ -339,7 +340,7 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
                     activeLookName: 'Flat Paint',
                   }));
                 }}
-                className={`!min-w-0 h-6 sm:h-7 rounded-md sm:rounded-lg border transition-transform active:scale-90 ${
+                className={`!min-h-0 !min-w-0 aspect-square w-full rounded-lg border transition-transform active:scale-95 ${
                   isSelected
                     ? isLight
                       ? 'ring-2 ring-neutral-900 scale-105 border-white'
@@ -356,7 +357,7 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
           })}
         </div>
 
-        {/* Studio & Full Shaders button */}
+        {/* The full picker owns detailed color work. */}
         <button
           type="button"
           onClick={() => {
@@ -368,21 +369,19 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
               ? 'bg-white border-black/10 hover:border-black/30 text-neutral-900'
               : 'bg-black/30 border-white/10 hover:border-white/30 text-white'
           }`}
-          title="Open Color Studio (Palettes, HSV, PBR, Shaders)"
+          title="Open Color Picker"
         >
           <div className="flex items-center gap-2.5">
             <span
               className="w-6 h-6 rounded-lg border border-black/15 dark:border-white/20 shadow-xs shrink-0"
               style={{
-                background: (brushSettings.previewUrl || brushSettings.matcapUrl)
-                  ? `url(${brushSettings.previewUrl || brushSettings.matcapUrl}) center/cover no-repeat`
-                  : (brushSettings.color || brushSettings.solidColor || '#38bdf8'),
+                background: brushSettings.solidColor || brushSettings.color || '#38bdf8',
                 boxShadow: brushSettings.materialType === 'glow' ? `0 0 8px ${brushSettings.color || '#00f7ff'}` : undefined,
               }}
             />
             <div className="text-left">
-              <div className="font-semibold text-xs leading-none">Color Studio</div>
-              <div className="text-[10px] opacity-60 mt-0.5">Color, palettes, and effects</div>
+              <div className="font-semibold text-xs leading-none">Color Picker</div>
+              <div className="text-[10px] opacity-60 mt-0.5">Wheel, palettes, and effects</div>
             </div>
           </div>
           <Palette className="w-4 h-4 opacity-70 group-hover:opacity-100 transition-opacity" />
@@ -411,13 +410,13 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
       <div ref={sizeSectionRef} className={cardClass}>
         <div className="flex items-center justify-between">
           <div>
-            <div className="text-xs font-bold tracking-tight text-current">Essential brushes</div>
-            <div className={`mt-0.5 text-[10px] ${isLight ? 'text-neutral-500' : 'text-white/45'}`}>Pick a shape, then draw.</div>
+            <div className="text-xs font-bold tracking-tight text-current">Choose a brush</div>
+            <div className={`mt-0.5 text-[10px] ${isLight ? 'text-neutral-500' : 'text-white/45'}`}>Flat Brush is the easiest place to start.</div>
           </div>
           <span className={`rounded-full px-2 py-1 text-[9px] font-semibold ${isLight ? 'bg-black/[0.05] text-neutral-600' : 'bg-white/[0.06] text-white/55'}`}>4 choices</span>
         </div>
 
-        <div className="grid grid-cols-2 gap-2 pt-2">
+        <div className="grid grid-cols-1 gap-1.5 pt-2">
           {renderBrushCards(essentialBrushes)}
         </div>
 
@@ -434,7 +433,7 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
             <span>More brushes <span className="opacity-50">({moreBrushes.length})</span></span>
             <ChevronRight className={`h-4 w-4 transition-transform ${showMoreBrushes ? 'rotate-90' : ''}`} />
           </button>
-          {showMoreBrushes && <div className="grid grid-cols-2 gap-2 pt-2">{renderBrushCards(moreBrushes)}</div>}
+          {showMoreBrushes && <div className="grid grid-cols-1 gap-1.5 pt-2">{renderBrushCards(moreBrushes)}</div>}
         </div>
       </div>
 
@@ -444,7 +443,7 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
           <div className={subHeadingClass}>Brush Size & Intensity</div>
           <div className="flex items-center gap-1.5">
             <BrushShapeGlyph brushId={activeBrush.id} profile={activeBrush.profile} materialType={activeBrush.materialType} patternType={activeBrush.patternType} boxSize={18} />
-            <span className="text-[10.5px] font-semibold text-neutral-950 dark:text-white">{activeBrush.name}</span>
+            <span className="text-[10.5px] font-semibold text-neutral-950 dark:text-white">{BRUSH_LABELS[activeBrush.id] || activeBrush.name}</span>
             <span className="text-[9px] font-medium opacity-65 font-mono">
               ({isConformal ? 'Conformal' : 'Non-Conf'}, {isFlat ? 'Flat' : 'Not Flat'})
             </span>
@@ -632,17 +631,17 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
               {(brushSettings.profile === 'ribbon' || brushSettings.profile === 'marker' || brushSettings.brushShape === 'wide_flat') && (
                 <div className="space-y-1 pt-1 border-t border-black/5 dark:border-white/5">
                   <div className="flex justify-between items-center text-[11px]">
-                    <span className="font-medium text-current">Ribbon Width Multiplier</span>
+                    <span className="font-medium text-current">Brush width</span>
                     <span className="font-mono text-[10px] font-bold">
-                      {(brushSettings.brushWidthMultiplier || 3.0).toFixed(1)}x
+                      {(brushSettings.brushWidthMultiplier || 1.5).toFixed(1)}x
                     </span>
                   </div>
                   <input
                     type="range"
                     min="1.0"
-                    max="20.0"
+                    max="6.0"
                     step="0.5"
-                    value={brushSettings.brushWidthMultiplier || 3.0}
+                    value={brushSettings.brushWidthMultiplier || 1.5}
                     onChange={(e) => updateSetting('brushWidthMultiplier', parseFloat(e.target.value))}
                     className={`w-full h-1.5 rounded cursor-pointer ${
                       isLight ? 'accent-neutral-900 bg-neutral-200' : 'accent-white bg-neutral-800'

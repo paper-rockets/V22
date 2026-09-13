@@ -29,14 +29,14 @@ import {
 } from './StudioIcons';
 import { useDismissibleSurface } from '../../hooks/useDismissibleSurface';
 import { MenuShelf } from '../ui/MenuPrimitives';
-import { BrushShapeGlyph } from '../studio/BrushShapeGlyph';
+import { BrushStrokePreview } from '../studio/BrushStrokePreview';
 import {
   readStudioDockPreferences,
   STUDIO_DOCK_EVENT,
   StudioDockPreferences,
 } from '../studio/studioDockPreferences';
 import { StudioEngine } from '../../core/studioEngine';
-import { DrawPanelSection, requestDrawPanelSection } from './drawPanelNavigation';
+import { requestDrawPanelSection } from './drawPanelNavigation';
 import './ProResponsive.css';
 
 export interface ProRailProps {
@@ -72,10 +72,16 @@ const STAPLE_COLORS = ['#2563eb', '#ef4444', '#f59e0b', '#10b981'];
 const DEFAULT_RECENT_COLORS = ['#000000', '#ffffff'];
 const QUICK_BRUSH_IDS = ['streamline_ink', 'conformal_bead', 'spatial_pipe', 'chisel_marker'];
 const QUICK_BRUSH_HELP: Record<string, string> = {
-  streamline_ink: 'Flat paint',
-  conformal_bead: 'Hugs models',
-  spatial_pipe: 'Round line',
-  chisel_marker: 'Wide edge',
+  streamline_ink: 'Everyday painting',
+  conformal_bead: 'Follows objects',
+  spatial_pipe: 'Raised 3D line',
+  chisel_marker: 'Broad stroke',
+};
+const QUICK_BRUSH_LABELS: Record<string, string> = {
+  streamline_ink: 'Flat Brush',
+  conformal_bead: 'Surface Brush',
+  spatial_pipe: 'Round Brush',
+  chisel_marker: 'Wide Marker',
 };
 
 export const ProRail: React.FC<ProRailProps> = ({
@@ -94,6 +100,7 @@ export const ProRail: React.FC<ProRailProps> = ({
   onSelectTargetScope,
 }) => {
   const openSheet = useOpenSheet();
+  const closeColorStudio = () => window.dispatchEvent(new Event('remix3d:close-color-studio'));
   const light = theme === 'light';
   const isLight = light;
   const rootRef = useRef<HTMLElement>(null);
@@ -107,7 +114,6 @@ export const ProRail: React.FC<ProRailProps> = ({
   const [isDesktopExpanded, setIsDesktopExpanded] = useState(true);
   const [dockPreferences, setDockPreferences] = useState<StudioDockPreferences>(readStudioDockPreferences);
   const [dockHidden, setDockHidden] = useState(false);
-  const [activeDrawSection, setActiveDrawSection] = useState<DrawPanelSection | null>(null);
   const [recentColors, setRecentColors] = useState<string[]>(() => {
     try {
       const stored = JSON.parse(localStorage.getItem('remix3d.recentColors') || '[]');
@@ -216,17 +222,6 @@ export const ProRail: React.FC<ProRailProps> = ({
     closeSheet();
   };
 
-  const openDrawSection = (section: DrawPanelSection) => {
-    haptics.trigger('light');
-    setTool?.('brush');
-    setPanel(null);
-    setActiveDrawSection(section);
-    if (openSheet !== 'draw') openSheetId('draw');
-    requestDrawPanelSection(section);
-  };
-
-
-
   return (
     <>
       {/* Tap-outside backdrop for shelf popover */}
@@ -263,6 +258,7 @@ export const ProRail: React.FC<ProRailProps> = ({
                   data-active={isActive ? 'true' : 'false'}
                   onClick={() => {
                     haptics.trigger('light');
+                    closeColorStudio();
                     if (id === 'draw' && setTool) {
                       setTool('brush');
                     } else if (id === 'select' && setTool) {
@@ -303,6 +299,7 @@ export const ProRail: React.FC<ProRailProps> = ({
               data-active={panel === 'placement' ? 'true' : 'false'}
               onClick={() => {
                 haptics.trigger('light');
+                closeColorStudio();
                 closeSheet();
                 setPanel((previous) => (previous === 'placement' ? null : 'placement'));
               }}
@@ -323,6 +320,7 @@ export const ProRail: React.FC<ProRailProps> = ({
               data-active={tool === 'eraser' ? 'true' : 'false'}
               onClick={() => {
                 haptics.trigger('light');
+                closeColorStudio();
                 setTool?.('eraser');
                 closeSheet();
                 setPanel(null);
@@ -335,22 +333,27 @@ export const ProRail: React.FC<ProRailProps> = ({
               <span className="paperrocket-studio-quick-label">Erase</span>
             </button>
 
-            {/* Draw shortcuts open the same contextual panel as the Draw mode. */}
+            {/* Focused shortcuts: each button opens only the control it names. */}
             <button
             ref={colorBtnRef}
             type="button"
             data-pro-rail-button="true"
-            data-active={openSheet === 'draw' && activeDrawSection === 'style' ? 'true' : 'false'}
-            onClick={() => openDrawSection('style')}
+            data-active="false"
+            onClick={() => {
+              haptics.trigger('light');
+              setTool?.('brush');
+              closeSheet();
+              setPanel(null);
+              window.dispatchEvent(new Event('remix3d:color-studio-wheel'));
+              onOpenColorStudio?.();
+            }}
             className="paperrocket-studio-quick paperrocket-studio-quick--color rounded-xl flex items-center justify-center active:scale-95 transition-transform border-0 bg-transparent"
             aria-label="Color"
             title="Color"
           >
             <span
               className={`w-7 h-7 rounded-full border transition-all ${
-                openSheet === 'draw' && activeDrawSection === 'style'
-                  ? isLight ? 'border-neutral-900 ring-2 ring-neutral-900/40 shadow-xs' : 'border-white ring-2 ring-white/40 shadow-xs'
-                  : isLight ? 'border-black/15' : 'border-white/20'
+                isLight ? 'border-black/15' : 'border-white/20'
               }`}
               style={{
                 background: (brushSettings?.previewUrl || brushSettings?.matcapUrl)
@@ -367,10 +370,16 @@ export const ProRail: React.FC<ProRailProps> = ({
             ref={sizeBtnRef}
             type="button"
             data-pro-rail-button="true"
-            data-active={openSheet === 'draw' && activeDrawSection === 'size' ? 'true' : 'false'}
-            onClick={() => openDrawSection('size')}
+            data-active={panel === 'size' ? 'true' : 'false'}
+            onClick={() => {
+              haptics.trigger('light');
+              closeColorStudio();
+              setTool?.('brush');
+              closeSheet();
+              setPanel((previous) => (previous === 'size' ? null : 'size'));
+            }}
             className={`paperrocket-studio-quick paperrocket-studio-quick--size rounded-xl flex items-center justify-center active:scale-95 transition-colors border-0 bg-transparent ${
-              openSheet === 'draw' && activeDrawSection === 'size'
+              panel === 'size'
                 ? isLight
                   ? 'text-neutral-950 font-bold'
                   : 'text-white font-bold'
@@ -379,10 +388,10 @@ export const ProRail: React.FC<ProRailProps> = ({
                 : 'text-neutral-400 hover:text-white'
             }`}
             aria-label="Stroke size"
-            title={`Size: ${activeBrush.name}`}
+            title={`Size: ${QUICK_BRUSH_LABELS[activeBrush.id] || activeBrush.name}`}
           >
             <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
-               openSheet === 'draw' && activeDrawSection === 'size'
+               panel === 'size'
                 ? isLight ? 'border-neutral-900' : 'border-white'
                 : isLight ? 'border-neutral-400' : 'border-white/40'
             }`}>
@@ -401,27 +410,28 @@ export const ProRail: React.FC<ProRailProps> = ({
             <span className="paperrocket-studio-quick-label">Size</span>
             </button>
 
-          {/* Brushes button - Sleek spline wave curve */}
             <button
-            ref={brushBtnRef}
-            type="button"
-            data-pro-rail-button="true"
-            data-active={openSheet === 'draw' && activeDrawSection === 'brushes' ? 'true' : 'false'}
-            onClick={() => openDrawSection('brushes')}
-            className={`paperrocket-studio-quick paperrocket-studio-quick--brush rounded-xl flex items-center justify-center active:scale-95 transition-colors border-0 bg-transparent ${
-              openSheet === 'draw' && activeDrawSection === 'brushes'
-                ? isLight
-                  ? 'text-neutral-950 font-bold'
-                  : 'text-white font-bold'
-                : isLight
-                ? 'text-neutral-500 hover:text-neutral-900'
-                : 'text-neutral-400 hover:text-white'
-            }`}
-            aria-label="Brushes"
-            title={`Brush: ${activeBrush.name}`}
-          >
-            <IcBrushRibbon className="h-5 w-5" strokeWidth={1.7} />
-            <span className="paperrocket-studio-quick-label">Brush</span>
+              ref={brushBtnRef}
+              type="button"
+              data-pro-rail-button="true"
+              data-active={panel === 'brush' ? 'true' : 'false'}
+              onClick={() => {
+                haptics.trigger('light');
+                closeColorStudio();
+                setTool?.('brush');
+                closeSheet();
+                setPanel((previous) => (previous === 'brush' ? null : 'brush'));
+              }}
+              className={`paperrocket-studio-quick paperrocket-studio-quick--brush rounded-xl flex items-center justify-center active:scale-95 transition-colors border-0 bg-transparent ${
+                panel === 'brush'
+                  ? isLight ? 'text-neutral-950 font-bold' : 'text-white font-bold'
+                  : isLight ? 'text-neutral-500 hover:text-neutral-900' : 'text-neutral-400 hover:text-white'
+              }`}
+              aria-label="Brush"
+              title={`Brush: ${QUICK_BRUSH_LABELS[activeBrush.id] || activeBrush.name}`}
+            >
+              <IcBrushRibbon className="h-5 w-5" strokeWidth={1.7} />
+              <span className="paperrocket-studio-quick-label">Brush</span>
             </button>
 
           </div>
@@ -663,11 +673,11 @@ export const ProRail: React.FC<ProRailProps> = ({
             {panel === 'brush' && (
                 <div className="paperrocket-brush-browser flex flex-col gap-2 w-full">
                 <div>
-                  <h3 className={`text-sm font-semibold tracking-tight ${isLight ? 'text-neutral-900' : 'text-white/95'}`}>Essential brushes</h3>
-                  <p className={`mt-0.5 text-[10px] ${isLight ? 'text-neutral-500' : 'text-white/45'}`}>Four clear shapes for quick drawing.</p>
+                  <h3 className={`text-sm font-semibold tracking-tight ${isLight ? 'text-neutral-900' : 'text-white/95'}`}>Choose a brush</h3>
+                  <p className={`mt-0.5 text-[10px] ${isLight ? 'text-neutral-500' : 'text-white/45'}`}>Flat Brush is the easiest place to start.</p>
                 </div>
 
-                <div className="paperrocket-brush-grid grid grid-cols-2 gap-2">
+                <div className="paperrocket-brush-grid grid grid-cols-1 gap-1.5">
                   {displayedBrushes.map((preset) => {
                     const isSelected = activeBrush.id === preset.id;
                     return (
@@ -679,12 +689,10 @@ export const ProRail: React.FC<ProRailProps> = ({
                           if (setBrushSettings) {
                             setBrushSettings((prev) => applyCuratedBrush(preset, prev));
                           }
-                          if (setTool && tool !== 'brush' && tool !== 'draw') {
-                            setTool('draw');
-                          }
+                          setTool?.('brush');
                           setPanel(null);
                         }}
-                        className={`paperrocket-brush-card relative min-h-[64px] rounded-xl p-2 flex items-center gap-2 text-left transition-all active:scale-[0.98] border ${
+                        className={`paperrocket-brush-card relative min-h-[58px] rounded-xl p-2 grid grid-cols-[minmax(100px,1.25fr)_minmax(90px,.75fr)] items-center gap-3 text-left transition-all active:scale-[0.98] border ${
                           isSelected
                             ? isLight
                               ? 'border-neutral-900 bg-black/[0.08] shadow-xs ring-1 ring-neutral-900/60'
@@ -693,12 +701,12 @@ export const ProRail: React.FC<ProRailProps> = ({
                             ? 'border-black/10 bg-black/[0.03] hover:border-black/20 hover:bg-black/[0.06]'
                             : 'border-white/[0.06] bg-[#18191e] hover:border-white/20 hover:bg-[#1f2127]'
                         }`}
-                        title={preset.description}
+                        title={QUICK_BRUSH_HELP[preset.id]}
                       >
-                        <div className={`paperrocket-brush-glyph h-11 w-11 shrink-0 rounded-lg grid place-items-center ${
+                        <div className={`paperrocket-brush-glyph min-w-0 rounded-lg px-2 py-1 grid place-items-center ${
                           isLight ? 'bg-white/70' : 'bg-white/[0.07]'
                         }`}>
-                          <BrushShapeGlyph brushId={preset.id} profile={preset.profile} materialType={preset.materialType} patternType={preset.patternType} boxSize={32} />
+                          <BrushStrokePreview brushId={preset.id} />
                         </div>
                         <span className="min-w-0 flex-1">
                           <span
@@ -708,7 +716,7 @@ export const ProRail: React.FC<ProRailProps> = ({
                               : isLight ? 'text-neutral-700' : 'text-white/70'
                           }`}
                           >
-                            {preset.name}
+                            {QUICK_BRUSH_LABELS[preset.id] || preset.name}
                           </span>
                           <span className={`mt-1 block text-[9px] leading-none ${isLight ? 'text-neutral-500' : 'text-white/40'}`}>
                             {QUICK_BRUSH_HELP[preset.id]}
@@ -727,11 +735,13 @@ export const ProRail: React.FC<ProRailProps> = ({
                   type="button"
                   onClick={() => {
                     setPanel(null);
+                    closeColorStudio();
+                    requestDrawPanelSection('brushes');
                     openSheetId('draw');
                   }}
                   className={`min-h-[40px] rounded-xl border px-3 text-[11px] font-semibold ${isLight ? 'border-black/10 bg-white text-neutral-800' : 'border-white/10 bg-white/[0.05] text-white/80'}`}
                 >
-                  More brushes and settings
+                  Browse all brushes
                 </button>
               </div>
             )}

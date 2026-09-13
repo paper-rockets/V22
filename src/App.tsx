@@ -107,7 +107,7 @@ const DEFAULT_BRUSH_SETTINGS: BrushSettings = {
   chiselAngle: 45,
   aspectRatio: 3.5,
   brushShape: 'wide_flat',
-  brushWidthMultiplier: 6,
+  brushWidthMultiplier: 1.5,
   straightLineMode: false,
   magneticEndpointSnapping: true,
   adaptableCorners: true,
@@ -120,6 +120,32 @@ const DEFAULT_BRUSH_SETTINGS: BrushSettings = {
   shapeRecognition: false,
   angleSnapping: true,
   steadyStrokeLevel: 0,
+};
+
+const MATERIAL_LABELS: Partial<Record<BrushSettings['materialType'], string>> = {
+  shadeless: 'Flat Paint',
+  shaded: 'Lit',
+  glow: 'Glow',
+  cutout: 'Cutout',
+  animated_fx: 'FX',
+  matcap: 'Material',
+};
+
+/** Keep repeated menu controls as views of one canonical brush state. */
+const synchronizeBrushSettings = (previous: BrushSettings, next: BrushSettings): BrushSettings => {
+  if (next === previous) return previous;
+  const synchronized = { ...next };
+  const colorChanged = next.color !== previous.color;
+  const solidColorChanged = next.solidColor !== previous.solidColor;
+
+  if (colorChanged && !solidColorChanged) synchronized.solidColor = next.color;
+  if (solidColorChanged && !colorChanged && next.solidColor) synchronized.color = next.solidColor;
+
+  if (next.materialType !== previous.materialType && next.activeLookName === previous.activeLookName) {
+    synchronized.activeLookName = MATERIAL_LABELS[next.materialType] || next.activeLookName;
+  }
+
+  return synchronized;
 };
 
 const DEFAULT_POST_SETTINGS: PostProcessSettings = {
@@ -196,7 +222,15 @@ export function App() {
   });
   const [isModelImporterOpen, setIsModelImporterOpen] = useState<boolean>(false);
   const [tool, setTool] = useState<ToolType>('brush');
-  const [brushSettings, setBrushSettings] = useState<BrushSettings>(DEFAULT_BRUSH_SETTINGS);
+  const [brushSettings, setBrushSettingsState] = useState<BrushSettings>(DEFAULT_BRUSH_SETTINGS);
+  const setBrushSettings = useCallback<React.Dispatch<React.SetStateAction<BrushSettings>>>((action) => {
+    setBrushSettingsState((previous) => {
+      const next = typeof action === 'function'
+        ? (action as (value: BrushSettings) => BrushSettings)(previous)
+        : action;
+      return synchronizeBrushSettings(previous, next);
+    });
+  }, []);
   const [postSettings, setPostSettings] = useState<PostProcessSettings>(DEFAULT_POST_SETTINGS);
   const [pathTracingProgress, setPathTracingProgress] = useState<PathTracingProgressInfo | null>(null);
 
@@ -1184,7 +1218,21 @@ export function App() {
         showWireframe={showWireframe}
         showGrid={showGrid}
         onEngineReady={handleEngineReady}
-        onColorPick={(hex) => setBrushSettings((prev) => ({ ...prev, color: hex }))}
+        onColorPick={(hex) => {
+          setBrushSettings((prev) => ({
+            ...prev,
+            color: hex,
+            solidColor: hex,
+            materialType: 'shadeless',
+            shaderEffect: undefined,
+            customShader: undefined,
+            matcapUrl: undefined,
+            previewUrl: undefined,
+            matcapTexture: undefined,
+            activeLookName: 'Flat Paint',
+          }));
+          setTool('brush');
+        }}
         onUndo={handleUndo}
         onRedo={handleRedo}
         canUndo={canUndo}

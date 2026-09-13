@@ -54,7 +54,8 @@
 
 .paperrocket-studio-mode-label { display: none; }
 
-/* Five equally weighted drawing controls stay centered at the bottom. */
+/* Five focused drawing controls stay centered at the bottom. Each shortcut
+   opens only the control it names; the Draw panel remains the full workspace. */
 .paperrocket-studio-quick-group {
   position: fixed;
   left: 50%;
@@ -203,7 +204,10 @@
 
 .paperrocket-studio-shelf--compact { width: min(calc(100% - 16px), 220px) !important; }
 .paperrocket-studio-shelf--straight { width: min(calc(100% - 16px), 264px) !important; }
-.paperrocket-studio-shelf--brush { width: min(calc(100% - 16px), 360px) !important; }
+.paperrocket-studio-shelf--brush {
+  width: min(88vw, 336px) !important;
+  max-width: 336px !important;
+}
 
 .paperrocket-context-panel {
   left: 8px;
@@ -216,7 +220,7 @@
   animation-name: enter;
 }
 
-@media (min-width: 700px) {
+  @media (min-width: 700px) {
   .paperrocket-studio-quick-group {
     grid-template-columns: repeat(5, minmax(72px, 1fr));
     width: min(calc(100% - 24px), 430px);
@@ -245,7 +249,9 @@
   .paperrocket-context-panel {
     left: 72px;
     right: auto;
-    bottom: 84px;
+    top: 50%;
+    bottom: auto;
+    transform: translateY(-50%);
     width: min(344px, calc(100vw - 96px));
     max-height: min(64dvh, 680px);
     border-radius: 18px;

@@ -49,6 +49,7 @@ type HarmonyMode = 'complementary' | 'analogous';
 
 const WHEEL_SIZE = 176;
 const RING_WIDTH = 18;
+const LAST_USED_COLORS_STORAGE_KEY = 'remix3d.colorStudioLastUsed';
 const CURATED_PALETTES = {
   'Drafting Neon': ['#38bdf8', '#818cf8', '#c084fc', '#f472b6', '#fb7185', '#34d399', '#facc15'],
   'Clay & Terracotta': ['#b45309', '#d97706', '#f59e0b', '#78350f', '#92400e', '#ea580c', '#c2410c'],
@@ -162,6 +163,31 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
   const [shaderMetalness, setShaderMetalness] = useState<number>(0.1);
   const [shaderRimPower, setShaderRimPower] = useState<number>(0.8);
   const lastSolidColorRef = useRef(normalizeHexColor(currentColor, '#38bdf8'));
+  const [recentColors, setRecentColors] = useState<string[]>(() => {
+    const active = normalizeHexColor(currentColor, '#38bdf8').toLowerCase();
+    try {
+      const stored = JSON.parse(localStorage.getItem(LAST_USED_COLORS_STORAGE_KEY) || '[]');
+      if (Array.isArray(stored)) {
+        const valid = stored
+          .filter((color): color is string => typeof color === 'string' && /^#[0-9a-fA-F]{6}$/.test(color))
+          .map((color) => color.toLowerCase());
+        return Array.from(new Set([active, ...valid])).slice(0, 6);
+      }
+    } catch {}
+    return [active];
+  });
+
+  const rememberColor = useCallback((hex: string) => {
+    if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
+    const normalized = hex.toLowerCase();
+    setRecentColors((previous) => {
+      const next = [normalized, ...previous.filter((color) => color.toLowerCase() !== normalized)].slice(0, 6);
+      try {
+        localStorage.setItem(LAST_USED_COLORS_STORAGE_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
 
   const handleUniformChange = (type: 'roughness' | 'metalness' | 'rim', value: number) => {
     if (type === 'roughness') {
@@ -192,14 +218,29 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
     setHsv(rgbToHsv(rgb.r, rgb.g, rgb.b));
     const rawOklch = hexToOklch(validHex);
     setOklch({ L: rawOklch.L, C: rawOklch.C, h: Math.round((rawOklch.h * 180) / Math.PI) });
-  }, [currentColor]);
+    const historyTimer = window.setTimeout(() => rememberColor(validHex), 300);
+    return () => window.clearTimeout(historyTimer);
+  }, [currentColor, rememberColor]);
 
   useEffect(() => {
     if (!isOpen) return;
+    setActiveTab('wheel');
     const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isOpen, onClose]);
+
+  useEffect(() => {
+    const showColorPicker = () => setActiveTab('wheel');
+    window.addEventListener('remix3d:color-studio-wheel', showColorPicker);
+    return () => window.removeEventListener('remix3d:color-studio-wheel', showColorPicker);
+  }, []);
+
+  useEffect(() => {
+    const closeColorStudio = () => onClose();
+    window.addEventListener('remix3d:close-color-studio', closeColorStudio);
+    return () => window.removeEventListener('remix3d:close-color-studio', closeColorStudio);
+  }, [onClose]);
 
   const applyColor = useCallback((hex: string) => {
     lastSolidColorRef.current = hex;
@@ -341,11 +382,6 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
     9,
   ), [currentColor, secondaryColor]);
   const posterizedColor = useMemo(() => posterizeOKLCH(currentColor, posterizeSteps), [currentColor, posterizeSteps]);
-  const recentColors = useMemo(() => Array.from(new Set([
-    normalizeHexColor(currentColor, '#38bdf8'),
-    ...CURATED_PALETTES['Drafting Neon'],
-  ])).slice(0, 6), [currentColor]);
-
   const applyPreset = (preset: any) => {
     if (!preset) return;
     setSelectedPresetId(preset.id);
@@ -516,6 +552,27 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
       {input}
     </label>
   );
+  const baseColorControl = (description: string) => (
+    <div className={`rounded-xl border p-2.5 ${isLight ? 'border-black/10 bg-black/[0.025]' : 'border-white/10 bg-white/[0.035]'}`}>
+      <button
+        type="button"
+        onClick={() => setActiveTab('wheel')}
+        className={`flex min-h-12 w-full items-center gap-2.5 rounded-lg px-1.5 text-left ${ghostButton}`}
+        aria-label="Edit base color"
+      >
+        <span
+          className={`h-10 w-10 shrink-0 rounded-lg border ${isLight ? 'border-black/15' : 'border-white/20'}`}
+          style={{ backgroundColor: currentColor }}
+        />
+        <span className="min-w-0 flex-1">
+          <span className="block text-[11px] font-semibold">Base color</span>
+          <span className="block font-mono text-[10px] font-bold opacity-65">{currentColor.toUpperCase()}</span>
+        </span>
+        <span className="text-[11px] font-semibold">Edit color</span>
+      </button>
+      <p className={`mt-1 px-1.5 text-[10px] leading-4 ${quietText}`}>{description}</p>
+    </div>
+  );
 
   return createPortal(
     <div
@@ -532,7 +589,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
         data-theme={theme}
         aria-label="Color studio"
         onClick={(event) => event.stopPropagation()}
-        className={`paperrocket-color-studio pointer-events-auto relative flex w-[calc(100vw-24px)] max-w-[332px] flex-col overflow-hidden rounded-[16px] border select-none ${shell}`}
+        className={`paperrocket-color-studio pointer-events-auto relative flex w-[calc(100vw-24px)] max-w-[344px] flex-col overflow-hidden rounded-[18px] border select-none ${shell}`}
         style={{ maxHeight: 'min(68dvh, 620px)' }}
       >
         <header className={`flex min-h-14 items-center justify-between border-b px-3 ${divider}`}>
@@ -582,7 +639,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
               {slider('Saturation', `${Math.round(hsv.s * 100)}%`, <input type="range" min="0" max="100" value={Math.round(hsv.s * 100)} onChange={(event) => applyHsv({ ...hsv, s: Number(event.target.value) / 100 })} className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`} />)}
               {slider('Lightness', `${Math.round(hsv.v * 100)}%`, <input type="range" min="0" max="100" value={Math.round(hsv.v * 100)} onChange={(event) => applyHsv({ ...hsv, v: Number(event.target.value) / 100 })} className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`} />)}
               <div>
-                <div className={`mb-1.5 text-[10px] font-bold uppercase tracking-[.14em] ${isLight ? 'text-neutral-600' : 'text-neutral-400'}`}>Recent</div>
+                <div className={`mb-1.5 text-[10px] font-bold uppercase tracking-[.14em] ${isLight ? 'text-neutral-600' : 'text-neutral-400'}`}>Last used</div>
                 <div className="grid grid-cols-6 gap-1.5">{recentColors.map((color) => <button key={color} type="button" onClick={() => applyColor(color)} aria-label={`Use ${color}`} className={`aspect-square min-h-0 w-full rounded-lg border ${color.toLowerCase() === currentColor.toLowerCase() ? 'border-neutral-900 ring-2 ring-neutral-900/35 dark:border-white dark:ring-white/35' : isLight ? 'border-black/15' : 'border-white/15'}`} style={{ backgroundColor: color }} />)}</div>
               </div>
               <button type="button" onClick={() => setShowPalettes((shown) => !shown)} className={`flex h-10 w-full items-center justify-between border-t text-xs font-semibold ${divider} ${ghostButton}`}><span className="flex items-center gap-2"><Layers className="h-4 w-4" /> Palettes</span><ChevronDown className={`h-4 w-4 ${showPalettes ? 'rotate-180' : ''}`} /></button>
@@ -594,6 +651,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
           </div>}
 
           {activeTab === 'oklch' && <div className="space-y-5 py-1">
+            {baseColorControl('Adjust perceptual lightness, color intensity, and hue below.')}
             {slider('Lightness', `${(oklch.L * 100).toFixed(1)}%`, <input type="range" min="0" max="100" step="0.5" value={oklch.L * 100} onChange={(event) => handleOklchChange('L', Number(event.target.value) / 100)} className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`} />)}
             {slider('Chroma', oklch.C.toFixed(3), <input type="range" min="0" max="0.38" step="0.005" value={oklch.C} onChange={(event) => handleOklchChange('C', Number(event.target.value))} className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`} />)}
             {slider('Hue', `${Math.round(oklch.h)}°`, <input type="range" min="0" max="359" value={oklch.h} onChange={(event) => handleOklchChange('h', Number(event.target.value))} className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`} />)}
@@ -605,7 +663,9 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
           </div>}
 
           {activeTab === 'harmonies' && <div className="space-y-4 py-1">
+            {baseColorControl('Harmony suggestions are generated from this color.')}
             <div className={`grid grid-cols-2 border-b ${divider}`}>{([['complementary', 'Complementary'], ['analogous', 'Analogous']] as Array<[HarmonyMode, string]>).map(([mode, label]) => <button key={mode} type="button" onClick={() => setHarmonyMode(mode)} className={`h-11 border-b-2 text-[11px] font-semibold ${harmonyMode === mode ? (isLight ? 'border-neutral-900 text-neutral-950 font-bold' : 'border-white text-white font-bold') : `border-transparent ${ghostButton}`}`}>{label}</button>)}</div>
+            <div className={`text-[10px] font-semibold ${quietText}`}>Choose a swatch to use it as the paint color.</div>
             <div className="grid min-h-20 gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(harmonyColors.length, 7)}, minmax(0, 1fr))` }}>{harmonyColors.slice(0, 7).map((color, index) => <button key={`${color}-${index}`} type="button" onClick={() => applyColor(color)} className={`min-h-20 rounded-xl border ${color.toLowerCase() === currentColor.toLowerCase() ? 'border-neutral-900 ring-2 ring-neutral-900/35 dark:border-white dark:ring-white/35' : isLight ? 'border-black/15' : 'border-white/15'}`} style={{ backgroundColor: color }} aria-label={`Use ${color}`} />)}</div>
             <select value={harmonyMode} onChange={(event) => setHarmonyMode(event.target.value as HarmonyMode)} className={`h-11 w-full rounded-xl border px-3 text-xs outline-none ${field}`} aria-label="Harmony mode"><option value="complementary">Complementary (Graphic Contrast)</option><option value="analogous">Analogous (Harmonious Palette)</option></select>
           </div>}

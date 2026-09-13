@@ -205,7 +205,10 @@ export const ProPanel: React.FC<ProPanelProps> = ({
             engine={engine}
             brushSettings={brushSettings}
             setBrushSettings={setBrushSettings}
-            onOpenColorStudio={onOpenColorStudio}
+            onOpenColorStudio={() => {
+              closeSheet();
+              onOpenColorStudio?.();
+            }}
             theme={theme}
           />
         )}

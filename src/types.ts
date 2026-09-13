@@ -290,7 +290,7 @@ export interface BrushSettings {
   chiselAngle: number; // 0 to 180 degrees
   aspectRatio: number; // width to thickness ratio (e.g. 3.5)
   brushShape?: 'round' | 'wide_flat' | 'chisel' | 'square' | 'line';
-  brushWidthMultiplier?: number; // 1.0 to 25.0 for wide architectural lines & thick ribbon strokes
+  brushWidthMultiplier?: number; // 1.0 to 6.0; included in the effective 1-100 brush size
   brushAngle?: number; // 0 to 180 degrees stamp rotation
   straightLineMode?: boolean; // locks stroke to straight line from start to current point
   magneticEndpointSnapping?: boolean; // magnetically connects start and end to nearby existing stroke endpoints/corners
