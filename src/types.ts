@@ -232,6 +232,7 @@ export interface StrokePoint {
   hitMeshId?: string;          // Identifier of intersected mesh
   isSurfaceHit: boolean;       // True if snapped to mesh, false if drawn in air
   time: number;                // Timestamp (performance.now())
+  rayDistance?: number;        // Distance along ray from camera to surface hit point
 }
 
 export interface BrushSettings {

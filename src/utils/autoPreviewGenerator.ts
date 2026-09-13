@@ -4,6 +4,13 @@ import { Saved3DModel } from '../types';
 import { modelLoader } from '../core/modelLoader';
 import { ModelConverterEngine } from '../core/modelConverter';
 
+export interface PreloadedModelData {
+  scene?: THREE.Object3D | null;
+  triangleCount?: number;
+  vertexCount?: number;
+  dimensions?: { x: number; y: number; z: number };
+}
+
 export class AutoPreviewGenerator {
   /**
    * Render a clean, studio-lit 2D thumbnail preview of any THREE.Object3D
@@ -22,37 +29,50 @@ export class AutoPreviewGenerator {
   }
 
   /**
-   * Auto-generate preview image and save an uploaded 3D file into ModelStorage
+   * Auto-generate preview image and save an uploaded 3D file into ModelStorage.
+   * If preloaded scene data is passed, re-parsing the file is skipped to save memory.
    */
   public static async autoPreviewAndSaveFile(
     file: File,
-    engineSnapshot?: string | null
+    engineSnapshot?: string | null,
+    preloaded?: PreloadedModelData
   ): Promise<Saved3DModel> {
     const arrayBuffer = await file.arrayBuffer();
     const cleanName = file.name.replace(/\.[^/.]+$/, '').trim() || 'Custom Model';
     const ext = (file.name.split('.').pop() || 'glb').toLowerCase();
 
     let thumbnail = engineSnapshot || '';
-    let triangleCount = 0;
-    let vertexCount = 0;
-    let dimensions = { x: 1, y: 1, z: 1 };
+    let triangleCount = preloaded?.triangleCount || 0;
+    let vertexCount = preloaded?.vertexCount || 0;
+    let dimensions = preloaded?.dimensions || { x: 1, y: 1, z: 1 };
 
-    try {
-      // Try parsing with modelLoader to inspect geometry and generate an offscreen thumbnail if no snapshot
-      const loadRes = await modelLoader.loadFromFiles([file]);
-      if (loadRes?.scene) {
-        if (!thumbnail) {
-          thumbnail = await ModelConverterEngine.generateThumbnail(loadRes.scene, 256, 256);
-        }
-        if (loadRes.metadata) {
-          triangleCount = loadRes.metadata.triangles || 0;
-          vertexCount = loadRes.metadata.vertices || 0;
-          dimensions = loadRes.metadata.dimensions || { x: 1, y: 1, z: 1 };
+    // If preloaded scene is available, reuse it without parsing the file a second time
+    if (preloaded?.scene) {
+      if (!thumbnail) {
+        try {
+          thumbnail = await ModelConverterEngine.generateThumbnail(preloaded.scene, 256, 256);
+        } catch (e) {
+          console.warn('Thumbnail generation from preloaded scene failed:', e);
         }
       }
-      loadRes.cleanedBlobUrls?.();
-    } catch (e) {
-      console.warn('Offscreen inspection failed, falling back to snapshot:', e);
+    } else if (!thumbnail || triangleCount === 0) {
+      try {
+        // Fallback: only parse if no preloaded scene was provided
+        const loadRes = await modelLoader.loadFromFiles([file]);
+        if (loadRes?.scene) {
+          if (!thumbnail) {
+            thumbnail = await ModelConverterEngine.generateThumbnail(loadRes.scene, 256, 256);
+          }
+          if (loadRes.metadata) {
+            triangleCount = loadRes.metadata.triangles || 0;
+            vertexCount = loadRes.metadata.vertices || 0;
+            dimensions = loadRes.metadata.dimensions || { x: 1, y: 1, z: 1 };
+          }
+        }
+        loadRes.cleanedBlobUrls?.();
+      } catch (e) {
+        console.warn('Offscreen inspection failed, falling back to snapshot:', e);
+      }
     }
 
     if (!thumbnail && engineSnapshot) {

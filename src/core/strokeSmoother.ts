@@ -110,7 +110,11 @@ export class StrokeSmoother {
         if (!this.hasLastSmoothed) break;
         const dist = Math.hypot(rawX - this.lastSmoothed.x, rawY - this.lastSmoothed.y);
         const userStrength = THREE.MathUtils.clamp(strength, 0, 1);
-        const dt = THREE.MathUtils.clamp(timestamp - this.lastTimestamp || 16, 4, 32);
+        const dt = THREE.MathUtils.clamp(
+          timestamp === this.lastTimestamp ? 4 : (timestamp - this.lastTimestamp || 16),
+          4,
+          32
+        );
         const speed = dist / dt;
         const slowLead = THREE.MathUtils.lerp(0.92, 0.24, Math.pow(userStrength, 0.85));
         const speedBoost = THREE.MathUtils.clamp(speed / 0.0025, 0, 1);
