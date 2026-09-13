@@ -213,10 +213,10 @@ export const ProRail: React.FC<ProRailProps> = ({
   const selectPlacement = (nextPlacement: 'surface' | 'space' | 'guide') => {
     haptics.trigger('light');
     setTool?.('brush');
-    setPanel(null);
 
     if (nextPlacement === 'guide') {
       if (!activeGuide) {
+        setPanel(null);
         openSheetId('create');
         return;
       }
@@ -540,8 +540,8 @@ export const ProRail: React.FC<ProRailProps> = ({
                 ? 'w-[154px]'
               : panel === 'opacity'
                 ? 'w-[170px]'
-                : panel === 'placement'
-                ? 'w-[264px]'
+              : panel === 'placement'
+                ? 'w-[288px]'
                 : panel === 'straight'
                 ? 'w-[264px]'
                 : 'w-[320px] max-w-[calc(100vw-88px)]'
@@ -549,38 +549,140 @@ export const ProRail: React.FC<ProRailProps> = ({
           >
 
               {panel === 'placement' && (
-                <div className="paperrocket-placement-choices" role="group" aria-label="Choose where to draw">
-                  {([
-                    ['surface', 'Surface', Layers2],
-                    ['space', 'Space', Orbit],
-                    ['guide', 'Guide', Spline],
-                  ] as const).map(([option, label, Icon]) => (
-                    <button
-                      key={option}
-                      type="button"
-                      onClick={() => selectPlacement(option)}
-                      className="paperrocket-placement-choice"
-                      data-active={placement === option ? 'true' : 'false'}
-                      aria-pressed={placement === option}
-                      aria-label={
-                        option === 'surface'
-                          ? 'Draw on a surface'
-                          : option === 'space'
-                            ? 'Draw in open space'
-                            : activeGuide
-                              ? `Draw on ${activeGuide.name}`
-                              : 'Choose a drawing guide'
-                      }
-                      title={option === 'guide' && !activeGuide ? 'Choose a guide from Add' : undefined}
-                    >
-                      <Icon className="h-5 w-5" strokeWidth={1.7} />
-                      <span>{label}</span>
-                    </button>
-                  ))}
+                <div className="w-full flex flex-col gap-2 py-0.5" role="group" aria-label="Choose where to draw">
+                  <div className="flex items-center justify-between px-1 pb-1 border-b border-black/10 dark:border-white/10">
+                    <span className={`text-xs font-bold tracking-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                      Where to Draw
+                    </span>
+                    <span className="text-[10px] font-semibold opacity-60 uppercase tracking-wider">
+                      {placement === 'surface' ? '3D Surface' : placement === 'space' ? 'Open Air' : 'Guide Rail'}
+                    </span>
+                  </div>
 
+                  <div className="flex flex-col gap-1 pt-0.5">
+                    {/* 1. Surface */}
+                    <button
+                      type="button"
+                      onClick={() => selectPlacement('surface')}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left transition-all border ${
+                        placement === 'surface'
+                          ? isLight
+                            ? 'bg-neutral-900 text-white border-neutral-900 shadow-xs'
+                            : 'bg-white text-neutral-950 border-white font-bold shadow-xs'
+                          : isLight
+                          ? 'border-black/10 hover:bg-black/5 text-neutral-800'
+                          : 'border-white/10 hover:bg-white/5 text-neutral-200'
+                      }`}
+                      aria-pressed={placement === 'surface'}
+                    >
+                      <div className={`p-1.5 rounded-lg shrink-0 ${
+                        placement === 'surface'
+                          ? isLight ? 'bg-white/15 text-white' : 'bg-black/10 text-neutral-950'
+                          : isLight ? 'bg-black/5 text-neutral-700' : 'bg-white/10 text-white'
+                      }`}>
+                        <Layers2 className="h-4 w-4" strokeWidth={2} />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-bold leading-tight">3D Surface</span>
+                        <span className={`text-[10px] leading-tight mt-0.5 ${
+                          placement === 'surface'
+                            ? isLight ? 'text-neutral-300' : 'text-neutral-700 font-medium'
+                            : 'opacity-60'
+                        }`}>
+                          Paint directly on models & canvas sheet
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* 2. Space / Air */}
+                    <button
+                      type="button"
+                      onClick={() => selectPlacement('space')}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left transition-all border ${
+                        placement === 'space'
+                          ? isLight
+                            ? 'bg-neutral-900 text-white border-neutral-900 shadow-xs'
+                            : 'bg-white text-neutral-950 border-white font-bold shadow-xs'
+                          : isLight
+                          ? 'border-black/10 hover:bg-black/5 text-neutral-800'
+                          : 'border-white/10 hover:bg-white/5 text-neutral-200'
+                      }`}
+                      aria-pressed={placement === 'space'}
+                    >
+                      <div className={`p-1.5 rounded-lg shrink-0 ${
+                        placement === 'space'
+                          ? isLight ? 'bg-white/15 text-white' : 'bg-black/10 text-neutral-950'
+                          : isLight ? 'bg-black/5 text-neutral-700' : 'bg-white/10 text-white'
+                      }`}>
+                        <Orbit className="h-4 w-4" strokeWidth={2} />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-bold leading-tight">Open Air</span>
+                        <span className={`text-[10px] leading-tight mt-0.5 ${
+                          placement === 'space'
+                            ? isLight ? 'text-neutral-300' : 'text-neutral-700 font-medium'
+                            : 'opacity-60'
+                        }`}>
+                          Draw floating 3D strokes in mid-air
+                        </span>
+                      </div>
+                    </button>
+
+                    {/* 3. Guide */}
+                    <button
+                      type="button"
+                      onClick={() => selectPlacement('guide')}
+                      className={`w-full flex items-center gap-2.5 px-2.5 py-2 rounded-xl text-left transition-all border ${
+                        placement === 'guide'
+                          ? isLight
+                            ? 'bg-neutral-900 text-white border-neutral-900 shadow-xs'
+                            : 'bg-white text-neutral-950 border-white font-bold shadow-xs'
+                          : isLight
+                          ? 'border-black/10 hover:bg-black/5 text-neutral-800'
+                          : 'border-white/10 hover:bg-white/5 text-neutral-200'
+                      }`}
+                      aria-pressed={placement === 'guide'}
+                      title={!activeGuide ? 'Tap to choose or create a 3D guide' : undefined}
+                    >
+                      <div className={`p-1.5 rounded-lg shrink-0 ${
+                        placement === 'guide'
+                          ? isLight ? 'bg-white/15 text-white' : 'bg-black/10 text-neutral-950'
+                          : isLight ? 'bg-black/5 text-neutral-700' : 'bg-white/10 text-white'
+                      }`}>
+                        <Spline className="h-4 w-4" strokeWidth={2} />
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-bold leading-tight">Guide Rail</span>
+                        <span className={`text-[10px] leading-tight mt-0.5 ${
+                          placement === 'guide'
+                            ? isLight ? 'text-neutral-300' : 'text-neutral-700 font-medium'
+                            : 'opacity-60'
+                        }`}>
+                          {activeGuide ? `Locked to ${activeGuide.name}` : 'Snap stroke to curved 3D guide wire'}
+                        </span>
+                      </div>
+                    </button>
+                  </div>
+
+                  {/* Surface + Air Seamless Option */}
                   <div className="pt-2 mt-1 border-t border-black/10 dark:border-white/10 w-full">
-                    <label className="flex items-center justify-between gap-2 px-1.5 py-1 cursor-pointer select-none text-[11px] font-medium rounded-lg hover:bg-black/5 dark:hover:bg-white/5">
-                      <span className="text-[10px] leading-tight">Stick & draw in air</span>
+                    <label className={`flex items-start justify-between gap-2.5 p-2 rounded-xl cursor-pointer select-none border transition-all ${
+                      currentBrushSettings.stickAndAirDraw
+                        ? isLight
+                          ? 'bg-black/[0.04] border-black/20'
+                          : 'bg-white/[0.08] border-white/25'
+                        : isLight
+                        ? 'border-transparent hover:bg-black/5'
+                        : 'border-transparent hover:bg-white/5'
+                    }`}>
+                      <div className="flex flex-col min-w-0 pr-1">
+                        <span className={`text-xs font-bold leading-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                          Surface + Air in One Stroke
+                        </span>
+                        <span className="text-[10px] opacity-70 leading-tight mt-0.5">
+                          Start on model, seamlessly flow out into mid-air
+                        </span>
+                      </div>
                       <input
                         type="checkbox"
                         checked={currentBrushSettings.stickAndAirDraw || false}
@@ -591,7 +693,7 @@ export const ProRail: React.FC<ProRailProps> = ({
                             stickAndAirDraw: e.target.checked,
                           }));
                         }}
-                        className="w-3.5 h-3.5 rounded accent-neutral-900 dark:accent-white cursor-pointer shrink-0"
+                        className="w-4 h-4 rounded accent-neutral-900 dark:accent-white cursor-pointer shrink-0 mt-0.5"
                       />
                     </label>
                   </div>
