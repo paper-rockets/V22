@@ -305,8 +305,16 @@ export class ModelLoaderService {
 
     const manager = new THREE.LoadingManager();
     manager.setURLModifier((url) => {
-      const cleanUrl = url.replace(/^.*[\\/]/, '');
-      const match = fileMap.get(cleanUrl.toLowerCase()) || fileMap.get(cleanUrl) || fileMap.get(url);
+      let decoded = url;
+      try {
+        decoded = decodeURIComponent(url);
+      } catch {}
+      const cleanUrl = decoded.replace(/^.*[\\/]/, '');
+      const match =
+        fileMap.get(cleanUrl.toLowerCase()) ||
+        fileMap.get(cleanUrl) ||
+        fileMap.get(decoded.toLowerCase()) ||
+        fileMap.get(url);
       return match ? match.blobUrl : url;
     });
 
@@ -707,11 +715,44 @@ export class ModelLoaderService {
           // bandwidth tax an entry-tier mobile GPU cannot absorb, so the profile
           // caps it (1x = plain trilinear on low-power devices).
           const maxAniso = getQualityProfile().maxAnisotropy;
+          const maxTexSize = getQualityProfile().maxTextureSize || 2048;
           for (const key of ['map', 'emissiveMap', 'normalMap', 'roughnessMap', 'metalnessMap', 'aoMap']) {
             const tex = (mat as any)[key] as THREE.Texture | undefined;
-            if (tex && typeof tex.anisotropy === 'number' && tex.anisotropy > maxAniso) {
-              tex.anisotropy = maxAniso;
-              tex.needsUpdate = true;
+            if (tex) {
+              if (typeof tex.anisotropy === 'number' && tex.anisotropy > maxAniso) {
+                tex.anisotropy = maxAniso;
+                tex.needsUpdate = true;
+              }
+              // Downscale 4K/8K textures to device budget to prevent WebGL context loss
+              if (tex.image && typeof document !== 'undefined') {
+                const img = tex.image as any;
+                const w = (img && typeof img.width === 'number') ? img.width : 0;
+                const h = (img && typeof img.height === 'number') ? img.height : 0;
+                if ((w > maxTexSize || h > maxTexSize) && (img instanceof Image || img instanceof HTMLImageElement || img instanceof HTMLCanvasElement || img instanceof ImageBitmap)) {
+                  try {
+                    const canvas = document.createElement('canvas');
+                    let newW = w;
+                    let newH = h;
+                    if (w > h) {
+                      newH = Math.max(1, Math.round((h * maxTexSize) / w));
+                      newW = maxTexSize;
+                    } else {
+                      newW = Math.max(1, Math.round((w * maxTexSize) / h));
+                      newH = maxTexSize;
+                    }
+                    canvas.width = newW;
+                    canvas.height = newH;
+                    const ctx = canvas.getContext('2d');
+                    if (ctx) {
+                      ctx.drawImage(img as any, 0, 0, newW, newH);
+                      tex.image = canvas;
+                      tex.needsUpdate = true;
+                    }
+                  } catch {
+                    // Non-fatal if canvas downscale encounters cross-origin image
+                  }
+                }
+              }
             }
           }
           if ('emissiveMap' in mat && (mat as any).emissiveMap) {
@@ -777,7 +818,8 @@ export class ModelLoaderService {
    */
   public async autoSlimDenseMeshes(root: THREE.Object3D, warnings: IntegrityWarning[]): Promise<void> {
     const profile = getQualityProfile();
-    const threshold = profile.powerPreference === 'low-power' ? 70000 : 450000;
+    // Allow models up to 350k on low-power mobile and 1,000,000 on desktop without forced decimation
+    const threshold = profile.powerPreference === 'low-power' ? 350000 : 1000000;
 
     let totalTriangles = 0;
     root.traverse((child) => {
@@ -849,14 +891,44 @@ export class ModelLoaderService {
     const targetIndexCount = Math.floor((initialIndices.length * clampedRatio) / 3) * 3;
     if (targetIndexCount >= initialIndices.length) return geometry;
 
-    const [simplifiedIndices] = MeshoptSimplifier.simplify(
-      initialIndices,
-      positions,
-      3,
-      targetIndexCount,
-      0.02,
-      ['LockBorder'] as any
-    );
+    const uvAttr = geometry.attributes.uv;
+    let simplifiedIndices: Uint32Array | null = null;
+
+    // Use simplifyWithAttributes with locked borders when UVs exist to protect texture seams
+    if (uvAttr && uvAttr.count === posAttr.count && uvAttr.array instanceof Float32Array) {
+      try {
+        const uvs = uvAttr.array as Float32Array;
+        const [res] = MeshoptSimplifier.simplifyWithAttributes(
+          initialIndices,
+          positions,
+          3,
+          uvs,
+          2,
+          [1.0, 1.0],
+          null,
+          targetIndexCount,
+          0.02,
+          ['LockBorder'] as any
+        );
+        if (res && res.length > 0 && res.length < initialIndices.length) {
+          simplifiedIndices = res;
+        }
+      } catch (e) {
+        console.warn('[ModelLoader] simplifyWithAttributes notice:', e);
+      }
+    }
+
+    if (!simplifiedIndices || simplifiedIndices.length === 0) {
+      const [res] = MeshoptSimplifier.simplify(
+        initialIndices,
+        positions,
+        3,
+        targetIndexCount,
+        0.02,
+        ['LockBorder'] as any
+      );
+      simplifiedIndices = res;
+    }
 
     if (!simplifiedIndices || simplifiedIndices.length === 0 || simplifiedIndices.length >= initialIndices.length) {
       return geometry;

@@ -1,0 +1,580 @@
+{
+  "timestamp": "2026-09-13T06:14:36.507Z",
+  "consoleErrors": [],
+  "pageErrors": [],
+  "touchTargetViolations": [
+    {
+      "device": "Galaxy_S25_Ultra",
+      "theme": "dark",
+      "count": 1,
+      "violations": [
+        {
+          "text": "⋯",
+          "width": 36,
+          "height": 44,
+          "class": "nv-tab"
+        }
+      ]
+    },
+    {
+      "device": "Galaxy_S25_Ultra",
+      "theme": "light",
+      "count": 1,
+      "violations": [
+        {
+          "text": "⋯",
+          "width": 36,
+          "height": 44,
+          "class": "nv-tab"
+        }
+      ]
+    },
+    {
+      "device": "Galaxy_Tab_S6_Lite_Portrait",
+      "theme": "dark",
+      "count": 1,
+      "violations": [
+        {
+          "text": "⋯",
+          "width": 36,
+          "height": 44,
+          "class": "nv-tab"
+        }
+      ]
+    },
+    {
+      "device": "Galaxy_Tab_S6_Lite_Portrait",
+      "theme": "light",
+      "count": 1,
+      "violations": [
+        {
+          "text": "⋯",
+          "width": 36,
+          "height": 44,
+          "class": "nv-tab"
+        }
+      ]
+    },
+    {
+      "device": "Galaxy_Tab_S6_Lite_Landscape",
+      "theme": "dark",
+      "count": 1,
+      "violations": [
+        {
+          "text": "⋯",
+          "width": 36,
+          "height": 44,
+          "class": "nv-tab"
+        }
+      ]
+    },
+    {
+      "device": "Galaxy_Tab_S6_Lite_Landscape",
+      "theme": "light",
+      "count": 1,
+      "violations": [
+        {
+          "text": "⋯",
+          "width": 36,
+          "height": 44,
+          "class": "nv-tab"
+        }
+      ]
+    }
+  ],
+  "brokenImages": [],
+  "frameZeroIssues": [],
+  "pixelRenderAudit": {
+    "Galaxy_S25_Ultra_dark": {
+      "width": 412,
+      "height": 915,
+      "samples": [
+        {
+          "label": "center",
+          "rgba": [
+            245,
+            245,
+            245,
+            255
+          ]
+        },
+        {
+          "label": "bottom-left",
+          "rgba": [
+            201,
+            193,
+            181,
+            255
+          ]
+        },
+        {
+          "label": "bottom-right",
+          "rgba": [
+            196,
+            187,
+            175,
+            255
+          ]
+        }
+      ]
+    },
+    "Galaxy_S25_Ultra_light": {
+      "width": 412,
+      "height": 915,
+      "samples": [
+        {
+          "label": "center",
+          "rgba": [
+            245,
+            245,
+            245,
+            255
+          ]
+        },
+        {
+          "label": "bottom-left",
+          "rgba": [
+            201,
+            193,
+            181,
+            255
+          ]
+        },
+        {
+          "label": "bottom-right",
+          "rgba": [
+            196,
+            187,
+            175,
+            255
+          ]
+        }
+      ]
+    },
+    "Galaxy_Tab_S6_Lite_Portrait_dark": {
+      "width": 800,
+      "height": 1334,
+      "samples": [
+        {
+          "label": "center",
+          "rgba": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "label": "bottom-left",
+          "rgba": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "label": "bottom-right",
+          "rgba": [
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    "Galaxy_Tab_S6_Lite_Portrait_light": {
+      "width": 800,
+      "height": 1334,
+      "samples": [
+        {
+          "label": "center",
+          "rgba": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "label": "bottom-left",
+          "rgba": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "label": "bottom-right",
+          "rgba": [
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    "Galaxy_Tab_S6_Lite_Landscape_dark": {
+      "width": 1334,
+      "height": 800,
+      "samples": [
+        {
+          "label": "center",
+          "rgba": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "label": "bottom-left",
+          "rgba": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "label": "bottom-right",
+          "rgba": [
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    "Galaxy_Tab_S6_Lite_Landscape_light": {
+      "width": 1334,
+      "height": 800,
+      "samples": [
+        {
+          "label": "center",
+          "rgba": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "label": "bottom-left",
+          "rgba": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "label": "bottom-right",
+          "rgba": [
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    "Desktop_1080p_dark": {
+      "width": 1920,
+      "height": 1080,
+      "samples": [
+        {
+          "label": "center",
+          "rgba": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "label": "bottom-left",
+          "rgba": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "label": "bottom-right",
+          "rgba": [
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    },
+    "Desktop_1080p_light": {
+      "width": 1920,
+      "height": 1080,
+      "samples": [
+        {
+          "label": "center",
+          "rgba": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "label": "bottom-left",
+          "rgba": [
+            0,
+            0,
+            0,
+            0
+          ]
+        },
+        {
+          "label": "bottom-right",
+          "rgba": [
+            0,
+            0,
+            0,
+            0
+          ]
+        }
+      ]
+    }
+  },
+  "gizmoDockOverlapAudit": [
+    {
+      "device": "Galaxy_S25_Ultra",
+      "theme": "dark",
+      "details": {
+        "detected": true,
+        "gizmoRect": {
+          "top": 773,
+          "left": 252,
+          "right": 412,
+          "bottom": 915,
+          "width": 160,
+          "height": 142
+        },
+        "dockRect": {
+          "top": 846,
+          "left": 26,
+          "right": 386,
+          "bottom": 908,
+          "width": 360,
+          "height": 62
+        },
+        "tabRect": {
+          "top": 767,
+          "left": 382,
+          "right": 418,
+          "bottom": 811
+        }
+      }
+    },
+    {
+      "device": "Galaxy_S25_Ultra",
+      "theme": "light",
+      "details": {
+        "detected": true,
+        "gizmoRect": {
+          "top": 773,
+          "left": 252,
+          "right": 412,
+          "bottom": 915,
+          "width": 160,
+          "height": 142
+        },
+        "dockRect": {
+          "top": 846,
+          "left": 26,
+          "right": 386,
+          "bottom": 908,
+          "width": 360,
+          "height": 62
+        },
+        "tabRect": {
+          "top": 767,
+          "left": 382,
+          "right": 418,
+          "bottom": 811
+        }
+      }
+    },
+    {
+      "device": "Galaxy_Tab_S6_Lite_Portrait",
+      "theme": "dark",
+      "details": {
+        "detected": true,
+        "gizmoRect": {
+          "top": 1165,
+          "left": 610,
+          "right": 800,
+          "bottom": 1334,
+          "width": 190,
+          "height": 169
+        },
+        "dockRect": {
+          "top": 1265,
+          "left": 185,
+          "right": 615,
+          "bottom": 1327,
+          "width": 430,
+          "height": 62
+        },
+        "tabRect": {
+          "top": 1159,
+          "left": 770,
+          "right": 806,
+          "bottom": 1203
+        }
+      }
+    },
+    {
+      "device": "Galaxy_Tab_S6_Lite_Portrait",
+      "theme": "light",
+      "details": {
+        "detected": true,
+        "gizmoRect": {
+          "top": 1165,
+          "left": 610,
+          "right": 800,
+          "bottom": 1334,
+          "width": 190,
+          "height": 169
+        },
+        "dockRect": {
+          "top": 1265,
+          "left": 185,
+          "right": 615,
+          "bottom": 1327,
+          "width": 430,
+          "height": 62
+        },
+        "tabRect": {
+          "top": 1159,
+          "left": 770,
+          "right": 806,
+          "bottom": 1203
+        }
+      }
+    }
+  ],
+  "lightThemeContrastAudit": [],
+  "keyboardSqueezeAudit": [
+    {
+      "device": "Galaxy_S25_Ultra",
+      "theme": "dark",
+      "data": {
+        "windowHeight": 503,
+        "dockVisible": true,
+        "dockRect": {
+          "top": 434,
+          "bottom": 496,
+          "height": 62
+        }
+      }
+    },
+    {
+      "device": "Galaxy_S25_Ultra",
+      "theme": "light",
+      "data": {
+        "windowHeight": 503,
+        "dockVisible": true,
+        "dockRect": {
+          "top": 434,
+          "bottom": 496,
+          "height": 62
+        }
+      }
+    },
+    {
+      "device": "Galaxy_Tab_S6_Lite_Portrait",
+      "theme": "dark",
+      "data": {
+        "windowHeight": 734,
+        "dockVisible": true,
+        "dockRect": {
+          "top": 665,
+          "bottom": 727,
+          "height": 62
+        }
+      }
+    },
+    {
+      "device": "Galaxy_Tab_S6_Lite_Portrait",
+      "theme": "light",
+      "data": {
+        "windowHeight": 734,
+        "dockVisible": true,
+        "dockRect": {
+          "top": 665,
+          "bottom": 727,
+          "height": 62
+        }
+      }
+    }
+  ],
+  "storageCorruptionAudit": {
+    "testExecuted": true,
+    "corruptedKeysInjected": true,
+    "whiteScreenDetected": false,
+    "status": "PASS (Graceful recovery)"
+  },
+  "layerAudits": {
+    "Galaxy_S25_Ultra_dark_touch_action": {
+      "canvasTouchAction": "none",
+      "containerTouchAction": "none",
+      "nvCanvasTouchAction": "none"
+    },
+    "Galaxy_S25_Ultra_light_touch_action": {
+      "canvasTouchAction": "none",
+      "containerTouchAction": "none",
+      "nvCanvasTouchAction": "none"
+    },
+    "Galaxy_Tab_S6_Lite_Portrait_dark_touch_action": {
+      "canvasTouchAction": "none",
+      "containerTouchAction": "none",
+      "nvCanvasTouchAction": "none"
+    },
+    "Galaxy_Tab_S6_Lite_Portrait_light_touch_action": {
+      "canvasTouchAction": "none",
+      "containerTouchAction": "none",
+      "nvCanvasTouchAction": "none"
+    },
+    "Galaxy_Tab_S6_Lite_Landscape_dark_touch_action": {
+      "canvasTouchAction": "none",
+      "containerTouchAction": "none",
+      "nvCanvasTouchAction": "none"
+    },
+    "Galaxy_Tab_S6_Lite_Landscape_light_touch_action": {
+      "canvasTouchAction": "none",
+      "containerTouchAction": "none",
+      "nvCanvasTouchAction": "none"
+    },
+    "Desktop_1080p_dark_touch_action": {
+      "canvasTouchAction": "none",
+      "containerTouchAction": "none",
+      "nvCanvasTouchAction": "none"
+    },
+    "Desktop_1080p_light_touch_action": {
+      "canvasTouchAction": "none",
+      "containerTouchAction": "none",
+      "nvCanvasTouchAction": "none"
+    }
+  },
+  "devicesTested": [
+    "Galaxy_S25_Ultra",
+    "Galaxy_Tab_S6_Lite_Portrait",
+    "Galaxy_Tab_S6_Lite_Landscape",
+    "Desktop_1080p"
+  ]
+}

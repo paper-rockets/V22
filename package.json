@@ -4,7 +4,7 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite --port=5000 --host=0.0.0.0",
+    "dev": "vite --port=5174 --host=0.0.0.0",
     "dev:local": "node scripts/server-local.mjs",
     "serve": "node scripts/server-local.mjs",
     "dev:resolution": "node scripts/server-resolution.mjs",

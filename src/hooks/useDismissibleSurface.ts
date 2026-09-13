@@ -19,6 +19,11 @@ export interface UseDismissibleSurfaceOptions {
    * If true (default), pressing the Escape key will close the surface.
    */
   closeOnEscape?: boolean;
+  /**
+   * Forgiving touch margin in pixels around the surface bounding rect (default 0).
+   * Prevents accidental touches or drag overshoot near edges from immediately dismissing the surface.
+   */
+  touchTolerance?: number;
 }
 
 /**
@@ -39,6 +44,7 @@ export function useDismissibleSurface({
   ignoreSelector,
   suppressCanvasClick = true,
   closeOnEscape = true,
+  touchTolerance = 0,
 }: UseDismissibleSurfaceOptions): void {
   const openerRef = useRef<HTMLElement | null>(null);
 
@@ -63,6 +69,19 @@ export function useDismissibleSurface({
       // Click inside surface -> do not dismiss
       if (surface === target || surface.contains(target)) {
         return;
+      }
+
+      // Forgiving touch margin around surface bounding box
+      if (touchTolerance > 0) {
+        const rect = surface.getBoundingClientRect();
+        if (
+          event.clientX >= rect.left - touchTolerance &&
+          event.clientX <= rect.right + touchTolerance &&
+          event.clientY >= rect.top - touchTolerance &&
+          event.clientY <= rect.bottom + touchTolerance
+        ) {
+          return;
+        }
       }
 
       // Click on opener trigger button -> let the button toggle naturally

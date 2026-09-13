@@ -12,6 +12,7 @@ import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
 import * as WebGLTextureUtils from 'three/examples/jsm/utils/WebGLTextureUtils.js';
 import JSZip from 'jszip';
 import { MeshoptSimplifier } from 'meshoptimizer/simplifier';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import {
   ConversionResult,
   DracoCompressionConfig,
@@ -40,7 +41,7 @@ export const DEFAULT_TRANSFORM_CONFIG: ModelTransformConfig = {
 };
 
 export const DEFAULT_DRACO_CONFIG: DracoCompressionConfig = {
-  enabled: true,
+  enabled: false, // Default to lossless standard GLB to prevent AI model / Meshy seam tearing
   compressionLevel: 7,
   positionQuantization: 14,
   normalQuantization: 10,
@@ -164,6 +165,7 @@ export class ModelConverterEngine {
       if (format === 'glb' || format === 'gltf') {
         const loader = new GLTFLoader(manager);
         loader.setDRACOLoader(this.getDRACOLoader());
+        if (MeshoptDecoder) loader.setMeshoptDecoder(MeshoptDecoder);
         const primaryUrl = blobUrls.get(primaryFile.name.toLowerCase())!;
         const gltf = await loader.loadAsync(primaryUrl);
         loadedScene = gltf.scene || gltf.scenes[0];
@@ -214,6 +216,7 @@ export class ModelConverterEngine {
       case 'gltf': {
         const loader = new GLTFLoader(manager);
         loader.setDRACOLoader(this.getDRACOLoader());
+        if (MeshoptDecoder) loader.setMeshoptDecoder(MeshoptDecoder);
         const buffer = await file.arrayBuffer();
         return new Promise((resolve, reject) => {
           loader.parse(

@@ -8,6 +8,8 @@ import {
   ChevronDown,
   Copy,
   Layers,
+  Maximize2,
+  Minimize2,
   Paintbrush,
   Palette,
   Pin,
@@ -122,6 +124,22 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
       return false;
     }
   });
+  const [isMiniMode, setIsMiniMode] = useState(() => {
+    try {
+      return localStorage.getItem('remix3d.colorStudioMini') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const toggleMiniMode = () => {
+    setIsMiniMode((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('remix3d.colorStudioMini', String(next));
+      } catch {}
+      return next;
+    });
+  };
   const [copiedHex, setCopiedHex] = useState(false);
   const [secondaryColor, setSecondaryColor] = useState('#f43f5e');
   const [hsv, setHsv] = useState({ h: 200, s: 0.8, v: 0.9 });
@@ -577,39 +595,50 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
   return createPortal(
     <div
       data-pinned={isPinned ? 'true' : 'false'}
-      className={`paperrocket-modal-overlay paperrocket-color-studio-overlay--side fixed inset-0 z-50 flex items-center justify-start p-3 sm:p-4 animate-in fade-in duration-150 ${
-        isPinned ? 'pointer-events-none' : ''
-      }`}
-      onClick={(e) => {
-        if (!isPinned && e.target === e.currentTarget) onClose();
-      }}
+      className="paperrocket-modal-overlay paperrocket-color-studio-overlay--side fixed inset-0 z-50 flex items-center justify-start p-2.5 sm:p-4 animate-in fade-in duration-150 pointer-events-none"
     >
       <section
         id="mody-color-studio-modal"
         data-theme={theme}
         aria-label="Color studio"
         onClick={(event) => event.stopPropagation()}
-        className={`paperrocket-color-studio pointer-events-auto relative flex w-[calc(100vw-24px)] max-w-[344px] flex-col overflow-hidden rounded-[18px] border select-none ${shell}`}
-        style={{ maxHeight: 'min(68dvh, 620px)' }}
+        className={`paperrocket-color-studio pointer-events-auto relative flex w-[min(310px,calc(100vw-20px))] sm:max-w-[344px] flex-col overflow-hidden rounded-[18px] border select-none ${shell}`}
+        style={{ maxHeight: isMiniMode ? 'auto' : 'min(62dvh, 560px)' }}
       >
         <header className={`flex min-h-14 items-center justify-between border-b px-3 ${divider}`}>
           <div className="flex min-w-0 items-center gap-2.5">
             <span className={`h-9 w-9 shrink-0 rounded-lg border ${isLight ? 'border-black/20' : 'border-white/20'}`} style={{ backgroundColor: currentColor }} />
-            <div className="min-w-0">
-              <h2 className="truncate text-sm font-semibold">{activeTitle}</h2>
-              <input
-                aria-label="Hex color"
-                value={currentColor.toUpperCase()}
-                onChange={(event) => {
-                  const next = event.target.value;
-                  if (/^#[0-9a-fA-F]{6}$/.test(next)) applyColor(next);
-                  else onChangeColor(next);
-                }}
-                className={`mt-0.5 w-24 border-0 bg-transparent p-0 font-mono text-[11px] font-bold outline-none ${isLight ? 'text-neutral-800' : 'text-neutral-200'}`}
-              />
-            </div>
+            {!isMiniMode && (
+              <div className="min-w-0">
+                <h2 className="truncate text-sm font-semibold">{activeTitle}</h2>
+                <input
+                  aria-label="Hex color"
+                  value={currentColor.toUpperCase()}
+                  onChange={(event) => {
+                    const next = event.target.value;
+                    if (/^#[0-9a-fA-F]{6}$/.test(next)) applyColor(next);
+                    else onChangeColor(next);
+                  }}
+                  className={`mt-0.5 w-24 border-0 bg-transparent p-0 font-mono text-[11px] font-bold outline-none ${isLight ? 'text-neutral-800' : 'text-neutral-200'}`}
+                />
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={toggleMiniMode}
+              className={`grid h-11 w-11 place-items-center rounded-xl ${
+                isMiniMode
+                  ? isLight ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-950'
+                  : ghostButton
+              }`}
+              aria-label={isMiniMode ? 'Expand full color wheel' : 'Collapse to mini strip'}
+              aria-pressed={isMiniMode}
+              title={isMiniMode ? 'Expand full color wheel' : 'Collapse to mini strip'}
+            >
+              {isMiniMode ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
+            </button>
             <button
               type="button"
               onClick={togglePinned}
@@ -632,7 +661,32 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
           </div>
         </header>
 
-        <div className="min-h-0 flex-1 overflow-y-auto studio-scroll px-3 py-3">
+        {isMiniMode ? (
+          <div className="flex items-center gap-1.5 px-3 py-2 border-t border-black/10 dark:border-white/10 overflow-x-auto no-scrollbar">
+            <span className={`text-[9px] font-bold uppercase tracking-wider shrink-0 mr-1 ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
+              Recent
+            </span>
+            <div className="flex items-center gap-1.5">
+              {recentColors.map((color) => (
+                <button
+                  key={color}
+                  type="button"
+                  onClick={() => applyColor(color)}
+                  aria-label={`Use ${color}`}
+                  title={color}
+                  className={`h-7 w-7 shrink-0 rounded-lg border transition-transform active:scale-95 ${
+                    color.toLowerCase() === currentColor.toLowerCase()
+                      ? 'ring-2 ring-sky-500 scale-105 border-transparent'
+                      : isLight ? 'border-black/20' : 'border-white/20'
+                  }`}
+                  style={{ backgroundColor: color }}
+                />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="min-h-0 flex-1 overflow-y-auto studio-scroll px-3 py-3">
           {activeTab === 'wheel' && <div className="grid gap-3">
             <div className="flex justify-center"><canvas ref={wheelCanvasRef} style={{ width: WHEEL_SIZE, height: WHEEL_SIZE }} onPointerDown={handleWheelPointerDown} onPointerMove={handleWheelPointerMove} onPointerUp={handleWheelPointerUp} onPointerCancel={handleWheelPointerUp} className="touch-none cursor-crosshair" /></div>
             <div className="space-y-3 min-w-0">
@@ -770,7 +824,11 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
 
         </div>
 
-        <nav className={`grid grid-cols-4 border-t px-1 py-1 ${divider}`} aria-label="Color modes">{tabs.map((tab) => { const Icon = tab.icon; const selected = activeTab === tab.id; return <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} className={`flex h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[9px] font-medium transition-all ${selected ? (isLight ? 'bg-black/10 text-neutral-950 font-bold' : 'bg-white/15 text-white font-bold') : ghostButton}`} aria-current={selected ? 'page' : undefined}><Icon className="h-4 w-4" /><span>{tab.label}</span></button>; })}</nav>
+          </>
+        )}
+        {!isMiniMode && (
+          <nav className={`grid grid-cols-4 border-t px-1 py-1 ${divider}`} aria-label="Color modes">{tabs.map((tab) => { const Icon = tab.icon; const selected = activeTab === tab.id; return <button key={tab.id} type="button" onClick={() => setActiveTab(tab.id)} className={`flex h-12 flex-col items-center justify-center gap-0.5 rounded-xl text-[9px] font-medium transition-all ${selected ? (isLight ? 'bg-black/10 text-neutral-950 font-bold' : 'bg-white/15 text-white font-bold') : ghostButton}`} aria-current={selected ? 'page' : undefined}><Icon className="h-4 w-4" /><span>{tab.label}</span></button>; })}</nav>
+        )}
       </section>
     </div>,
     document.body,

@@ -67,6 +67,7 @@ import { StrokeSmoother } from './strokeSmoother';
 import { globalShaderRegistry } from './animatedShaders';
 import { ProceduralSkyEngine, SkyPresetName, SkySettings } from './proceduralSky';
 import { ModelConverterEngine } from './modelConverter';
+import { MeshoptDecoder } from 'three/examples/jsm/libs/meshopt_decoder.module.js';
 import { haptics } from '../utils/haptics';
 import { VolumetricLiquifyEngine } from './liquifyEngine';
 import { LoftGuideEngine } from './loftEngine';
@@ -171,6 +172,7 @@ export interface RaycastResult {
   worldNormal: THREE.Vector3;
   uv?: THREE.Vector2;
   mesh?: THREE.Mesh;
+  distance?: number;
 }
 
 export type UnifiedHistoryEntry =
@@ -368,6 +370,7 @@ export class StudioEngine {
     worldNormal: new THREE.Vector3(),
     uv: undefined,
     mesh: undefined,
+    distance: 0,
   };
 
   // Reused per-frame payloads so the render loop allocates nothing.
@@ -1508,6 +1511,9 @@ export class StudioEngine {
       // Fallback to standard GLTFLoader if direct load fails
       const loader = new GLTFLoader();
       loader.setDRACOLoader(this.getDRACOLoader());
+      if (MeshoptDecoder) {
+        loader.setMeshoptDecoder(MeshoptDecoder);
+      }
       return new Promise((resolve, reject) => {
         const onLoad = (gltf: any) => {
           const scene = gltf.scene || gltf.scenes[0];
@@ -1592,7 +1598,13 @@ export class StudioEngine {
     files: FileList | File[],
     customName?: string,
     loadMode: 'add' | 'clear' = 'clear'
-  ): Promise<{ name: string; bytes: number; reduction: number }> {
+  ): Promise<{
+    name: string;
+    bytes: number;
+    reduction: number;
+    scene?: THREE.Group;
+    metadata?: any;
+  }> {
     try {
       const loadRes = await modelLoader.loadFromFiles(files);
       this.setModelObject(loadRes.scene, customName || loadRes.metadata.name, undefined, loadMode);
@@ -1600,6 +1612,8 @@ export class StudioEngine {
         name: customName || loadRes.metadata.name,
         bytes: loadRes.metadata.originalSize,
         reduction: 0,
+        scene: loadRes.scene,
+        metadata: loadRes.metadata,
       };
     } catch {
       const result = await ModelConverterEngine.autoConvertAndSave(files, customName);
@@ -1651,6 +1665,7 @@ export class StudioEngine {
     out.worldNormal = _planeNormalScratch;
     out.uv = _uvScratch.set(0.5, 0.5);
     out.mesh = undefined;
+    out.distance = this.raycaster.ray.origin.distanceTo(_worldPointScratch);
     return out;
   }
 
@@ -1785,6 +1800,7 @@ export class StudioEngine {
     result.worldNormal = worldNormal;
     result.uv = uv;
     result.mesh = mesh;
+    result.distance = hit.distance;
 
     // Dispatch RAY_HIT event for ecosystem telemetry.
     // Constructing a CustomEvent per hit is pure waste when nobody is listening,
@@ -2061,6 +2077,7 @@ export class StudioEngine {
       isSurfaceHit: !isSpatial,
       uv: rayResult.uv ? rayResult.uv.clone() : undefined,
       time: performance.now(),
+      rayDistance: rayResult.distance,
     };
     this.activePoints.push(firstPoint);
     this.lastCapturePoint = firstPoint;
@@ -2303,15 +2320,18 @@ export class StudioEngine {
         isSurfaceHit: !isSpatial,
         uv: rayResult.uv ? rayResult.uv.clone() : undefined,
         time: performance.now(),
+        rayDistance: rayResult.distance,
       };
 
       // Discontinuity detection:
-      // 1. Returning from empty air
+      // 1. Returning from empty air gap
       // 2. Jumping between a 3D model and the 2D background canvas plane
-      // 3. Large 3D spatial jump across depth occlusion / silhouette
+      // 3. Occlusion silhouette jump across 3D depth gaps on complex 3D models
       // 4. Sharp normal flip (> 135° angle, dot < -0.7)
+      //
+      // NOTE: Fast drawing on the flat 2D canvas plane (DrawingPlaneCanvas) or in spatial mode
+      // must NEVER be split by 3D travel distance, preventing broken lines, dashes, and stray dabs.
       if (this.lastCapturePoint) {
-        const dist3D = this.lastCapturePoint.position.distanceTo(newPoint.position);
         const normalDot = this.lastCapturePoint.normal.dot(newPoint.normal);
 
         const meshChanged = prevHitMesh !== null && rayResult.mesh !== null && prevHitMesh !== rayResult.mesh;
@@ -2322,9 +2342,36 @@ export class StudioEngine {
           prevHitMesh === this.drawingPlaneMesh
         );
 
-        const gapToleranceMultiplier = settings.airGapTolerance ? settings.airGapTolerance * 2 : 1.0;
-        const maxJump = Math.max(0.12, (settings.size || 0.035) * 8.0 * gapToleranceMultiplier);
-        const isDiscontinuous = this.isOverAir || hitDrawingPlaneJump || dist3D > maxJump || normalDot < -0.7;
+        const onPlane =
+          isSpatial ||
+          rayResult.mesh === this.drawingPlaneMesh ||
+          rayResult.mesh?.name === 'DrawingPlaneCanvas' ||
+          rayResult.mesh?.userData?.isDrawingPlane;
+
+        let isDiscontinuous = false;
+
+        if (this.isOverAir) {
+          isDiscontinuous = true;
+        } else if (hitDrawingPlaneJump) {
+          isDiscontinuous = true;
+        } else if (!onPlane) {
+          // On 3D models: detect true occlusion boundaries, silhouette jumps, or sharp normal flips.
+          // Drawing fast across the continuous surface of the same mesh will NOT break the stroke.
+          const depthJump =
+            this.lastCapturePoint.rayDistance !== undefined && newPoint.rayDistance !== undefined
+              ? Math.abs(this.lastCapturePoint.rayDistance - newPoint.rayDistance)
+              : 0;
+
+          const gapToleranceMultiplier = settings.airGapTolerance ? settings.airGapTolerance * 2 : 1.0;
+          const maxDepthJump = Math.max(0.35, (settings.size || 0.035) * 10.0 * gapToleranceMultiplier);
+
+          const isDepthOcclusion = depthJump > maxDepthJump;
+          const isSharpFlip = normalDot < -0.7;
+
+          if (meshChanged || isDepthOcclusion || isSharpFlip) {
+            isDiscontinuous = true;
+          }
+        }
 
         if (isDiscontinuous) {
           if (this.activePoints.length > 0) {

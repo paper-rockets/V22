@@ -77,7 +77,7 @@ const MODE_TITLES: Record<ProMode, string> = {
 export const ProPanel: React.FC<ProPanelProps> = ({
   engine = null,
   tool = 'brush',
-  setTool = () => {},
+  setTool = (_t?: ToolType) => {},
   brushSettings,
   setBrushSettings = () => {},
   isGizmoActive = true,
@@ -222,6 +222,10 @@ export const ProPanel: React.FC<ProPanelProps> = ({
             onOpenImporter={onOpenImporter}
             onOpenScaffolding={onOpenScaffolding}
             onOpenBentGuide={onOpenBentGuide}
+            onShapeSpawned={() => {
+              if (!isGizmoActive) onToggleGizmo();
+              setTool('select');
+            }}
             theme={theme}
           />
         )}

@@ -108,9 +108,18 @@ export const ProRail: React.FC<ProRailProps> = ({
   const placementBtnRef = useRef<HTMLButtonElement>(null);
   const colorBtnRef = useRef<HTMLButtonElement>(null);
   const sizeBtnRef = useRef<HTMLButtonElement>(null);
+  const opacityBtnRef = useRef<HTMLButtonElement>(null);
   const brushBtnRef = useRef<HTMLButtonElement>(null);
 
-  const [panel, setPanel] = useState<'placement' | 'color' | 'size' | 'brush' | 'straight' | null>(null);
+  const [panel, setPanel] = useState<'placement' | 'color' | 'size' | 'opacity' | 'brush' | 'straight' | null>(null);
+  const [showEraseHint, setShowEraseHint] = useState(false);
+  const eraseHintTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (eraseHintTimerRef.current) window.clearTimeout(eraseHintTimerRef.current);
+    };
+  }, []);
   const [isDesktopExpanded, setIsDesktopExpanded] = useState(true);
   const [dockPreferences, setDockPreferences] = useState<StudioDockPreferences>(readStudioDockPreferences);
   const [dockHidden, setDockHidden] = useState(false);
@@ -169,6 +178,8 @@ export const ProRail: React.FC<ProRailProps> = ({
       ? colorBtnRef
       : panel === 'size'
       ? sizeBtnRef
+      : panel === 'opacity'
+      ? opacityBtnRef
       : panel === 'brush'
       ? brushBtnRef
       : undefined;
@@ -179,6 +190,7 @@ export const ProRail: React.FC<ProRailProps> = ({
     surfaceRef: shelfRef,
     triggerRef: activeTriggerRef,
     ignoreSelector: '[data-pro-rail-button]',
+    touchTolerance: 20,
   });
 
   const currentBrushSettings: BrushSettings = brushSettings || {
@@ -313,7 +325,6 @@ export const ProRail: React.FC<ProRailProps> = ({
                 {placement === 'surface' ? 'Surface' : placement === 'space' ? 'Space' : 'Guide'}
               </span>
             </button>
-
             <button
               type="button"
               data-pro-rail-button="true"
@@ -324,6 +335,9 @@ export const ProRail: React.FC<ProRailProps> = ({
                 setTool?.('eraser');
                 closeSheet();
                 setPanel(null);
+                setShowEraseHint(true);
+                if (eraseHintTimerRef.current) window.clearTimeout(eraseHintTimerRef.current);
+                eraseHintTimerRef.current = window.setTimeout(() => setShowEraseHint(false), 2400);
               }}
               className="paperrocket-studio-quick paperrocket-studio-quick--erase rounded-xl flex items-center justify-center active:scale-95 transition-colors border-0 bg-transparent"
               aria-label="Erase"
@@ -410,6 +424,44 @@ export const ProRail: React.FC<ProRailProps> = ({
             <span className="paperrocket-studio-quick-label">Size</span>
             </button>
 
+            {/* Opacity button - Dedicated transparency control */}
+            <button
+              ref={opacityBtnRef}
+              type="button"
+              data-pro-rail-button="true"
+              data-active={panel === 'opacity' ? 'true' : 'false'}
+              onClick={() => {
+                haptics.trigger('light');
+                closeColorStudio();
+                setTool?.('brush');
+                closeSheet();
+                setPanel((previous) => (previous === 'opacity' ? null : 'opacity'));
+              }}
+              className={`paperrocket-studio-quick paperrocket-studio-quick--opacity rounded-xl flex items-center justify-center active:scale-95 transition-colors border-0 bg-transparent ${
+                panel === 'opacity'
+                  ? isLight ? 'text-neutral-950 font-bold' : 'text-white font-bold'
+                  : isLight ? 'text-neutral-500 hover:text-neutral-900' : 'text-neutral-400 hover:text-white'
+              }`}
+              aria-label="Stroke opacity"
+              title={`Opacity: ${Math.round((currentBrushSettings.opacity ?? 1) * 100)}%`}
+            >
+              <div className={`w-5 h-5 rounded-full border flex items-end justify-center overflow-hidden transition-colors ${
+                panel === 'opacity'
+                  ? isLight ? 'border-neutral-900' : 'border-white'
+                  : isLight ? 'border-neutral-400' : 'border-white/40'
+              }`}>
+                <div
+                  className={`w-full transition-all ${
+                    isLight ? 'bg-neutral-900' : 'bg-white'
+                  }`}
+                  style={{ height: `${Math.round((currentBrushSettings.opacity ?? 1) * 100)}%` }}
+                />
+              </div>
+              <span className="paperrocket-studio-quick-label">
+                {Math.round((currentBrushSettings.opacity ?? 1) * 100)}%
+              </span>
+            </button>
+
             <button
               ref={brushBtnRef}
               type="button"
@@ -435,6 +487,27 @@ export const ProRail: React.FC<ProRailProps> = ({
             </button>
 
           </div>
+
+          {/* Friendly floating Erase hint pill */}
+          {showEraseHint && (
+            <div
+              role="status"
+              aria-live="polite"
+              className="pointer-events-none fixed z-50 rounded-full px-4 py-2 text-xs font-semibold tracking-tight shadow-2xl border select-none flex items-center gap-2"
+              style={{
+                left: '50%',
+                bottom: 'calc(78px + env(safe-area-inset-bottom))',
+                transform: 'translateX(-50%)',
+                backgroundColor: isLight ? '#ffffff' : '#18181b',
+                color: isLight ? '#09090b' : '#f4f4f5',
+                borderColor: isLight ? 'rgba(0,0,0,0.18)' : 'rgba(255,255,255,0.22)',
+                boxShadow: '0 12px 32px rgba(0,0,0,0.28)',
+              }}
+            >
+              <IcErase className="w-3.5 h-3.5 text-rose-500 shrink-0" strokeWidth={2.2} />
+              <span>Drag across any stroke to erase</span>
+            </div>
+          )}
 
           <button
             type="button"
@@ -465,6 +538,8 @@ export const ProRail: React.FC<ProRailProps> = ({
                 ? 'w-[154px]'
               : panel === 'size'
                 ? 'w-[154px]'
+              : panel === 'opacity'
+                ? 'w-[170px]'
                 : panel === 'placement'
                 ? 'w-[264px]'
                 : panel === 'straight'
@@ -666,6 +741,62 @@ export const ProRail: React.FC<ProRailProps> = ({
                   }}
                   theme={theme}
                 />
+              </div>
+            )}
+
+            {/* Opacity Selector Panel - Dedicated Slider & Quick Presets */}
+            {panel === 'opacity' && (
+              <div className="w-full flex flex-col gap-2.5 py-1">
+                <div className="flex items-center justify-between px-0.5">
+                  <span className={`text-xs font-semibold ${isLight ? 'text-neutral-900' : 'text-white'}`}>
+                    Opacity
+                  </span>
+                  <span className="font-mono text-xs font-bold tabular-nums">
+                    {Math.round((currentBrushSettings.opacity ?? 1) * 100)}%
+                  </span>
+                </div>
+
+                <input
+                  type="range"
+                  min="0.05"
+                  max="1"
+                  step="0.05"
+                  value={currentBrushSettings.opacity ?? 1}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    setBrushSettings?.((prev) => ({ ...prev, opacity: val }));
+                  }}
+                  className="w-full h-2 accent-neutral-900 dark:accent-white bg-black/10 dark:bg-white/20 rounded-lg cursor-pointer"
+                  aria-label="Stroke opacity slider"
+                />
+
+                <div className="grid grid-cols-4 gap-1 pt-0.5">
+                  {[0.25, 0.5, 0.75, 1.0].map((preset) => {
+                    const pct = Math.round(preset * 100);
+                    const isSelected = Math.abs((currentBrushSettings.opacity ?? 1) - preset) < 0.03;
+                    return (
+                      <button
+                        key={preset}
+                        type="button"
+                        onClick={() => {
+                          haptics.trigger('light');
+                          setBrushSettings?.((prev) => ({ ...prev, opacity: preset }));
+                        }}
+                        className={`h-7 rounded-lg border text-[11px] font-bold transition-all active:scale-95 ${
+                          isSelected
+                            ? isLight
+                              ? 'bg-neutral-900 text-white border-neutral-900'
+                              : 'bg-white text-neutral-950 border-white'
+                            : isLight
+                            ? 'border-black/15 text-neutral-700 hover:bg-black/5'
+                            : 'border-white/15 text-neutral-300 hover:bg-white/10'
+                        }`}
+                      >
+                        {pct}%
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             )}
 

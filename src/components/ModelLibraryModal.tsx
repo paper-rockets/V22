@@ -197,7 +197,7 @@ export const ModelLibraryModal: React.FC<ModelLibraryModalProps> = ({
       setError(null);
 
       try {
-        await engine.loadUniversalFiles([file], file.name, loadMode);
+        const loadRes = await engine.loadUniversalFiles([file], file.name, loadMode);
         engine.setModelDisplayMode(loadDisplayMode);
 
         let snapshot: string | null = null;
@@ -207,7 +207,13 @@ export const ModelLibraryModal: React.FC<ModelLibraryModalProps> = ({
           console.warn('captureSnapshot failed:', e);
         }
 
-        await AutoPreviewGenerator.autoPreviewAndSaveFile(file, snapshot);
+        setLoadingMessage('Generating preview & saving…');
+        await AutoPreviewGenerator.autoPreviewAndSaveFile(file, snapshot, {
+          scene: loadRes?.scene,
+          triangleCount: loadRes?.metadata?.triangles,
+          vertexCount: loadRes?.metadata?.vertices,
+          dimensions: loadRes?.metadata?.dimensions,
+        });
         await refreshSavedModels();
 
         onClose();

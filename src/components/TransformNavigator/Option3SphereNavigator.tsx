@@ -292,17 +292,19 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
     if (!dock) return;
     const dw = dock.offsetWidth || 160;
     const dh = dock.offsetHeight || 160;
+    const isPortraitOrMobile = window.innerWidth < 840 || window.innerHeight > window.innerWidth;
+    const bottomClearance = isPortraitOrMobile ? 90 : 0;
     const minLeft = 0;
     const maxLeft = Math.max(0, window.innerWidth - dw);
     const minTop = 0;
-    const maxTop = Math.max(0, window.innerHeight - dh);
+    const maxTop = Math.max(0, window.innerHeight - dh - bottomClearance);
     const left = Math.max(minLeft, Math.min(maxLeft, x));
     const top = Math.max(minTop, Math.min(maxTop, y));
     dock.style.left = Math.round(left) + 'px';
     dock.style.top = Math.round(top) + 'px';
     if (remember) {
       const denomW = Math.max(1, window.innerWidth - dw);
-      const denomH = Math.max(1, window.innerHeight - dh);
+      const denomH = Math.max(1, window.innerHeight - dh - bottomClearance);
       anchorRef.current = {
         ax: Math.max(0, Math.min(1, left / denomW)),
         ay: Math.max(0, Math.min(1, top / denomH)),
@@ -316,8 +318,10 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
     const dock = dockRef.current;
     const dw = dock ? dock.offsetWidth : 160;
     const dh = dock ? dock.offsetHeight : 160;
+    const isPortraitOrMobile = window.innerWidth < 840 || window.innerHeight > window.innerWidth;
+    const bottomClearance = isPortraitOrMobile ? 90 : 0;
     const denomW = Math.max(1, window.innerWidth - dw);
-    const denomH = Math.max(1, window.innerHeight - dh);
+    const denomH = Math.max(1, window.innerHeight - dh - bottomClearance);
     place(anchorRef.current.ax * denomW, anchorRef.current.ay * denomH);
   }, [place]);
 
@@ -1632,6 +1636,21 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
           title="Menu · hold gizmo to move"
         >
           ⋯
+        </button>
+        <button
+          type="button"
+          className="nv-mode-badge"
+          onClick={(e) => {
+            e.stopPropagation();
+            haptics.trigger('light');
+            stopTour();
+            const nextMode = mode === 'look' ? 'move' : mode === 'move' ? 'rotate' : 'look';
+            setMode(nextMode);
+          }}
+          title={`Active Mode: ${mode.toUpperCase()} (tap to switch)`}
+          aria-label={`Current transform mode: ${mode}. Tap to switch mode.`}
+        >
+          {mode === 'look' ? 'Orbit' : mode === 'move' ? 'Move' : 'Rotate'}
         </button>
         <div className="nv-label" id="nv-label" ref={labelRef}></div>
       </div>

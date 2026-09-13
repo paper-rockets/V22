@@ -362,7 +362,7 @@ export const LayerPanelComponent: React.FC<LayerPanelProps> = ({
           ? `pr-surface w-full select-none space-y-2 font-sans ${isLight ? 'text-neutral-800' : 'text-neutral-200'}`
           : `pr-surface fixed z-50 select-none shadow-2xl border font-sans animate-in fade-in duration-150 flex flex-col overflow-hidden
              /* Mobile: bottom sheet anchored at bottom */
-             inset-x-2 bottom-2 max-h-[74dvh] rounded-2xl p-3.5 space-y-3 slide-in-from-bottom-3
+             inset-x-2 bottom-2 max-h-[46dvh] rounded-2xl p-3 space-y-2.5 slide-in-from-bottom-3
              /* Desktop: top-right floating */
              sm:inset-x-auto sm:bottom-auto sm:top-16 sm:right-6 sm:w-96 sm:max-w-[400px] sm:max-h-[80vh] sm:rounded-2xl sm:p-4 sm:space-y-3 sm:slide-in-from-right-2 ${
               isLight

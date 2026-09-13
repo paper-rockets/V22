@@ -61,8 +61,8 @@
   left: 50%;
   bottom: max(7px, env(safe-area-inset-bottom));
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  width: min(calc(100% - 16px), 360px);
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  width: min(calc(100% - 16px), 400px);
   min-height: 62px;
   padding: 4px;
   gap: 2px;
@@ -222,8 +222,8 @@
 
   @media (min-width: 700px) {
   .paperrocket-studio-quick-group {
-    grid-template-columns: repeat(5, minmax(72px, 1fr));
-    width: min(calc(100% - 24px), 430px);
+    grid-template-columns: repeat(6, minmax(0, 1fr));
+    width: min(calc(100% - 24px), 460px);
     min-height: 62px;
   }
 
@@ -274,3 +274,4 @@
   .paperrocket-studio-mode-group,
   .paperrocket-studio-quick-group { transition: none; }
 }
+

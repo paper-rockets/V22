@@ -209,7 +209,7 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
           <button
             type="button"
             onClick={onOpenIllumination}
-            className={`${button} hidden text-amber-400 hover:text-amber-300`}
+            className={`${button} flex text-amber-400 hover:text-amber-300`}
             aria-label="Studio Illumination"
             title="Studio Illumination"
           >
@@ -314,3 +314,4 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
     </header>
   );
 };
+

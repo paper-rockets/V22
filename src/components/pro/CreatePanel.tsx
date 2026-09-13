@@ -29,6 +29,7 @@ interface CreatePanelProps {
   onOpenImporter: () => void;
   onOpenScaffolding?: () => void;
   onOpenBentGuide?: () => void;
+  onShapeSpawned?: (shapeName: string) => void;
   theme?: 'light' | 'dark';
 }
 
@@ -55,6 +56,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
   onOpenImporter,
   onOpenScaffolding,
   onOpenBentGuide,
+  onShapeSpawned,
   theme = 'dark',
 }) => {
   const isLight = theme === 'light';
@@ -66,8 +68,9 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
     const mesh = p.factory();
     if (mesh) {
       engine.addPrimitiveToScene(mesh, `Primitive ${p.name}`);
-      setSpawnNotice(`Added ${p.name}`);
-      setTimeout(() => setSpawnNotice(null), 1800);
+      setSpawnNotice(`Added ${p.name} · Move gizmo ready`);
+      setTimeout(() => setSpawnNotice(null), 2400);
+      onShapeSpawned?.(p.name);
     }
   };
 
