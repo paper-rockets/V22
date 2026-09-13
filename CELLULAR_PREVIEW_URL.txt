@@ -1,25 +1,20 @@
+﻿=============================================================
+REMIX 3D STUDIO - LIVE DEMO & PREVIEW LINKS (V22)
 =============================================================
-REMIX 3D STUDIO - AUDIT, GALLERY & CELLULAR ACCESS LINKS
-=============================================================
 
-1. AUDIT & NOTES REVIEW PAGE (Draw, highlight & add notes on your phone):
-   https://respected-tutorials-ddr-technical.trycloudflare.com/audit
+1. PUBLIC LIVE DEMO (GitHub Pages - worldwide, no local server needed):
+   https://paper-rockets.github.io/V22/
 
-2. GALLERY (View & download all 64 pictures on your phone):
-   https://respected-tutorials-ddr-technical.trycloudflare.com/gallery
+2. PUBLIC CELLULAR TUNNEL (Cloudflare - live from your computer):
+   https://chemistry-coalition-tutorial-grades.trycloudflare.com
+   Phone mode: https://chemistry-coalition-tutorial-grades.trycloudflare.com/?device=s25ultra
+   Tablet mode: https://chemistry-coalition-tutorial-grades.trycloudflare.com/?device=s6lite
 
-3. LIVE 3D APP on your phone:
-   https://respected-tutorials-ddr-technical.trycloudflare.com/?device=s25ultra
+3. AT HOME (On same Wi-Fi):
+   http://192.168.0.22:5174
 
-4. AT HOME (On same Wi-Fi):
-   Audit Page: http://192.168.0.22:3002/audit
-   Gallery:    http://192.168.0.22:3002/gallery
-   3D App:     http://192.168.0.22:3002/?device=s25ultra
+4. ON THIS COMPUTER:
+   http://localhost:5174
 
-5. On this computer:
-   Audit Page: http://localhost:3002/audit
-   Gallery:    http://localhost:3002/gallery
-   3D App:     http://localhost:3002/?device=s25ultra
-
-Port: 3002
+Port: 5174
 =============================================================
