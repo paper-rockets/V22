@@ -65,7 +65,7 @@ export const ProjectSessionModal: React.FC<ProjectSessionModalProps> = ({
   useEffect(() => {
     if (isOpen) {
       void refreshSessions();
-      setSessionName(activeProjectName || 'Artwork Session');
+      setSessionName(activeProjectName || 'My Project');
       setFeedback(null);
     }
   }, [isOpen, refreshSessions, activeProjectName]);
@@ -73,17 +73,17 @@ export const ProjectSessionModal: React.FC<ProjectSessionModalProps> = ({
   if (!isOpen) return null;
 
   const handleSave = async () => {
-    const name = sessionName.trim() || 'Untitled Session';
+    const name = sessionName.trim() || 'Untitled Project';
     setSaving(true);
     try {
       await onSaveSession(name);
       haptics.trigger('success');
-      setFeedback('Session saved with full undo history!');
+      setFeedback('Project saved with full undo history');
       await refreshSessions();
       setTimeout(() => setFeedback(null), 3000);
     } catch (err) {
       console.error(err);
-      setFeedback('Failed to save session.');
+      setFeedback('Failed to save project.');
     } finally {
       setSaving(false);
     }
@@ -91,12 +91,12 @@ export const ProjectSessionModal: React.FC<ProjectSessionModalProps> = ({
 
   const handleSaveToFolder = async () => {
     if (!onSaveToFolder) return;
-    const name = sessionName.trim() || 'Untitled Session';
+    const name = sessionName.trim() || 'Untitled Project';
     setSavingToFolder(true);
     try {
       await onSaveToFolder(name);
       haptics.trigger('success');
-      setFeedback('Session saved to chosen folder!');
+      setFeedback('Project exported to the chosen folder');
       setTimeout(() => setFeedback(null), 3500);
     } catch (err: any) {
       if (err?.name !== 'AbortError') {
@@ -115,13 +115,13 @@ export const ProjectSessionModal: React.FC<ProjectSessionModalProps> = ({
       onClose();
     } catch (err) {
       console.error(err);
-      setFeedback('Failed to load session.');
+      setFeedback('Failed to open project.');
     }
   };
 
   const handleDelete = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    if (!window.confirm('Delete this saved session?')) return;
+    if (!window.confirm('Delete this saved project?')) return;
     try {
       await deleteProjectSession(id);
       haptics.trigger('light');
@@ -142,7 +142,7 @@ export const ProjectSessionModal: React.FC<ProjectSessionModalProps> = ({
     <div
       role="dialog"
       aria-modal="false"
-      aria-label="Project Sessions"
+      aria-label="Projects"
       className="pointer-events-none fixed inset-0 z-50 flex items-start justify-end px-2 pt-2 sm:pt-[calc(env(safe-area-inset-top)+3.25rem)] sm:px-3 animate-in fade-in duration-150"
     >
       <div
@@ -259,12 +259,12 @@ export const ProjectSessionModal: React.FC<ProjectSessionModalProps> = ({
                 ) : (
                   <FolderDown className="w-4 h-4" />
                 )}
-                <span>{savingToFolder ? 'Saving to folder…' : 'Save to Device Folder…'}</span>
+                <span>{savingToFolder ? 'Exporting to folder…' : 'Export Project to Folder…'}</span>
               </button>
             )}
 
             <p className="text-[11px] text-neutral-400">
-              Preserves your 3D strokes, layers, and edit history in your app storage or chosen folder.
+              Keeps your 3D lines, layers, and edit history in your app storage or chosen folder.
             </p>
           </div>
 
@@ -329,7 +329,7 @@ export const ProjectSessionModal: React.FC<ProjectSessionModalProps> = ({
                               {dateStr}
                             </span>
                             <span>•</span>
-                            <span>{s.strokeCount || 0} strokes</span>
+                            <span>{s.strokeCount || 0} lines</span>
                             <span>•</span>
                             <span>{s.activeModelName || 'Canvas'}</span>
                           </div>
@@ -405,7 +405,7 @@ export const ProjectSessionModal: React.FC<ProjectSessionModalProps> = ({
                   ) : (
                     <FolderDown className="w-4 h-4" />
                   )}
-                  <span>Save to Folder…</span>
+                  <span>Export Project to Folder…</span>
                 </button>
               )}
 

@@ -417,7 +417,7 @@ export const AppModalHost: React.FC<AppModalHostProps> = ({
         >
           <div className="px-6 py-4 rounded-3xl bg-white dark:bg-[#18191d] shadow-2xl text-center space-y-2 border border-neutral-200 dark:border-neutral-800">
             <div className="text-base font-bold text-neutral-900 dark:text-white">
-              Drop 3D Model to Ingest & Convert
+              Drop 3D Model to Import
             </div>
             <div className="text-xs text-neutral-500 dark:text-neutral-400">
               Supports GLB, GLTF, OBJ (+MTL), FBX, 3DS, STL, PLY, DAE

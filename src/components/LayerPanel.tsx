@@ -249,8 +249,8 @@ export const LayerPanelComponent: React.FC<LayerPanelProps> = ({
       onBeforeDestructiveAction(
         `Delete “${selected?.name || 'layer'}”?`,
         toDelete.size > 1
-          ? `This removes the group, ${toDelete.size - 1} nested item${toDelete.size === 2 ? '' : 's'}, and all of their strokes.`
-          : 'This removes the layer and every stroke on it.',
+          ? `This removes the group, ${toDelete.size - 1} nested item${toDelete.size === 2 ? '' : 's'}, and all of their lines.`
+          : 'This removes the layer and every line on it.',
         'Delete Layer',
         performDelete,
       );

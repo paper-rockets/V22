@@ -1395,19 +1395,20 @@ export function App() {
   // 1-Tap Quick Save (Ctrl+S / Top Bar Quick Save button)
   const handleQuickSave = useCallback(async () => {
     if (!engine) return;
-    const name = activeModelName ? `${activeModelName} Session` : 'Quick Session';
+    const name = activeModelName ? `${activeModelName} Project` : 'Quick Project';
     await handleSaveNamedSession(name);
-    setSnappedShapeNotice('Session saved with full undo history!');
+    const notice = 'Project saved with full undo history';
+    setSnappedShapeNotice(notice);
     setTimeout(() => {
-      setSnappedShapeNotice((cur) => (cur === 'Session saved with full undo history!' ? null : cur));
+      setSnappedShapeNotice((cur) => (cur === notice ? null : cur));
     }, 2200);
   }, [engine, activeModelName, handleSaveNamedSession]);
 
   const handleBeforeReplace = useCallback((modelName: string, action: () => Promise<void>) => {
     setPendingWorkLoss({
-      title: `Replace scene with "${modelName}"?`,
-      description: 'Loading this model will replace your current workspace. You can save your work first or proceed without saving.',
-      actionLabel: 'Load Model',
+      title: `Replace Scene with "${modelName}"?`,
+      description: 'This model will replace everything in your current scene. You can save your project first, or continue without saving.',
+      actionLabel: 'Replace Scene',
       action,
     });
   }, []);

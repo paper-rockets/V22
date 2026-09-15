@@ -268,7 +268,7 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
             <span>Vivid Color</span>
           </div>
           <p className={`text-[11px] leading-relaxed ${isLight ? 'text-neutral-600' : 'text-neutral-400'}`}>
-            Enriches muted colours while protecting already-vivid paint and highlight detail.
+            Enriches muted colors while protecting already-vivid paint and highlight detail.
           </p>
           <div className="space-y-1">
             <div className={`flex justify-between ${isLight ? 'text-neutral-700' : 'text-neutral-300'}`}>

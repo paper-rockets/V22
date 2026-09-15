@@ -141,7 +141,7 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
 
         <div className="grid grid-cols-1 gap-1.5" aria-label="Workspace actions">
           {onOpenSessions && (
-            <ActionButton icon={<FolderOpen className="h-5 w-5" strokeWidth={1.7} />} label="Projects" description="Save, open, and restore artwork" onSelect={select(onOpenSessions)} isLight={isLight} />
+            <ActionButton icon={<FolderOpen className="h-5 w-5" strokeWidth={1.7} />} label="Projects" description="Save, open, and manage projects" onSelect={select(onOpenSessions)} isLight={isLight} />
           )}
           <ActionButton icon={<Settings className="h-5 w-5" strokeWidth={1.7} />} label="Studio settings" description="Canvas, appearance, and workspace preferences" onSelect={select(onOpenSettings)} isLight={isLight} />
           <ActionButton

@@ -85,10 +85,10 @@ export const SelectionActionBar: React.FC<SelectionActionBarProps> = ({
             ? 'bg-neutral-100 hover:bg-neutral-200 border-black/10 text-neutral-800'
             : 'bg-white/5 hover:bg-white/10 border-white/10 text-neutral-200'
         }`}
-        title="Clone item"
+        title="Duplicate selection"
       >
         <Copy className="w-3.5 h-3.5" />
-        <span>Clone</span>
+        <span>Duplicate</span>
       </button>
 
       {/* Delete Action Button */}

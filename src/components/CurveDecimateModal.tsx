@@ -59,7 +59,7 @@ export const CurveDecimateModal: React.FC<CurveDecimateModalProps> = ({
         <div className={`shrink-0 flex items-center justify-between px-4 py-3 border-b ${t.header}`}>
           <div className="flex items-center gap-2">
             <Scissors className={`w-4 h-4 ${isLight ? 'text-neutral-900 dark:text-zinc-200' : 'text-neutral-700 dark:text-zinc-300'}`} />
-            <span className={`text-sm font-bold tracking-wide ${t.textPrimary}`}>Simplify Lines</span>
+            <span className={`text-sm font-bold tracking-wide ${t.textPrimary}`}>Clean Up Lines</span>
           </div>
           <button
             onClick={onClose}
@@ -71,7 +71,7 @@ export const CurveDecimateModal: React.FC<CurveDecimateModalProps> = ({
 
         <div className="flex-1 min-h-0 overflow-y-auto studio-scroll p-4 space-y-4">
           <p className={`text-xs leading-relaxed ${t.textSecondary}`}>
-            Reduces extra points along your strokes to keep the canvas fast and responsive while preserving curve shape.
+            Removes extra points along your lines to keep the canvas fast and responsive while preserving curve shape.
           </p>
 
           {/* Scope Selector */}
@@ -88,7 +88,7 @@ export const CurveDecimateModal: React.FC<CurveDecimateModalProps> = ({
                   : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:bg-neutral-800'
               }`}
             >
-              Active Layer Only
+              Current Layer Only
             </button>
             <button
               onClick={() => setScope('all')}
@@ -102,19 +102,19 @@ export const CurveDecimateModal: React.FC<CurveDecimateModalProps> = ({
                   : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:bg-neutral-800'
               }`}
             >
-              All Project Curves
+              All Lines
             </button>
           </div>
 
           {/* Tolerance Slider with Numpad */}
           <div>
             <div className="flex items-center justify-between text-xs mb-1.5">
-              <span className={`font-medium ${t.textPrimary}`}>Simplification Tolerance</span>
+              <span className={`font-medium ${t.textPrimary}`}>Clean Up Strength</span>
               <button
                 onClick={() =>
                   onOpenNumpad?.({
                     id: 'rdp_tol',
-                    title: 'Simplification Tolerance',
+                    title: 'Clean Up Strength',
                     value: tolerance,
                     min: 0.001,
                     max: 0.05,
@@ -149,7 +149,7 @@ export const CurveDecimateModal: React.FC<CurveDecimateModalProps> = ({
                 : 'bg-neutral-900 border-neutral-800 text-neutral-200'
             }`}>
               <div>
-                <span className="font-semibold">Lines Simplified</span>
+                <span className="font-semibold">Lines Cleaned Up</span>
                 <div className={`text-[11px] font-mono ${isLight ? 'text-neutral-700' : 'text-neutral-400'}`}>
                   {lastStats.before} pts → {lastStats.after} pts
                 </div>
@@ -177,7 +177,7 @@ export const CurveDecimateModal: React.FC<CurveDecimateModalProps> = ({
               }`}
             >
               <Scissors className="w-4 h-4" />
-              <span>Simplify Lines</span>
+              <span>Clean Up Lines</span>
             </button>
           </div>
         </div>

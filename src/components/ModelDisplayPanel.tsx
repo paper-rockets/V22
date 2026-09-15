@@ -47,7 +47,7 @@ export const ModelDisplayPanel: React.FC<ModelDisplayPanelProps> = ({
     if (!engine) return;
     const cloned = engine.cloneModel();
     if (cloned) {
-      setCloneStatus('Cloned!');
+      setCloneStatus('Duplicated!');
       setTimeout(() => setCloneStatus(null), 1500);
     }
   };
@@ -216,10 +216,10 @@ export const ModelDisplayPanel: React.FC<ModelDisplayPanelProps> = ({
               ? 'bg-neutral-100 hover:bg-neutral-200 border-black/10 text-neutral-800'
               : 'bg-neutral-950/40 border-neutral-800 hover:bg-neutral-800 text-neutral-300'
           }`}
-          title="Clone 3D Model with offset"
+          title="Duplicate model"
         >
           <Layers className="w-3.5 h-3.5 text-neutral-700 dark:text-zinc-300" />
-          <span className="text-[9.5px] truncate">{cloneStatus || 'Clone'}</span>
+          <span className="text-[9.5px] truncate">{cloneStatus || 'Duplicate'}</span>
         </button>
 
         <button

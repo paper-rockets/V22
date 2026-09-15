@@ -82,7 +82,7 @@ export const LiquifyPanel: React.FC<LiquifyPanelProps> = ({
       id: 'comb',
       label: 'Comb',
       icon: <Wind className="w-4 h-4" />,
-      desc: 'Smooths and aligns curve tangents along stroke drag direction',
+      desc: 'Smooths and aligns curve tangents along your drag direction',
     },
   ];
 

@@ -405,7 +405,7 @@ export const StylusRadialMenu: React.FC<StylusRadialMenuProps> = ({
             style={{ width: '190px' }}
           >
             <div className="flex items-center justify-between text-[11px] font-semibold text-neutral-400">
-              <span>Stroke Radius</span>
+              <span>Line Size</span>
               {onOpenNumpad ? (
                 <button
                   type="button"
@@ -414,7 +414,7 @@ export const StylusRadialMenu: React.FC<StylusRadialMenuProps> = ({
                     onClose();
                     onOpenNumpad({
                       id: 'brush-size',
-                      title: 'Stroke Radius',
+                      title: 'Line Size',
                       value: Math.round(brushSettings.size * 1000),
                       min: 2,
                       max: 250,
@@ -459,7 +459,7 @@ export const StylusRadialMenu: React.FC<StylusRadialMenuProps> = ({
               onTouchStart={(e) => e.stopPropagation()}
               className="w-full h-2 bg-neutral-200 dark:bg-neutral-700 rounded-lg appearance-none cursor-pointer accent-neutral-900 dark:accent-neutral-100 touch-auto"
               style={{ touchAction: 'auto' }}
-              aria-label="Stroke radius slider"
+              aria-label="Line size slider"
             />
             <div className="grid grid-cols-4 gap-1">
               {[0.005, 0.015, 0.035, 0.08].map((s) => (

@@ -69,7 +69,7 @@ export const ShapesSheet: React.FC<ShapesSheetProps> = ({
   };
 
   return (
-    <StudioSheet id="shapes" title="Stroke Assist" theme={theme} tall compact>
+    <StudioSheet id="shapes" title="Line Assist" theme={theme} tall compact>
       <p className="pb-2 text-[11px] leading-4 opacity-65">
         One place to steady a stroke, clean it up, or make it straight.
       </p>
@@ -114,7 +114,7 @@ export const ShapesSheet: React.FC<ShapesSheetProps> = ({
       <div className={`mt-2 rounded-xl border px-3 py-2.5 ${soft}`}>
         <div className="flex items-center justify-between gap-2">
           <div className="min-w-0">
-            <div className="text-sm font-bold">Live stroke feel</div>
+            <div className="text-sm font-bold">Live line feel</div>
             <div className="text-[10px] leading-4 opacity-65">Shapes the line while you draw.</div>
           </div>
           <span className="shrink-0 font-mono text-[10px] font-bold opacity-70">
@@ -155,7 +155,7 @@ export const ShapesSheet: React.FC<ShapesSheetProps> = ({
           step="0.05"
           value={brushSettings.smoothingStrength ?? 0.55}
           onChange={(event) => update({ smoothingStrength: Number(event.target.value) })}
-          aria-label="Live stroke feel strength"
+          aria-label="Live line feel strength"
         />
       </div>
 
@@ -167,7 +167,7 @@ export const ShapesSheet: React.FC<ShapesSheetProps> = ({
           <Spline className="h-5 w-5 shrink-0" strokeWidth={1.8} />
           <div className="min-w-0 flex-1">
             <div className="text-sm font-bold">Clean up after drawing</div>
-            <div className="text-[10px] leading-4 opacity-65">Smooths the stroke after you lift the pen.</div>
+            <div className="text-[10px] leading-4 opacity-65">Smooths the line after you lift the pen.</div>
           </div>
         </div>
 
@@ -219,7 +219,7 @@ export const ShapesSheet: React.FC<ShapesSheetProps> = ({
           >
             <Magnet className="h-4 w-4 shrink-0" strokeWidth={1.8} />
             <div className="min-w-0 flex-1">
-              <div className="text-xs font-bold">Also turn strokes into shapes</div>
+              <div className="text-xs font-bold">Also turn lines into shapes</div>
               <div className="text-[10px] leading-4 opacity-70">Recognizes lines, circles, and basic shapes.</div>
             </div>
             {shapesOn && <Check className="h-4 w-4 shrink-0" strokeWidth={2.5} />}

@@ -516,7 +516,7 @@ export const StudioImporter: React.FC<StudioImporterProps> = ({
                     }`}
                   >
                     <Image className="w-3.5 h-3.5" />
-                    <span>Colours from file</span>
+                    <span>Original Colors</span>
                   </button>
                   <button
                     type="button"
@@ -533,7 +533,7 @@ export const StudioImporter: React.FC<StudioImporterProps> = ({
                     }`}
                   >
                     <Box className="w-3.5 h-3.5" />
-                    <span>Plain White Clay</span>
+                    <span>White Clay</span>
                   </button>
                 </div>
               </div>
@@ -567,7 +567,7 @@ export const StudioImporter: React.FC<StudioImporterProps> = ({
               }`}
             >
               <Check className="w-4 h-4" />
-              <span>Keep & Load to Canvas</span>
+              <span>Replace Scene</span>
             </button>
           </div>
         )}

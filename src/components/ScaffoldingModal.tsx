@@ -217,7 +217,7 @@ export const ScaffoldingModal: React.FC<ScaffoldingModalProps> = ({
       </div>
 
       <p className={`text-[11px] leading-relaxed ${t.textSecondary}`}>
-        Choose a surface or mannequin to draw on. For straight lines and smoother strokes, use Drawing Aids.
+        Choose a surface or mannequin to draw on. For straight lines and smoother lines, open Line Assist.
       </p>
 
       {/* Tabs */}

@@ -306,7 +306,7 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
 
   return (
     <aside
-      aria-label="Studio Illumination Menu"
+      aria-label="Lighting Setup"
       style={{
         left: panelPos && typeof window !== 'undefined' && window.innerWidth >= 640 ? `${panelPos.x}px` : undefined,
         top: panelPos && typeof window !== 'undefined' && window.innerWidth >= 640 ? `${panelPos.y}px` : undefined,

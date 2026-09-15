@@ -76,7 +76,7 @@ const QUICK_BRUSH_HELP: Record<string, string> = {
   streamline_ink: 'Everyday painting',
   conformal_bead: 'Follows objects',
   spatial_pipe: 'Raised 3D line',
-  chisel_marker: 'Broad stroke',
+  chisel_marker: 'Broad line',
 };
 const QUICK_BRUSH_LABELS: Record<string, string> = {
   streamline_ink: 'Flat Brush',
@@ -113,7 +113,7 @@ export const ProRail: React.FC<ProRailProps> = ({
   const opacityBtnRef = useRef<HTMLButtonElement>(null);
   const brushBtnRef = useRef<HTMLButtonElement>(null);
 
-  const [panel, setPanel] = useState<'placement' | 'color' | 'size' | 'opacity' | 'brush' | 'straight' | null>(null);
+  const [panel, setPanel] = useState<'placement' | 'color' | 'size' | 'opacity' | 'brush' | null>(null);
   const [showAllBrushes, setShowAllBrushes] = useState(false);
   useEffect(() => {
     setStudioShelfOpen(panel !== null);
@@ -446,7 +446,7 @@ export const ProRail: React.FC<ProRailProps> = ({
                   ? 'text-neutral-500 hover:text-neutral-900'
                   : 'text-neutral-400 hover:text-white'
               }`}
-              aria-label="Stroke size"
+              aria-label="Line size"
               title={`Size: ${QUICK_BRUSH_LABELS[activeBrush.id] || activeBrush.name}`}
             >
               <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
@@ -485,9 +485,9 @@ export const ProRail: React.FC<ProRailProps> = ({
                   ? isLight ? 'text-neutral-950 font-bold' : 'text-white font-bold'
                   : isLight ? 'text-neutral-500 hover:text-neutral-900' : 'text-neutral-400 hover:text-white'
               }`}
-              aria-label="Stroke assist: steady stroke, cleanup, and straight lines"
+              aria-label="Line Assist: steady lines, clean up, and straight lines"
               aria-pressed={openSheet === 'shapes'}
-              title="Stroke assist"
+              title="Line Assist"
             >
               <Ruler className="h-5 w-5" strokeWidth={1.7} />
               <span className="paperrocket-studio-quick-label">Assist</span>
@@ -511,7 +511,7 @@ export const ProRail: React.FC<ProRailProps> = ({
               }}
             >
               <IcErase className="w-3.5 h-3.5 text-rose-500 shrink-0" strokeWidth={2.2} />
-              <span>Drag across any stroke to erase</span>
+              <span>Drag across any line to erase</span>
             </div>
           )}
 
@@ -538,8 +538,6 @@ export const ProRail: React.FC<ProRailProps> = ({
                 ? 'paperrocket-studio-shelf--brush'
                 : panel === 'placement'
                 ? 'paperrocket-studio-shelf--wide'
-                : panel === 'straight'
-                ? 'paperrocket-studio-shelf--straight'
                 : 'paperrocket-studio-shelf--compact'
             } pointer-events-auto absolute left-full ml-3 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150`}
           >
@@ -654,7 +652,7 @@ export const ProRail: React.FC<ProRailProps> = ({
                             ? isLight ? 'text-neutral-300' : 'text-neutral-700 font-medium'
                             : 'opacity-60'
                         }`}>
-                          {activeGuide ? `Locked to ${activeGuide.name}` : 'Snap stroke to curved 3D guide wire'}
+                          {activeGuide ? `Locked to ${activeGuide.name}` : 'Snap lines to a curved 3D guide wire'}
                         </span>
                       </div>
                     </button>
@@ -883,7 +881,7 @@ export const ProRail: React.FC<ProRailProps> = ({
                     setBrushSettings?.((prev) => ({ ...prev, opacity: val }));
                   }}
                   className="w-full h-2 accent-neutral-900 dark:accent-white bg-black/10 dark:bg-white/20 rounded-lg cursor-pointer"
-                  aria-label="Stroke opacity slider"
+                  aria-label="Line opacity slider"
                 />
 
                 <div className="grid grid-cols-4 gap-1 pt-0.5">
@@ -994,211 +992,6 @@ export const ProRail: React.FC<ProRailProps> = ({
               </div>
             )}
 
-            {/* Straight Lines & Steps Quick Shelf */}
-            {panel === 'straight' && (
-              <div data-tour="straight-shelf" className="flex flex-col gap-2 p-1">
-                {/* Header with Title and On/Off Status Button */}
-                <div className="flex items-center justify-between pb-1 border-b border-black/10 dark:border-white/10">
-                  <div className="flex items-center gap-1.5">
-                    <Ruler className="w-3.5 h-3.5 opacity-70" />
-                    <span className={`text-[11px] font-bold tracking-tight ${isLight ? 'text-neutral-900' : 'text-white/95'}`}>
-                      Straight lines
-                    </span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      haptics.trigger('light');
-                      setBrushSettings?.((prev) => ({
-                        ...prev,
-                        straightLineMode: !prev.straightLineMode,
-                      }));
-                    }}
-                    className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold transition-all ${
-                      currentBrushSettings.straightLineMode
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 shadow-xs'
-                        : isLight
-                        ? 'bg-black/5 text-neutral-500 border border-black/10'
-                        : 'bg-white/10 text-white/50 border border-white/10'
-                    }`}
-                  >
-                    {currentBrushSettings.straightLineMode ? 'ON' : 'OFF'}
-                  </button>
-                </div>
-
-                {/* Line Width / Thickness Slider with Quick Presets */}
-                <div className="flex flex-col gap-1 pt-0.5">
-                  <div className="flex items-center justify-between">
-                    <span className={`text-[10px] font-semibold ${isLight ? 'text-neutral-600' : 'text-white/70'}`}>
-                      Width
-                    </span>
-                    <span className="font-mono text-[10px] font-bold px-1.5 py-0.5 rounded bg-black/5 dark:bg-white/10">
-                      {(currentBrushSettings.brushWidthMultiplier || 1).toFixed(0)}x
-                    </span>
-                  </div>
-                  <input
-                    type="range"
-                    min="1"
-                    max="20"
-                    step="1"
-                    value={currentBrushSettings.brushWidthMultiplier || 6}
-                    onChange={(e) => {
-                      const val = parseFloat(e.target.value);
-                      setBrushSettings?.((prev) => ({
-                        ...prev,
-                        brushWidthMultiplier: val,
-                      }));
-                    }}
-                    className="w-full h-1.5 accent-neutral-900 dark:accent-white bg-black/10 dark:bg-white/20 rounded-lg cursor-pointer"
-                    title="Stroke Width"
-                  />
-                  {/* Quick Thickness Buttons */}
-                  <div className="grid grid-cols-3 gap-1 pt-0.5">
-                    {[
-                      { label: 'Thin', mult: 2 },
-                      { label: 'Medium', mult: 6 },
-                      { label: 'Thick', mult: 12 },
-                    ].map(({ label, mult }) => {
-                      const isSelected = Math.round(currentBrushSettings.brushWidthMultiplier || 1) === mult;
-                      return (
-                        <button
-                          key={label}
-                          type="button"
-                          onClick={() => {
-                            haptics.trigger('light');
-                            setBrushSettings?.((prev) => ({
-                              ...prev,
-                              brushWidthMultiplier: mult,
-                            }));
-                          }}
-                          className={`py-1 rounded-lg text-[10px] font-semibold border transition-all ${
-                            isSelected
-                              ? isLight
-                                ? 'border-neutral-900 bg-neutral-900 text-white'
-                                : 'border-white bg-white text-neutral-950 font-bold'
-                              : isLight
-                              ? 'border-black/10 bg-white text-neutral-700 hover:bg-neutral-100'
-                              : 'border-white/10 bg-white/[0.05] text-white/80 hover:bg-white/10'
-                          }`}
-                        >
-                          {label} ({mult}x)
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Stroke Shape: Ribbon (Stairs/Walls) vs Round (Pipe) */}
-                <div className="flex flex-col gap-1 pt-1 border-t border-black/10 dark:border-white/10">
-                  <span className={`text-[10px] font-semibold ${isLight ? 'text-neutral-600' : 'text-white/70'}`}>
-                    Shape
-                  </span>
-                  <div className="grid grid-cols-2 gap-1">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        haptics.trigger('light');
-                        setBrushSettings?.((prev) => ({
-                          ...prev,
-                          profile: 'ribbon',
-                          brushShape: 'chisel',
-                        }));
-                      }}
-                      className={`py-1 rounded-lg text-[10px] font-semibold border transition-all flex items-center justify-center gap-1 ${
-                        currentBrushSettings.profile === 'ribbon'
-                          ? isLight
-                            ? 'border-neutral-900 bg-neutral-900 text-white'
-                            : 'border-white bg-white text-neutral-950 font-bold'
-                          : isLight
-                          ? 'border-black/10 bg-white text-neutral-700 hover:bg-neutral-100'
-                          : 'border-white/10 bg-white/[0.05] text-white/80 hover:bg-white/10'
-                      }`}
-                    >
-                      Flat Ribbon
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        haptics.trigger('light');
-                        setBrushSettings?.((prev) => ({
-                          ...prev,
-                          profile: 'tube',
-                          brushShape: 'circle',
-                        }));
-                      }}
-                      className={`py-1 rounded-lg text-[10px] font-semibold border transition-all flex items-center justify-center gap-1 ${
-                        currentBrushSettings.profile !== 'ribbon'
-                          ? isLight
-                            ? 'border-neutral-900 bg-neutral-900 text-white'
-                            : 'border-white bg-white text-neutral-950 font-bold'
-                          : isLight
-                          ? 'border-black/10 bg-white text-neutral-700 hover:bg-neutral-100'
-                          : 'border-white/10 bg-white/[0.05] text-white/80 hover:bg-white/10'
-                      }`}
-                    >
-                      Round Tube
-                    </button>
-                  </div>
-                </div>
-
-                {/* Grid & Angle Auto-alignment */}
-                <div className="flex items-center justify-between pt-1 border-t border-black/10 dark:border-white/10">
-                  <span className={`text-[10px] font-semibold ${isLight ? 'text-neutral-700' : 'text-white/80'}`}>
-                    Snap angles (3D steps)
-                  </span>
-                  <input
-                    type="checkbox"
-                    checked={currentBrushSettings.angleSnapping !== false}
-                    onChange={(e) => {
-                      setBrushSettings?.((prev) => ({
-                        ...prev,
-                        angleSnapping: e.target.checked,
-                      }));
-                    }}
-                    className="w-4 h-4 rounded cursor-pointer accent-neutral-900 dark:accent-white"
-                  />
-                </div>
-
-                {/* Magnetic Snap / Connect Steps & Lines */}
-                <div className="flex items-center justify-between pt-1 border-t border-black/10 dark:border-white/10">
-                  <div className="flex flex-col">
-                    <span className={`text-[10px] font-semibold ${isLight ? 'text-neutral-700' : 'text-white/80'}`}>
-                      Magnetic snap
-                    </span>
-                    <span className="text-[8.5px] opacity-60">Connect steps &amp; corners</span>
-                  </div>
-                  <input
-                    type="checkbox"
-                    checked={currentBrushSettings.magneticEndpointSnapping !== false}
-                    onChange={(e) => {
-                      setBrushSettings?.((prev) => ({
-                        ...prev,
-                        magneticEndpointSnapping: e.target.checked,
-                      }));
-                    }}
-                    className="w-4 h-4 rounded cursor-pointer accent-neutral-900 dark:accent-white"
-                  />
-                </div>
-
-                {/* 3D View Alignment Button */}
-                <div className="pt-1 border-t border-black/10 dark:border-white/10">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      haptics.trigger('light');
-                      engine?.snapToView('isometric');
-                    }}
-                    className={`w-full py-1.5 rounded-lg text-[11px] font-semibold border transition-all flex items-center justify-center gap-1 active:scale-95 ${
-                      isLight
-                        ? 'border-black/15 bg-white text-neutral-800 hover:bg-neutral-100'
-                        : 'border-white/15 bg-white/[0.08] text-white hover:bg-white/15'
-                    }`}
-                  >
-                    <span>Isometric 3D view</span>
-                  </button>
-                </div>
-              </div>
-            )}
           </MenuShelf>
         )}
       </nav>

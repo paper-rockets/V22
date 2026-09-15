@@ -44,12 +44,12 @@ export const HolisticDNAInspector: React.FC<HolisticDNAInspectorProps> = ({
   const getSourceLabel = (src: HolisticStrokeDNA['sourceType']) => {
     switch (src) {
       case 'stroke':
-        return '3D Ribbon / Tube Stroke';
+        return 'From a 3D line';
       case 'model_mesh':
-        return 'PBR Model Surface Mesh';
+        return 'From a model surface';
       case 'pixel_framebuffer':
       default:
-        return 'WebGL Framebuffer';
+        return 'From the screen';
     }
   };
 

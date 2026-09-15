@@ -333,7 +333,7 @@ export const ModelLibraryModal: React.FC<ModelLibraryModalProps> = ({
             {/* New model behavior */}
             <div className="min-w-0 space-y-1">
               <div className={`text-[10px] font-bold uppercase tracking-wide ${isLight ? 'text-neutral-500' : 'text-zinc-500'}`}>
-                When opening a model
+                When adding a model
               </div>
               <div className={`grid grid-cols-2 gap-1 p-1 rounded-xl border ${
                 isLight ? 'bg-neutral-100 border-black/10' : 'bg-zinc-950 border-zinc-800'
@@ -352,7 +352,7 @@ export const ModelLibraryModal: React.FC<ModelLibraryModalProps> = ({
                 }`}
                 title="Keep the current scene and add this model"
               >
-                Add to scene
+                Add to Scene
               </button>
               <button
                 type="button"
@@ -368,12 +368,12 @@ export const ModelLibraryModal: React.FC<ModelLibraryModalProps> = ({
                 }`}
                 title="Clear the current scene before loading this model"
               >
-                Replace current
+                Replace Scene
               </button>
               </div>
             </div>
 
-            {/* Display Mode (Original vs White clay) */}
+            {/* Display Mode (Original Colors vs White Clay) */}
             <div className="min-w-0 space-y-1">
               <div className={`text-[10px] font-bold uppercase tracking-wide ${isLight ? 'text-neutral-500' : 'text-zinc-500'}`}>
                 Appearance
@@ -395,7 +395,7 @@ export const ModelLibraryModal: React.FC<ModelLibraryModalProps> = ({
                 }`}
               >
                 <Palette className="w-3 h-3" />
-                <span>Original</span>
+                <span>Original Colors</span>
               </button>
               <button
                 type="button"
@@ -411,7 +411,7 @@ export const ModelLibraryModal: React.FC<ModelLibraryModalProps> = ({
                 }`}
               >
                 <Circle className="w-3 h-3" />
-                <span>White clay</span>
+                <span>White Clay</span>
               </button>
               </div>
             </div>
@@ -508,7 +508,7 @@ export const ModelLibraryModal: React.FC<ModelLibraryModalProps> = ({
                       <div className="mt-1 flex items-center justify-between text-[10px] text-neutral-400">
                         <span>{preset.category}</span>
                         <span className="font-semibold text-neutral-400 group-hover:text-neutral-200">
-                          Open →
+                          {loadChoice === 'add' ? 'Add to Scene' : 'Replace Scene'}
                         </span>
                       </div>
                     </div>
@@ -575,7 +575,7 @@ export const ModelLibraryModal: React.FC<ModelLibraryModalProps> = ({
                       <div className="mt-1 flex items-center justify-between text-[10px] text-neutral-400">
                         <span>{model.triangleCount > 0 ? `${model.triangleCount.toLocaleString()} tris` : 'Auto Saved'}</span>
                         <span className="font-semibold text-neutral-400 group-hover:text-neutral-200">
-                          Load Model →
+                          {loadChoice === 'add' ? 'Add to Scene' : 'Replace Scene'}
                         </span>
                       </div>
                     </div>
@@ -672,7 +672,7 @@ export const ModelLibraryModal: React.FC<ModelLibraryModalProps> = ({
               disabled={!urlInput.trim() || loading}
               className="px-4 py-2 rounded-xl bg-neutral-900 dark:bg-white hover:bg-neutral-900 dark:bg-white disabled:opacity-50 text-white text-xs font-semibold transition-colors cursor-pointer"
             >
-              Fetch & Load
+              {loadChoice === 'add' ? 'Add to Scene' : 'Replace Scene'}
             </button>
           </div>
         </div>

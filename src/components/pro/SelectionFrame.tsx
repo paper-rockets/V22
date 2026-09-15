@@ -222,8 +222,8 @@ export const SelectionFrame: React.FC<SelectionFrameProps> = ({
   const hint = summary?.isEmpty
     ? summary.detail
     : isCoarse
-      ? 'Drag to move · pinch to resize · twist to turn'
-      : 'Drag to move · wheel to resize · Shift-drag to turn';
+      ? 'Drag to move · pinch to resize · twist to rotate'
+      : 'Drag to move · wheel to resize · Shift-drag to rotate';
 
   return (
     <div
@@ -247,7 +247,7 @@ export const SelectionFrame: React.FC<SelectionFrameProps> = ({
             <span />
           </div>
         ))}
-        <div className="selection-frame-turn" role="slider" aria-label="Turn selection" {...handleProps('turn')}>
+        <div className="selection-frame-turn" role="slider" aria-label="Rotate selection" {...handleProps('turn')}>
           <span>
             <RotateCw size={14} strokeWidth={2.4} />
           </span>

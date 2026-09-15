@@ -40,7 +40,7 @@ const BRUSH_HELP: Record<string, string> = {
   streamline_ink: 'Everyday painting',
   conformal_bead: 'Follows objects',
   spatial_pipe: 'Raised 3D line',
-  chisel_marker: 'Broad stroke',
+  chisel_marker: 'Broad line',
   neon_cable: 'Glowing tube',
   halftone_dot: 'Dot pattern',
   stipple_texture: 'Speckled',
@@ -275,7 +275,7 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
             </div>
             <label className="flex items-center justify-between min-h-[38px] mt-1.5 px-2.5 py-1 rounded-xl bg-black/[0.04] dark:bg-white/[0.04] border border-black/5 dark:border-white/5 cursor-pointer">
               <div className="flex flex-col">
-                <span className="text-[11px] font-semibold leading-tight">Surface + open air in one stroke</span>
+                <span className="text-[11px] font-semibold leading-tight">Surface + open air in one line</span>
                 <span className="text-[9px] opacity-60">Draw on 3D models and continue into mid-air</span>
               </div>
               <input
@@ -457,7 +457,7 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
           >
             <span>
               <span className="block text-[11px] font-semibold">Advanced</span>
-              <span className="block text-[9.5px] opacity-55">Surface finish, stroke profile, live feel, and assist</span>
+              <span className="block text-[9.5px] opacity-55">Surface finish, line shape, live feel, and assist</span>
             </span>
             <ChevronRight className="h-4 w-4 opacity-60" />
           </button>
@@ -583,7 +583,7 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
                 <span className="flex min-w-0 items-center gap-2">
                   <Ruler className="h-4 w-4 shrink-0" />
                   <span>
-                    <span className="block text-[11px] font-semibold">Stroke assist</span>
+                    <span className="block text-[11px] font-semibold">Line Assist</span>
                     <span className="block text-[9.5px] opacity-60">Stabilizer, cleanup, shapes, and straight lines</span>
                   </span>
                 </span>
@@ -605,7 +605,7 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
               <label className="flex items-center justify-between min-h-[44px] cursor-pointer border-t border-black/5 dark:border-white/5 pt-1">
                 <div>
                   <span className="text-[11px] font-medium block">Stick to Surface & Draw in Air</span>
-                  <span className="text-[9.5px] opacity-60 block">Draw on 3D models and continue in mid-air in the same stroke</span>
+                  <span className="text-[9.5px] opacity-60 block">Draw on 3D models and continue in mid-air in the same line</span>
                 </div>
                 <input
                   type="checkbox"
@@ -621,7 +621,7 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
               <div className="flex justify-between items-center text-[11px]">
                 <span className="font-medium text-current">Eraser Mode</span>
                 <span className="font-mono text-[10px] opacity-70">
-                  {brushSettings.eraserMode === 'cutout' ? 'Negative Mask' : 'Super Zap (Continuous)'}
+                  {brushSettings.eraserMode === 'cutout' ? 'Cut Out Parts' : 'Erase Whole Lines'}
                 </span>
               </div>
               <div className="grid grid-cols-2 gap-1.5">
@@ -645,7 +645,7 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
                           : 'bg-black/30 border-white/10 text-neutral-300 hover:bg-white/5'
                       }`}
                     >
-                      {mode === 'vacuum' ? 'Super Zap (Full Curve)' : 'Mask Cutout'}
+                      {mode === 'vacuum' ? 'Erase Whole Lines' : 'Cut Out Parts'}
                     </button>
                   );
                 })}

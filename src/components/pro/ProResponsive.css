@@ -260,7 +260,6 @@
 }
 
 .paperrocket-studio-shelf--compact,
-.paperrocket-studio-shelf--straight { width: min(calc(100% - 16px), var(--studio-menu-compact)) !important; }
 .paperrocket-studio-shelf--wide,
 .paperrocket-studio-shelf--brush {
   width: min(calc(100% - 16px), var(--studio-menu-wide)) !important;

@@ -474,7 +474,7 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
       )}
 
       {onClearCanvas && (
-        <Row icon={Trash2} label="Clear canvas" hint="Remove every stroke, while keeping the canvas and layers" isLight={isLight}>
+        <Row icon={Trash2} label="Clear canvas" hint="Remove every line, while keeping the canvas and layers" isLight={isLight}>
           <button
             type="button"
             onClick={() => {
@@ -515,16 +515,16 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
       {showMore && (
         <>
           {onTogglePlane && (
-            <Row icon={Layers} label="Drawing Plane" hint="Surface alignment plane for drawing strokes" isLight={isLight}>
+            <Row icon={Layers} label="Drawing Plane" hint="The flat surface you draw lines on" isLight={isLight}>
               <Toggle on={showPlane} onChange={() => onTogglePlane()} label="Drawing Plane" isLight={isLight} />
             </Row>
           )}
 
           {onOpenIllumination && (
-            <Row icon={SunMedium} label="Studio Lighting" hint="Scene illumination, soft shadows, and studio presets" isLight={isLight}>
+            <Row icon={SunMedium} label="Lighting Setup" hint="Light direction, soft shadows, and lighting presets" isLight={isLight}>
               <button type="button" onClick={onOpenIllumination} className={actionBtn}>
                 <SunMedium className="w-4 h-4 text-amber-400" />
-                <span>Studio Illumination</span>
+                <span>Lighting Setup</span>
               </button>
             </Row>
           )}
@@ -538,10 +538,10 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
             </Row>
           )}
 
-          <Row icon={Box} label="Model Appearance" hint="Keep imported textures or use neutral studio clay" isLight={isLight}>
-            <div className="flex gap-1 w-40">
-              <button type="button" onClick={() => onSetModelDisplayMode('texture')} className={pill(modelDisplayMode === 'texture')}>Texture</button>
-              <button type="button" onClick={() => onSetModelDisplayMode('clay')} className={pill(modelDisplayMode === 'clay')}>White Clay</button>
+          <Row icon={Box} label="Model Appearance" hint="Show a model's original colors or plain white clay" isLight={isLight}>
+            <div className="flex gap-1 shrink-0">
+              <button type="button" onClick={() => onSetModelDisplayMode('texture')} className={`${pill(modelDisplayMode === 'texture')} whitespace-nowrap`}>Original Colors</button>
+              <button type="button" onClick={() => onSetModelDisplayMode('clay')} className={`${pill(modelDisplayMode === 'clay')} whitespace-nowrap`}>White Clay</button>
             </div>
           </Row>
 
@@ -552,7 +552,7 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
             <Row icon={FolderArchive} label="Projects" hint="Open, save, or restore" isLight={isLight}>
               <button type="button" onClick={onOpenSessions} className={actionBtn}>
                 <FolderArchive className="w-4 h-4" />
-                <span>Manage Sessions</span>
+                <span>Manage Projects</span>
               </button>
             </Row>
           )}

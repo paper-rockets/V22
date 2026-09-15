@@ -240,7 +240,7 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
           {(
             [
               { id: 'move', label: 'Move', Icon: Compass },
-              { id: 'rotate', label: 'Turn', Icon: RotateCcw },
+              { id: 'rotate', label: 'Rotate', Icon: RotateCcw },
               { id: 'scale', label: 'Resize', Icon: CircleDot },
             ] as const
           ).map(({ id, label, Icon }) => (
@@ -259,7 +259,7 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
         <p className={hintClass}>
           {transformMode === 'look'
             ? 'The View controls are set to Orbit. Pick one to start editing.'
-            : 'Also: corner handles resize, the round handle turns. Two fingers pinch and twist.'}
+            : 'Also: corner handles resize, the round handle rotates. Two fingers pinch and twist.'}
         </p>
 
         <button

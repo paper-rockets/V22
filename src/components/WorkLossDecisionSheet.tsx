@@ -77,7 +77,7 @@ export const WorkLossDecisionSheet: React.FC<WorkLossDecisionSheetProps> = ({
             Cancel — Keep My Work
           </button>
           <button type="button" onClick={onSave} disabled={busy} className={`min-h-12 rounded-xl border px-4 text-sm font-semibold ${isLight ? 'border-black/15 bg-neutral-100' : 'border-white/15 bg-white/10'}`}>
-            <span className="inline-flex items-center gap-2"><Save className="h-4 w-4" />Save &amp; {actionLabel}</span>
+            <span className="inline-flex items-center gap-2"><Save className="h-4 w-4" />Save Project &amp; {actionLabel}</span>
           </button>
           <button type="button" onClick={onReplace} disabled={busy} className="min-h-12 rounded-xl border border-red-500/40 px-4 text-sm font-semibold text-red-600 dark:text-red-300">
             {actionLabel} Without Saving

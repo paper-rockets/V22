@@ -1707,7 +1707,7 @@ export const Viewport: React.FC<ViewportProps> = ({
       {tool === 'brush_picker' && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-neutral-900 dark:bg-white text-white dark:text-zinc-950 px-4 py-2 rounded-full font-semibold shadow-2xl border border-white/20 flex items-center gap-3 animate-in fade-in slide-in-from-top duration-200 select-none">
           <Pipette className="w-4 h-4 stroke-[2.5]" />
-          <span className="text-xs">Sampling 3D Stroke DNA • Tap any curve to copy DNA</span>
+          <span className="text-xs">Copy a brush look • Tap any line to copy its look</span>
           <button
             type="button"
             onClick={() => {

@@ -68,7 +68,7 @@ export const BrushSettingsPanelComponent: React.FC<BrushSettingsPanelProps> = ({
     {
       id: 'streamline',
       label: 'Streamline Lead String',
-      desc: 'Pull-string smoothing for buttery calligraphic strokes',
+      desc: 'Pull-string smoothing for smooth calligraphic lines',
       badge: 'Smooth',
     },
     {
@@ -414,7 +414,7 @@ export const BrushSettingsPanelComponent: React.FC<BrushSettingsPanelProps> = ({
             <div className={`flex items-center justify-between pt-1.5 border-t ${theme === 'light' ? 'border-black/10' : 'border-zinc-800/80'}`}>
               <div className="flex flex-col">
                 <span className={`font-medium ${theme === 'light' ? 'text-neutral-900' : 'text-zinc-200'}`}>Straight Line Snapping</span>
-                <span className={`text-[10px] ${theme === 'light' ? 'text-neutral-500' : 'text-zinc-500'}`}>Locks stroke to straight line segment</span>
+                <span className={`text-[10px] ${theme === 'light' ? 'text-neutral-500' : 'text-zinc-500'}`}>Keeps the line perfectly straight</span>
               </div>
               <input
                 type="checkbox"
@@ -501,7 +501,7 @@ export const BrushSettingsPanelComponent: React.FC<BrushSettingsPanelProps> = ({
             <div className="flex items-center justify-between">
               <div className="flex flex-col">
                 <span className={`font-medium ${theme === 'light' ? 'text-neutral-900' : 'text-zinc-200'}`}>Stencil Buffer Occlusion</span>
-                <span className={`text-[10px] ${theme === 'light' ? 'text-neutral-500' : 'text-zinc-500'}`}>Masks strokes strictly to model pixels</span>
+                <span className={`text-[10px] ${theme === 'light' ? 'text-neutral-500' : 'text-zinc-500'}`}>Keeps lines inside the model's outline</span>
               </div>
               <input
                 type="checkbox"
@@ -533,7 +533,7 @@ export const BrushSettingsPanelComponent: React.FC<BrushSettingsPanelProps> = ({
             {/* Smoothing Filter */}
             <div className={`space-y-1 pt-1.5 border-t ${theme === 'light' ? 'border-black/10' : 'border-zinc-800/80'}`}>
               <div className={`flex justify-between ${theme === 'light' ? 'text-neutral-700' : 'text-zinc-300'}`}>
-                <span>Stroke Smoothing</span>
+                <span>Line Smoothing</span>
                 <span className={`font-mono ${theme === 'light' ? 'text-neutral-500' : 'text-zinc-400'}`}>
                   {((brushSettings.smoothingStrength ?? 0.55) * 100).toFixed(0)}%
                 </span>
