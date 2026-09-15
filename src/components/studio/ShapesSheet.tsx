@@ -1,5 +1,5 @@
 import React from 'react';
-import { BrushSettings } from '../../types';
+import { BrushSettings, SmoothingAlgorithm } from '../../types';
 import { StudioSheet } from './StudioSheet';
 import { haptics } from '../../utils/haptics';
 import { Check, Compass, Magnet, Ruler, Spline, Waves } from 'lucide-react';
@@ -37,6 +37,12 @@ const CLEANUP_PRESETS = [
   { value: 1, label: 'Low' },
   { value: 3, label: 'Medium' },
   { value: 5, label: 'High' },
+];
+
+const LIVE_FEEL_OPTIONS: Array<{ value: SmoothingAlgorithm; label: string }> = [
+  { value: 'streamline', label: 'Smooth Glide' },
+  { value: 'exponential', label: 'Natural' },
+  { value: 'none', label: 'Direct Raw' },
 ];
 
 export const ShapesSheet: React.FC<ShapesSheetProps> = ({
@@ -101,6 +107,56 @@ export const ShapesSheet: React.FC<ShapesSheetProps> = ({
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Live stroke feel acts while the pen is down, so it belongs beside
+          the stabilizer—not in a duplicate Draw inspector. */}
+      <div className={`mt-2 rounded-xl border px-3 py-2.5 ${soft}`}>
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <div className="text-sm font-bold">Live stroke feel</div>
+            <div className="text-[10px] leading-4 opacity-65">Shapes the line while you draw.</div>
+          </div>
+          <span className="shrink-0 font-mono text-[10px] font-bold opacity-70">
+            {Math.round((brushSettings.smoothingStrength ?? 0.55) * 100)}%
+          </span>
+        </div>
+
+        <div className="mt-2 grid grid-cols-3 gap-1.5">
+          {LIVE_FEEL_OPTIONS.map(({ value, label }) => {
+            const selected = (brushSettings.smoothingAlgorithm ?? 'streamline') === value;
+            return (
+              <button
+                key={value}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => update({ smoothingAlgorithm: value })}
+                className={`min-h-[40px] rounded-lg border px-1 text-[10px] font-bold transition-colors ${
+                  selected
+                    ? isLight
+                      ? 'border-neutral-900 bg-neutral-900 text-white'
+                      : 'border-white bg-white text-neutral-950'
+                    : isLight
+                    ? 'border-neutral-300 bg-white/60'
+                    : 'border-neutral-700 bg-white/5'
+                }`}
+              >
+                {label}
+              </button>
+            );
+          })}
+        </div>
+
+        <input
+          className="mt-2 h-1.5 w-full cursor-pointer rounded accent-sky-500"
+          type="range"
+          min="0"
+          max="1"
+          step="0.05"
+          value={brushSettings.smoothingStrength ?? 0.55}
+          onChange={(event) => update({ smoothingStrength: Number(event.target.value) })}
+          aria-label="Live stroke feel strength"
+        />
       </div>
 
       {/* ---------------------------------------------------------------- */}

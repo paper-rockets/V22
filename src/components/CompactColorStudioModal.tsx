@@ -795,6 +795,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
       <section
         id="mody-color-studio-modal"
         data-theme={theme}
+        data-menu-width="wide"
         role={allowsWorkspaceInteraction ? 'region' : 'dialog'}
         aria-modal={allowsWorkspaceInteraction ? undefined : true}
         aria-label="Color studio"

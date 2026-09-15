@@ -4,6 +4,7 @@ import {
   Sliders,
   Sun,
   Flame,
+  Palette,
   Camera,
   Film,
   Grid,
@@ -255,6 +256,40 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
                 />
               </div>
             </div>
+          )}
+        </div>
+
+        {/* 1. Bloom & Neon Glow Halo */}
+        <div className={`p-3 rounded-xl border space-y-3 ${
+          isLight ? 'bg-[#f4f0e9]/80 border-black/10' : 'bg-neutral-950/60 border-neutral-800/80'
+        }`}>
+          <div className="flex items-center gap-1.5 font-semibold text-neutral-700 dark:text-zinc-300">
+            <Palette className="w-3.5 h-3.5" />
+            <span>Vivid Color</span>
+          </div>
+          <p className={`text-[11px] leading-relaxed ${isLight ? 'text-neutral-600' : 'text-neutral-400'}`}>
+            Enriches muted colours while protecting already-vivid paint and highlight detail.
+          </p>
+          <div className="space-y-1">
+            <div className={`flex justify-between ${isLight ? 'text-neutral-700' : 'text-neutral-300'}`}>
+              <span>Vibrance</span>
+              <span className={`font-mono ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>{Math.round(settings.vibrance * 100)}%</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="0.6"
+              step="0.01"
+              value={settings.vibrance}
+              onChange={(e) => update('vibrance', parseFloat(e.target.value))}
+              className={`w-full accent-neutral-900 dark:accent-neutral-100 h-1.5 rounded cursor-pointer ${isLight ? 'bg-neutral-200' : 'bg-neutral-800'}`}
+              aria-label="Vivid color vibrance"
+            />
+          </div>
+          {settings.renderMode === 'draft' && (
+            <p className={`text-[10px] leading-relaxed ${isLight ? 'text-neutral-500' : 'text-neutral-500'}`}>
+              Switch to Render Mode to apply this display finish.
+            </p>
           )}
         </div>
 

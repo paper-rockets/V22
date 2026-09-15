@@ -107,6 +107,7 @@ export class PostProcessingEngine {
     bloomIntensity: 1.2,
     bloomRadius: 0.8,
     bloomThreshold: 0.85,
+    vibrance: 0.22,
     dof: false,
     dofFocusDistance: 2.5,
     dofAperture: 0.015,
@@ -188,6 +189,7 @@ export class PostProcessingEngine {
         uToonSteps: { value: 3.0 },
         uBloom: { value: true },
         uBloomIntensity: { value: 1.2 },
+        uVibrance: { value: 0.22 },
         uDoF: { value: false },
         uFocusDistance: { value: 2.5 },
         uAperture: { value: 0.015 },
@@ -210,6 +212,7 @@ export class PostProcessingEngine {
         uniform float uToonSteps;
         uniform bool uBloom;
         uniform float uBloomIntensity;
+        uniform float uVibrance;
         uniform bool uDoF;
         uniform float uFocusDistance;
         uniform float uAperture;
@@ -309,6 +312,17 @@ export class PostProcessingEngine {
           if (uBloom) {
             vec3 bloomSample = texture2D(tBloom, uv).rgb;
             linearColor += bloomSample * uBloomIntensity;
+          }
+
+          // Camera-style vibrance in the same perceptual space used by paint
+          // blending. It retains OKLab lightness and hue, while lifting only
+          // the chroma of muted colours; already-vivid strokes are protected.
+          if (uVibrance > 0.0) {
+            vec3 oklab = linear_srgb_to_oklab(linearColor);
+            float chroma = length(oklab.yz);
+            float mutedness = 1.0 - clamp(chroma / 0.32, 0.0, 1.0);
+            oklab.yz *= 1.0 + uVibrance * mutedness;
+            linearColor = oklab_to_linear_srgb(oklab);
           }
 
           // 4. Toon / Cel Shading Quantization in OKLab
@@ -469,6 +483,7 @@ export class PostProcessingEngine {
     u.uToonSteps.value = this.settings.toonSteps;
     u.uBloom.value = this.settings.bloom;
     u.uBloomIntensity.value = this.settings.bloomIntensity;
+    u.uVibrance.value = this.settings.vibrance;
     this.brightPassMaterial.uniforms.uBloomThreshold.value = this.settings.bloomThreshold;
 
     u.uDoF.value = this.settings.dof;
@@ -570,4 +585,3 @@ export class PostProcessingEngine {
     this.quadScene.clear();
   }
 }
-

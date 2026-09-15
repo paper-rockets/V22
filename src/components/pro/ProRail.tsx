@@ -303,8 +303,11 @@ export const ProRail: React.FC<ProRailProps> = ({
                       if (tool === 'eraser' || (setTool && tool !== 'brush' && tool !== 'free_brush')) {
                         setTool?.('brush');
                       }
-                      closeSheet();
                       setPanel(null);
+                      // Draw is a mode, not another settings menu. Its controls
+                      // already live in the bottom dock, so a second inspector
+                      // would only duplicate Surface, Brush, Color, Size, and Assist.
+                      closeSheet();
                       return;
                     } else if (id === 'select' && setTool) {
                       setTool('select');

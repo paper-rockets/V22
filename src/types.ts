@@ -325,6 +325,12 @@ export interface PostProcessSettings {
   bloomIntensity: number; // 0.1 to 3.0
   bloomRadius: number; // 0.1 to 1.5
   bloomThreshold: number; // 0.0 to 1.0
+  /**
+   * Perceptual colour lift applied by the final compositor. Unlike a plain
+   * saturation control, this protects colours which are already vivid and
+   * gives the biggest lift to naturally muted paint and textures.
+   */
+  vibrance: number; // 0.0 to 0.6
   dof: boolean;
   dofFocusDistance: number; // 0.5 to 10.0
   dofAperture: number; // 0.001 to 0.05

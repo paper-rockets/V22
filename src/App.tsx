@@ -221,6 +221,9 @@ const DEFAULT_POST_SETTINGS: PostProcessSettings = {
   bloomIntensity: 1.2,
   bloomRadius: 0.8,
   bloomThreshold: 0.85,
+  // A camera-like default: make muted artwork read richly without clipping
+  // colours that are already saturated.
+  vibrance: 0.22,
   dof: false,
   dofFocusDistance: 2.5,
   dofAperture: 0.015,
@@ -1786,7 +1789,7 @@ export function App() {
         return null;
       })()}
       <ProShell
-        isModalActive={Boolean(isNonColorModalActive || openSheet === 'settings')}
+        isModalActive={Boolean(isNonColorModalActive)}
         theme={theme}
             engine={engine}
             tool={tool}

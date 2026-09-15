@@ -169,6 +169,7 @@ export const ProPanel: React.FC<ProPanelProps> = ({
         role="region"
         aria-label={`${title} Panel`}
         data-theme={theme}
+        data-menu-width="wide"
         data-dock-position={dockPreferences.position}
         className={`paperrocket-pro-panel paperrocket-context-panel fixed z-40 select-none flex flex-col border shadow-2xl animate-in fade-in duration-150 overflow-hidden ${
         light

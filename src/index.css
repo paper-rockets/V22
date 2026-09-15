@@ -1,10 +1,18 @@
 @import "tailwindcss";
 
 :root {
-  /* Every Studio menu uses one of these two widths. */
+  /*
+   * The only two menu widths in the Studio. Components opt into one with
+   * data-menu-width="compact" or "wide". Do not add one-off widths: changing
+   * either token updates every menu in that family.
+   */
   --studio-menu-compact: 240px;
   --studio-menu-wide: 336px;
+  --studio-menu-gutter: 12px;
 }
+
+[data-menu-width='compact'] { --studio-menu-width: var(--studio-menu-compact); }
+[data-menu-width='wide'] { --studio-menu-width: var(--studio-menu-wide); }
 
 html,
 body,
@@ -255,7 +263,7 @@ html:not(.light) .pr-surface .paperrocket-toggle {
     left: auto !important;
     right: 20px !important;
     bottom: 20px !important;
-    width: min(390px, calc(100vw - 40px)) !important;
+    width: min(var(--studio-menu-width, var(--studio-menu-wide)), calc(100vw - 40px)) !important;
     min-width: 0 !important;
     max-width: calc(100vw - 40px) !important;
     border: 1px solid rgb(255 255 255 / 0.1) !important;
@@ -263,7 +271,7 @@ html:not(.light) .pr-surface .paperrocket-toggle {
   }
 
   .paperrocket-studio-sheet[data-sheet-id="settings"] {
-    width: min(410px, calc(100vw - 40px)) !important;
+    width: min(var(--studio-menu-width, var(--studio-menu-wide)), calc(100vw - 40px)) !important;
   }
 }
 
@@ -875,4 +883,46 @@ html.light .paperrocket-sheet-header,
 }
 .paperrocket-color-swatch {
   border-radius: 9999px !important;
+}
+
+/* A menu remains a floating tool even on a phone. The bottom dock needs
+   breathing room, and a panel should never turn into an edge-to-edge wall. */
+@media (max-width: 639px) {
+  .paperrocket-studio-sheet {
+    left: 50% !important;
+    right: auto !important;
+    bottom: calc(78px + env(safe-area-inset-bottom)) !important;
+    width: min(var(--studio-menu-width, var(--studio-menu-wide)), calc(100vw - (var(--studio-menu-gutter) * 2))) !important;
+    max-width: min(var(--studio-menu-width, var(--studio-menu-wide)), calc(100vw - (var(--studio-menu-gutter) * 2))) !important;
+    transform: translateX(-50%) !important;
+    border: 1px solid rgb(var(--pr-menu-border-rgb) / var(--pr-menu-border-opacity)) !important;
+    border-radius: 16px !important;
+  }
+
+  .paperrocket-pro-panel,
+  .paperrocket-context-panel {
+    left: 50% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: calc(78px + env(safe-area-inset-bottom)) !important;
+    width: min(var(--studio-menu-width, var(--studio-menu-wide)), calc(100vw - (var(--studio-menu-gutter) * 2))) !important;
+    max-width: min(var(--studio-menu-width, var(--studio-menu-wide)), calc(100vw - (var(--studio-menu-gutter) * 2))) !important;
+    transform: translateX(-50%) !important;
+    border: 1px solid rgb(var(--pr-menu-border-rgb) / var(--pr-menu-border-opacity)) !important;
+    border-radius: 16px !important;
+  }
+
+  .paperrocket-color-studio-overlay--side {
+    align-items: flex-end !important;
+    justify-content: center !important;
+    padding: 0 var(--studio-menu-gutter) calc(78px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .paperrocket-color-studio-overlay--side .paperrocket-color-studio {
+    width: min(var(--studio-menu-width, var(--studio-menu-wide)), calc(100vw - (var(--studio-menu-gutter) * 2))) !important;
+    max-width: min(var(--studio-menu-width, var(--studio-menu-wide)), calc(100vw - (var(--studio-menu-gutter) * 2))) !important;
+    border: 1px solid rgb(var(--pr-menu-border-rgb) / var(--pr-menu-border-opacity)) !important;
+    border-radius: 16px !important;
+    padding-bottom: 0 !important;
+  }
 }

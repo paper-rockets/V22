@@ -14,7 +14,6 @@ import {
   BrushSettings,
   StrokeProfile,
   MaterialType,
-  SmoothingAlgorithm,
   EraserMode,
 } from '../../types';
 import {
@@ -218,12 +217,6 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
     { id: 'shaded', label: 'Lit Form', icon: Zap },
     { id: 'glow', label: 'Glow Light', icon: Flame },
     { id: 'cutout', label: 'Cutout', icon: Scissors },
-  ];
-
-  const SMOOTHING_OPTIONS: { id: SmoothingAlgorithm; label: string }[] = [
-    { id: 'streamline', label: 'Smooth Glide' },
-    { id: 'exponential', label: 'Natural' },
-    { id: 'none', label: 'Direct Raw' },
   ];
 
   return (
@@ -550,54 +543,6 @@ export const DrawPanel: React.FC<DrawPanelProps> = ({
                   );
                 })}
               </div>
-            </div>
-
-            {/* Live stroke algorithm — this acts while the pen is down. */}
-            <div className="space-y-1 pt-1">
-              <div className="flex justify-between items-center text-[11px]">
-                <span className="font-medium text-current">Live stroke feel</span>
-                <span className="font-mono text-[10px] font-bold">
-                  {Math.round(brushSettings.smoothingStrength * 100)}%
-                </span>
-              </div>
-              <p className="text-[9.5px] leading-4 opacity-60">Shapes the stroke while you draw. It does not change a stroke after you lift the pen.</p>
-              <div className="grid grid-cols-3 gap-1.5 mb-1.5">
-                {SMOOTHING_OPTIONS.map(({ id, label }) => {
-                  const isSelected = brushSettings.smoothingAlgorithm === id;
-                  return (
-                    <button
-                      key={id}
-                      type="button"
-                      onClick={() => {
-                        haptics.trigger('light');
-                        updateSetting('smoothingAlgorithm', id);
-                      }}
-                      className={`min-h-[44px] px-1.5 py-1 rounded-xl border text-center font-medium transition-colors duration-150 ease-out text-[11px] ${
-                        isSelected
-                          ? isLight
-                            ? 'bg-neutral-900 border-neutral-900 text-white font-bold shadow-xs'
-                            : 'bg-white border-white text-neutral-950 font-bold shadow-xs'
-                          : isLight
-                          ? 'bg-white border-black/10 text-neutral-700 hover:bg-neutral-200/50'
-                          : 'bg-black/30 border-white/10 text-neutral-300 hover:bg-white/5'
-                      }`}
-                    >
-                      {label}
-                    </button>
-                  );
-                })}
-              </div>
-              <input
-                type="range"
-                min="0"
-                max="1.0"
-                step="0.05"
-                value={brushSettings.smoothingStrength}
-                onChange={(e) => updateSetting('smoothingStrength', parseFloat(e.target.value))}
-                className={`w-full h-1.5 rounded cursor-pointer ${
-                  isLight ? 'accent-neutral-900 bg-neutral-200' : 'accent-white bg-neutral-800'
-                }`}
-              />
             </div>
 
             {/* Drawing Assistance & Toggles */}

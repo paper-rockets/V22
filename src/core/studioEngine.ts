@@ -4604,6 +4604,7 @@ export class StudioEngine {
       bloomIntensity: 1.2,
       bloomRadius: 0.8,
       bloomThreshold: 0.85,
+      vibrance: 0.22,
       dof: false,
       dofFocusDistance: 2.5,
       dofAperture: 0.015,
