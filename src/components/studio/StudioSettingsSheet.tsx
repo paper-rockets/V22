@@ -27,6 +27,8 @@ import {
   SunMedium,
   Trash2,
   Droplets,
+  Palette,
+  MoveDiagonal2,
 } from 'lucide-react';
 import { StudioSheet } from './StudioSheet';
 import { closeSheet } from './panelStore';
@@ -64,10 +66,15 @@ export interface StudioSettingsSheetProps {
   onToggleGrid?: () => void;
   showPlane?: boolean;
   onTogglePlane?: () => void;
-  canvasFormat?: 'portrait' | 'square' | 'landscape';
+  canvasFormat?: 'portrait' | 'square' | 'landscape' | 'custom';
   onCanvasFormatChange?: (format: 'portrait' | 'square' | 'landscape') => void;
+  canvasWidth?: number;
+  canvasHeight?: number;
+  onCanvasSizeChange?: (width: number, height: number) => void;
   canvasTransparency?: number;
   onCanvasTransparencyChange?: (transparency: number) => void;
+  canvasColor?: string;
+  onCanvasColorChange?: (color: string) => void;
   onClearCanvas?: () => void;
   modelDisplayMode: 'texture' | 'clay';
   onSetModelDisplayMode: (mode: 'texture' | 'clay') => void;
@@ -167,8 +174,13 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
   onTogglePlane,
   canvasFormat = 'portrait',
   onCanvasFormatChange,
+  canvasWidth = 2.7,
+  canvasHeight = 3.6,
+  onCanvasSizeChange,
   canvasTransparency = 0,
   onCanvasTransparencyChange,
+  canvasColor = '#ffffff',
+  onCanvasColorChange,
   onClearCanvas,
   modelDisplayMode,
   onSetModelDisplayMode,
@@ -354,7 +366,7 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
 
       {onCanvasFormatChange && (
         <Row icon={Box} label="Canvas size" hint="Resize the drawing surface without clearing artwork" isLight={isLight}>
-          <div className="grid w-40 grid-cols-3 gap-1" role="group" aria-label="Canvas size">
+          <div className="grid w-36 grid-cols-3 gap-1" role="group" aria-label="Canvas size presets">
             {([
               ['portrait', 'Portrait'],
               ['square', 'Square'],
@@ -378,6 +390,64 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
               </button>
             ))}
           </div>
+        </Row>
+      )}
+
+      {onCanvasSizeChange && (
+        <div className={`border-b py-3 ${isLight ? 'border-neutral-200' : 'border-neutral-800'}`}>
+          <div className="mb-2 flex items-center gap-2">
+            <MoveDiagonal2 className="h-4 w-4 opacity-75" />
+            <div className="text-xs font-bold">Manual size</div>
+            <div className="ml-auto text-[10px] font-semibold tabular-nums opacity-60">
+              {canvasWidth.toFixed(1)} × {canvasHeight.toFixed(1)}
+            </div>
+          </div>
+          <div className="grid grid-cols-[18px_1fr] items-center gap-x-2 gap-y-1.5">
+            <label htmlFor="canvas-width" className="text-[10px] font-bold opacity-60">W</label>
+            <input
+              id="canvas-width"
+              type="range"
+              min="1"
+              max="8"
+              step="0.1"
+              value={canvasWidth}
+              onChange={(event) => onCanvasSizeChange(Number(event.target.value), canvasHeight)}
+              onPointerUp={() => haptics.trigger('light')}
+              className="h-8 w-full cursor-ew-resize accent-sky-500"
+              aria-label="Canvas width"
+            />
+            <label htmlFor="canvas-height" className="text-[10px] font-bold opacity-60">H</label>
+            <input
+              id="canvas-height"
+              type="range"
+              min="1"
+              max="8"
+              step="0.1"
+              value={canvasHeight}
+              onChange={(event) => onCanvasSizeChange(canvasWidth, Number(event.target.value))}
+              onPointerUp={() => haptics.trigger('light')}
+              className="h-8 w-full cursor-ns-resize accent-sky-500"
+              aria-label="Canvas height"
+            />
+          </div>
+        </div>
+      )}
+
+      {onCanvasColorChange && (
+        <Row icon={Palette} label="Canvas color" hint="Preview the drawing surface color as you choose" isLight={isLight}>
+          <label className={`flex min-h-[44px] items-center gap-2 rounded-lg border px-2.5 cursor-pointer ${
+            isLight ? 'border-neutral-300 bg-neutral-100' : 'border-neutral-700 bg-neutral-800'
+          }`}>
+            <input
+              type="color"
+              value={canvasColor}
+              onInput={(event) => onCanvasColorChange((event.target as HTMLInputElement).value)}
+              onChange={(event) => onCanvasColorChange(event.target.value)}
+              className="h-7 w-9 cursor-pointer border-0 bg-transparent p-0"
+              aria-label="Canvas background color"
+            />
+            <span className="text-[10px] font-bold tabular-nums">{canvasColor.toUpperCase()}</span>
+          </label>
         </Row>
       )}
 

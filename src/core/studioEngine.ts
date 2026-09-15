@@ -3193,6 +3193,20 @@ export class StudioEngine {
     this.markDirty();
   }
 
+  /** Update the drawing surface color immediately without rebuilding the plane. */
+  public setDrawingCanvasColor(color: string): void {
+    const plane = this.drawingPlaneMesh || this.setupDefaultDrawingPlane();
+    const safeColor = /^#[0-9a-f]{6}$/i.test(color) ? color : '#ffffff';
+    const materials = Array.isArray(plane.material) ? plane.material : [plane.material];
+    materials.forEach((material) => {
+      if (!(material instanceof THREE.MeshStandardMaterial)) return;
+      material.color.set(safeColor);
+      material.needsUpdate = true;
+    });
+    plane.userData.canvasColor = safeColor;
+    this.markDirty();
+  }
+
   /**
    * Delete strokes belonging to a specific layer
    */

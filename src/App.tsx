@@ -125,12 +125,50 @@ const DEFAULT_BRUSH_SETTINGS: BrushSettings = {
   steadyStrokeLevel: 0,
 };
 
-type CanvasFormat = 'portrait' | 'square' | 'landscape';
+type CanvasPreset = 'portrait' | 'square' | 'landscape';
+type CanvasFormat = CanvasPreset | 'custom';
 
-const CANVAS_FORMATS: Record<CanvasFormat, { width: number; height: number }> = {
+const CANVAS_FORMATS: Record<CanvasPreset, { width: number; height: number }> = {
   portrait: { width: 2.7, height: 3.6 },
   square: { width: 3.2, height: 3.2 },
   landscape: { width: 3.6, height: 2.7 },
+};
+
+const BRUSH_PRESET_STORAGE_KEY = 'paperrocket_last_brush_preset';
+const CANVAS_PRESET_STORAGE_KEY = 'paperrocket_last_canvas_preset';
+
+interface CanvasPreferences {
+  format: CanvasFormat;
+  width: number;
+  height: number;
+  opacity: number;
+  color: string;
+}
+
+const DEFAULT_CANVAS_PREFERENCES: CanvasPreferences = {
+  format: 'portrait',
+  ...CANVAS_FORMATS.portrait,
+  opacity: 1,
+  color: '#ffffff',
+};
+
+const readCanvasPreferences = (): CanvasPreferences => {
+  try {
+    const stored = JSON.parse(localStorage.getItem(CANVAS_PRESET_STORAGE_KEY) || 'null');
+    if (!stored || typeof stored !== 'object') return DEFAULT_CANVAS_PREFERENCES;
+    const format: CanvasFormat = ['portrait', 'square', 'landscape', 'custom'].includes(stored.format)
+      ? stored.format
+      : 'portrait';
+    return {
+      format,
+      width: Number.isFinite(stored.width) ? Math.min(8, Math.max(1, stored.width)) : DEFAULT_CANVAS_PREFERENCES.width,
+      height: Number.isFinite(stored.height) ? Math.min(8, Math.max(1, stored.height)) : DEFAULT_CANVAS_PREFERENCES.height,
+      opacity: Number.isFinite(stored.opacity) ? Math.min(1, Math.max(0, stored.opacity)) : 1,
+      color: typeof stored.color === 'string' && /^#[0-9a-f]{6}$/i.test(stored.color) ? stored.color : '#ffffff',
+    };
+  } catch (_) {
+    return DEFAULT_CANVAS_PREFERENCES;
+  }
 };
 
 const MATERIAL_LABELS: Partial<Record<BrushSettings['materialType'], string>> = {
@@ -157,6 +195,22 @@ const synchronizeBrushSettings = (previous: BrushSettings, next: BrushSettings):
   }
 
   return synchronized;
+};
+
+const readLastBrushPreset = (): BrushSettings => {
+  try {
+    const stored = JSON.parse(localStorage.getItem(BRUSH_PRESET_STORAGE_KEY) || 'null');
+    if (stored && typeof stored === 'object') {
+      return synchronizeBrushSettings(DEFAULT_BRUSH_SETTINGS, {
+        ...DEFAULT_BRUSH_SETTINGS,
+        ...stored,
+        size: Number.isFinite(stored.size)
+          ? Math.min(0.25, Math.max(0.002, stored.size))
+          : DEFAULT_BRUSH_SETTINGS.size,
+      });
+    }
+  } catch (_) {}
+  return DEFAULT_BRUSH_SETTINGS;
 };
 
 const DEFAULT_POST_SETTINGS: PostProcessSettings = {
@@ -234,7 +288,7 @@ export function App() {
   });
   const [isModelImporterOpen, setIsModelImporterOpen] = useState<boolean>(false);
   const [tool, setTool] = useState<ToolType>('brush');
-  const [brushSettings, setBrushSettingsState] = useState<BrushSettings>(DEFAULT_BRUSH_SETTINGS);
+  const [brushSettings, setBrushSettingsState] = useState<BrushSettings>(readLastBrushPreset);
   const setBrushSettings = useCallback<React.Dispatch<React.SetStateAction<BrushSettings>>>((action) => {
     setBrushSettingsState((previous) => {
       const next = typeof action === 'function'
@@ -243,6 +297,12 @@ export function App() {
       return synchronizeBrushSettings(previous, next);
     });
   }, []);
+  useEffect(() => {
+    try {
+      const { matcapTexture: _texture, customShader: _customShader, ...serializablePreset } = brushSettings;
+      localStorage.setItem(BRUSH_PRESET_STORAGE_KEY, JSON.stringify(serializablePreset));
+    } catch (_) {}
+  }, [brushSettings]);
   const [postSettings, setPostSettings] = useState<PostProcessSettings>(DEFAULT_POST_SETTINGS);
   const [pathTracingProgress, setPathTracingProgress] = useState<PathTracingProgressInfo | null>(null);
 
@@ -509,8 +569,24 @@ export function App() {
   });
   const [isARViewerOpen, setIsARViewerOpen] = useState<boolean>(false);
   const [showPlane, setShowPlane] = useState<boolean>(true);
-  const [canvasFormat, setCanvasFormat] = useState<CanvasFormat>('portrait');
-  const [canvasOpacity, setCanvasOpacity] = useState(1);
+  const initialCanvasPreferences = useMemo(readCanvasPreferences, []);
+  const [canvasFormat, setCanvasFormat] = useState<CanvasFormat>(initialCanvasPreferences.format);
+  const [canvasWidth, setCanvasWidth] = useState(initialCanvasPreferences.width);
+  const [canvasHeight, setCanvasHeight] = useState(initialCanvasPreferences.height);
+  const [canvasOpacity, setCanvasOpacity] = useState(initialCanvasPreferences.opacity);
+  const [canvasColor, setCanvasColor] = useState(initialCanvasPreferences.color);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(CANVAS_PRESET_STORAGE_KEY, JSON.stringify({
+        format: canvasFormat,
+        width: canvasWidth,
+        height: canvasHeight,
+        opacity: canvasOpacity,
+        color: canvasColor,
+      } satisfies CanvasPreferences));
+    } catch (_) {}
+  }, [canvasColor, canvasFormat, canvasHeight, canvasOpacity, canvasWidth]);
 
   // Phase 4 Stage Assets & Reference Clipboard States
   const [isClipboardOpen, setIsClipboardOpen] = useState<boolean>(false);
@@ -964,9 +1040,9 @@ export function App() {
     inst.setTheme(theme);
     inst.setGrid(showGrid);
     inst.setupDefaultDrawingPlane();
-    const canvasDimensions = CANVAS_FORMATS[canvasFormat];
-    inst.setDrawingCanvasSize(canvasDimensions.width, canvasDimensions.height);
+    inst.setDrawingCanvasSize(canvasWidth, canvasHeight);
     inst.setDrawingCanvasOpacity(canvasOpacity);
+    inst.setDrawingCanvasColor(canvasColor);
     inst.toggleDrawingPlane(true);
     inst.setPostProcessSettings(DEFAULT_POST_SETTINGS);
     setGpuInfo(inst.getGPUInfo());
@@ -1048,7 +1124,7 @@ export function App() {
         setSnappedShapeNotice((cur) => (cur?.includes(label) ? null : cur));
       }, 2400);
     };
-  }, [triggerAutoSave, activeModelId, theme, showGrid, canvasFormat, canvasOpacity]);
+  }, [triggerAutoSave, activeModelId, theme, showGrid, canvasColor, canvasHeight, canvasOpacity, canvasWidth]);
 
   // Transform Navigator Gizmo Handlers
   const [isGizmoLocked, setIsGizmoLocked] = useState<boolean>(false);
@@ -1334,7 +1410,6 @@ export function App() {
       action,
     });
   }, []);
-
   const handleClearCanvas = useCallback(() => {
     handleBeforeDestructiveAction(
       'Clear canvas?',
@@ -1429,10 +1504,21 @@ export function App() {
     }
   };
 
-  const handleCanvasFormatChange = useCallback((format: CanvasFormat) => {
+  const handleCanvasFormatChange = useCallback((format: CanvasPreset) => {
     setCanvasFormat(format);
     const dimensions = CANVAS_FORMATS[format];
+    setCanvasWidth(dimensions.width);
+    setCanvasHeight(dimensions.height);
     engine?.setDrawingCanvasSize(dimensions.width, dimensions.height);
+  }, [engine]);
+
+  const handleCanvasSizeChange = useCallback((width: number, height: number) => {
+    const safeWidth = Math.min(8, Math.max(1, width));
+    const safeHeight = Math.min(8, Math.max(1, height));
+    setCanvasFormat('custom');
+    setCanvasWidth(safeWidth);
+    setCanvasHeight(safeHeight);
+    engine?.setDrawingCanvasSize(safeWidth, safeHeight);
   }, [engine]);
 
   const handleCanvasTransparencyChange = useCallback((transparency: number) => {
@@ -1440,6 +1526,11 @@ export function App() {
     const opacity = 1 - nextTransparency / 100;
     setCanvasOpacity(opacity);
     engine?.setDrawingCanvasOpacity(opacity);
+  }, [engine]);
+
+  const handleCanvasColorChange = useCallback((color: string) => {
+    setCanvasColor(color);
+    engine?.setDrawingCanvasColor(color);
   }, [engine]);
 
   // Cycle lighting presets
@@ -2002,8 +2093,13 @@ export function App() {
         onTogglePlane={handleTogglePlane}
         canvasFormat={canvasFormat}
         onCanvasFormatChange={handleCanvasFormatChange}
+        canvasWidth={canvasWidth}
+        canvasHeight={canvasHeight}
+        onCanvasSizeChange={handleCanvasSizeChange}
         canvasTransparency={Math.round((1 - canvasOpacity) * 100)}
         onCanvasTransparencyChange={handleCanvasTransparencyChange}
+        canvasColor={canvasColor}
+        onCanvasColorChange={handleCanvasColorChange}
         onClearCanvas={handleClearCanvas}
         modelDisplayMode={modelDisplayMode}
         onSetModelDisplayMode={(mode) => {
