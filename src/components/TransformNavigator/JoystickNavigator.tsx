@@ -28,6 +28,9 @@ interface JoystickNavigatorProps {
   onSensitivityChange?: (value: number) => void;
   projectionMode?: 'perspective' | 'orthographic';
   onToggleProjection?: () => void;
+  /** Shared with the Select menu's Move / Rotate / Resize buttons. */
+  transformMode?: NavigatorTransformMode;
+  onTransformModeChange?: (mode: NavigatorTransformMode) => void;
 }
 
 const VIEWS = {
@@ -44,9 +47,15 @@ export const JoystickNavigator: React.FC<JoystickNavigatorProps> = ({
   onClose,
   targetScope = 'all', onSelectTargetScope, layers = [], activeLayerId, onSelectLayer,
   navigatorSensitivity = 1, onSensitivityChange, projectionMode = 'perspective', onToggleProjection,
+  transformMode: transformModeProp, onTransformModeChange,
 }: JoystickNavigatorProps) => {
   const [mode, setMode] = useState<JoystickMode>('3d');
-  const [transformMode, setTransformMode] = useState<NavigatorTransformMode>('look');
+  const [localTransformMode, setLocalTransformMode] = useState<NavigatorTransformMode>('look');
+  const transformMode = transformModeProp ?? localTransformMode;
+  const setTransformMode = (next: NavigatorTransformMode) => {
+    setLocalTransformMode(next);
+    onTransformModeChange?.(next);
+  };
   const [settingsOpen, setSettingsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const transformGestureRef = useRef(false);
@@ -288,6 +297,7 @@ export const JoystickNavigator: React.FC<JoystickNavigatorProps> = ({
           transformGestureRef.current = true;
         }
         if (transformMode === 'move') engine.translateScreenSpace(dx, dy, targetScope, locked);
+        else if (transformMode === 'scale') engine.scaleAxis('uniform', Math.exp(-dy * 0.006), targetScope, false);
         else engine.rotateTrackball(dx, dy, targetScope);
       }
       updateAxisScreenInfo();
@@ -341,6 +351,8 @@ export const JoystickNavigator: React.FC<JoystickNavigatorProps> = ({
         axisCarryRef.current -= amount;
       }
       if (amount) engine.translateWorldAxis(axis, amount, targetScope);
+    } else if (transformMode === 'scale') {
+      engine.scaleAxis(axis, Math.exp(pixels * 0.006), targetScope, false);
     } else {
       let angle = pixels * 0.005;
       if (locked) {
@@ -363,7 +375,7 @@ export const JoystickNavigator: React.FC<JoystickNavigatorProps> = ({
     return () => { finish(); window.removeEventListener('pointerup', finish); window.removeEventListener('pointercancel', finish); };
   }, [engine]);
 
-  useEffect(() => { setTransformMode('look'); setSettingsOpen(false); }, [layout]);
+  useEffect(() => { setSettingsOpen(false); }, [layout]);
 
   useEffect(() => {
     if (!settingsOpen) return;
@@ -435,7 +447,7 @@ export const JoystickNavigator: React.FC<JoystickNavigatorProps> = ({
         <div className="jn-control-rail">
           <button type="button" className="jn-mode-trigger" aria-label="Choose navigator mode and target"
             aria-expanded={settingsOpen} onClick={() => setSettingsOpen((open) => !open)}>
-            {transformMode === 'look' ? 'Orbit' : transformMode === 'move' ? 'Move' : 'Rotate'}
+            {transformMode === 'look' ? 'Orbit' : transformMode === 'move' ? 'Move' : transformMode === 'scale' ? 'Resize' : 'Rotate'}
             <ChevronDown size={11} />
           </button>
           <div className="jn-drag-handle" onPointerDown={handleGripPointerDown}
@@ -463,6 +475,7 @@ export const JoystickNavigator: React.FC<JoystickNavigatorProps> = ({
             onSelectLayer={onSelectLayer} layout={layout}
             sensitivity={navigatorSensitivity} onSensitivityChange={onSensitivityChange}
             projectionMode={projectionMode} onToggleProjection={onToggleProjection}
+            modes={['look', 'move', 'rotate', 'scale']}
             transformMode={transformMode} onTransformModeChange={(next) => {
               if (transformGestureRef.current) engine?.endTransform();
               transformGestureRef.current = false;

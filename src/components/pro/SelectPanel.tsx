@@ -23,12 +23,9 @@ interface SelectPanelProps {
   setBrushSettings: React.Dispatch<React.SetStateAction<BrushSettings>>;
   isGizmoActive: boolean;
   onToggleGizmo: () => void;
-  isGizmoLocked: boolean;
-  onToggleLock: () => void;
   onOpenNumpad?: any;
   targetScope: TransformTargetScope;
   onSelectTargetScope: (scope: TransformTargetScope) => void;
-  onGizmoReset?: () => void;
   theme?: 'light' | 'dark';
   selectionMode?: 'pointer' | 'lasso';
   onSelectSelectionMode?: (mode: 'pointer' | 'lasso') => void;

@@ -242,9 +242,12 @@ export const Viewport: React.FC<ViewportProps> = ({
 
   const handleResetSelectionTransform = useCallback(() => {
     if (!engineRef.current) return;
-    engineRef.current.resetTransform('model');
+    if (!engineRef.current.resetPickedModel()) {
+      showGestureToast('Already in place', 'This model hasn’t been moved');
+      return;
+    }
     triggerHaptic(15);
-    showGestureToast('Reset Transform', 'Model centered at origin');
+    showGestureToast('Model put back', 'Undo moves it again');
   }, []);
 
   const handleDeselect = useCallback(() => {
@@ -469,11 +472,11 @@ export const Viewport: React.FC<ViewportProps> = ({
   }, []);
 
   const getFovDescription = (fov: number): string => {
-    if (fov <= 25) return 'Telephoto / Flat';
-    if (fov <= 40) return 'Standard Portrait';
-    if (fov <= 55) return 'Natural Perspective';
-    if (fov <= 75) return 'Wide Angle';
-    return 'Ultra-Wide Panoramic';
+    if (fov <= 25) return 'Zoomed in, flatter look';
+    if (fov <= 40) return 'Close-up';
+    if (fov <= 55) return 'Natural view';
+    if (fov <= 75) return 'Wide view';
+    return 'Extra-wide view';
   };
 
   // =========================================================================
@@ -880,8 +883,8 @@ export const Viewport: React.FC<ViewportProps> = ({
           onSelectTool?.('brush');
           triggerHaptic(30);
           showGestureToast(
-            'Brush DNA Injected',
-            `${dna.profile.toUpperCase()} • ${dna.colorHex} (Returned to Brush)`
+            'Brush look copied',
+            `${dna.colorHex} • back to Brush`
           );
         }
         return;
@@ -1084,7 +1087,7 @@ export const Viewport: React.FC<ViewportProps> = ({
           onColorPick?.(dna.colorHex);
           onSelectTool?.('brush');
           triggerHaptic(30);
-          showGestureToast('Brush DNA Injected', `${dna.profile.toUpperCase()} • ${dna.colorHex} (Returned to Brush)`);
+          showGestureToast('Brush look copied', `${dna.colorHex} • back to Brush`);
         }
         return;
       }
@@ -1228,7 +1231,7 @@ export const Viewport: React.FC<ViewportProps> = ({
 
       const touchCount = touchPointersRef.current.size;
 
-      // 3-Finger Gesture: Dynamic Vertical Swipe for Camera FOV
+      // 3-Finger Gesture: vertical swipe changes the camera lens width
       if (touchCount === 3 && threeFingerStartY.current !== null) {
         const deltaY = e.clientY - threeFingerStartY.current;
         const newFov = Math.round(
@@ -1239,7 +1242,7 @@ export const Viewport: React.FC<ViewportProps> = ({
         // a slow drag otherwise fires a state update per touch sample.
         if (newFov !== lastToastFovRef.current) {
           lastToastFovRef.current = newFov;
-          showGestureToast(`Camera FOV: ${newFov}°`, getFovDescription(newFov));
+          showGestureToast(`Lens: ${newFov}°`, getFovDescription(newFov));
         }
         return;
       }
@@ -1435,8 +1438,8 @@ export const Viewport: React.FC<ViewportProps> = ({
           triggerHaptic(25);
           const newMode = engine.toggleProjectionMode();
           showGestureToast(
-            newMode === 'orthographic' ? 'Orthographic Projection' : 'Perspective Projection',
-            newMode === 'orthographic' ? 'Parallel Isometric Rays' : 'Standard Focal Perspective'
+            newMode === 'orthographic' ? 'Flat View' : 'Depth View',
+            newMode === 'orthographic' ? 'Things stay the same size far away' : 'Far things look smaller'
           );
         }
       }
@@ -1547,8 +1550,8 @@ export const Viewport: React.FC<ViewportProps> = ({
     const newMode = engineRef.current?.toggleProjectionMode();
     if (newMode) {
       showGestureToast(
-        newMode === 'orthographic' ? 'Orthographic Projection' : 'Perspective Projection',
-        newMode === 'orthographic' ? 'Parallel Isometric Rays' : 'Standard Focal Perspective'
+        newMode === 'orthographic' ? 'Flat View' : 'Depth View',
+        newMode === 'orthographic' ? 'Things stay the same size far away' : 'Far things look smaller'
       );
     }
   };
@@ -1559,7 +1562,7 @@ export const Viewport: React.FC<ViewportProps> = ({
     <div
       ref={containerRef}
       role="region"
-      aria-label="3D Drawing Workspace"
+      aria-label="3D drawing canvas"
       tabIndex={0}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
@@ -1712,7 +1715,7 @@ export const Viewport: React.FC<ViewportProps> = ({
             type="button"
             onClick={() => {
               onSelectTool?.('brush');
-              showGestureToast('Exited DNA Sampler', 'Returned to Brush mode');
+              showGestureToast('Stopped copying a brush look', 'Back to Brush');
             }}
             className="bg-black text-white px-2.5 py-1 rounded-full text-xs font-bold hover:bg-zinc-800 transition-colors cursor-pointer"
           >

@@ -496,7 +496,7 @@ export const Model3DPreview: React.FC<Model3DPreviewProps> = ({
           <button
             type="button"
             onClick={toggleWireframe}
-            title="Toggle wireframe topology"
+            title="Show or hide the wire outline"
             className={`${pillButton} ${wireframe ? (isLight ? 'bg-neutral-900 text-white' : 'bg-white text-zinc-950') : ''}`}
             aria-label="Toggle wireframe"
           >

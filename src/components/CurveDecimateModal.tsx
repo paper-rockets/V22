@@ -71,7 +71,7 @@ export const CurveDecimateModal: React.FC<CurveDecimateModalProps> = ({
 
         <div className="flex-1 min-h-0 overflow-y-auto studio-scroll p-4 space-y-4">
           <p className={`text-xs leading-relaxed ${t.textSecondary}`}>
-            Removes extra points along your lines to keep the canvas fast and responsive while preserving curve shape.
+            Removes extra points along your lines to keep the canvas fast and responsive while keeping their shape.
           </p>
 
           {/* Scope Selector */}

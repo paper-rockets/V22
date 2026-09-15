@@ -28,7 +28,6 @@ import {
   CustomMirrorPlane,
   BentGuideConfig,
   HolisticStrokeDNA,
-  EraserMode,
   LoadedModelInfo,
   ProjectSaveData,
   ActiveGuideReference,
@@ -468,7 +467,6 @@ export class StudioEngine {
   public onShapeSnapped?: (result: ShapeSnapResult) => void;
   public onDNAInjected?: (dna: HolisticStrokeDNA) => void;
   public onModelsChanged?: (models: LoadedModelInfo[]) => void;
-  public onStrokeSelected?: (stroke: StrokeDescriptor | null) => void;
 
 
   private get navigatorSensitivity(): number { return this.cameraController.navigatorSensitivity; }
@@ -670,7 +668,6 @@ export class StudioEngine {
       getCustomMirrorNormal: () => this.customMirrorNormal,
       sampleColorAtScreen: (screenX, screenY, clientX, clientY) => this.sampleColorAtScreen(screenX, screenY, clientX, clientY),
       raycastModel: (screenX, screenY, settings) => this.raycastModel(screenX, screenY, settings),
-      onStrokeSelected: (stroke) => this.onStrokeSelected?.(stroke),
       onDNAInjected: (dna) => this.onDNAInjected?.(dna),
       onAutoSaveTrigger: (reason) => this.onAutoSaveTrigger?.(reason),
       notifyHistory: () => this.notifyHistory(),
@@ -1452,7 +1449,7 @@ export class StudioEngine {
         this.selectStroke(null);
         this.markDirty();
         this.notifyHistory();
-        this.dispatchSelectionEvent(null);
+        this.notifySelectionTargetChanged();
         return true;
       }
     }
@@ -1493,7 +1490,7 @@ export class StudioEngine {
         });
         this.markDirty();
         this.notifyModelsChanged();
-        this.dispatchSelectionEvent(null);
+        this.notifySelectionTargetChanged();
         return true;
       }
     }
@@ -1519,22 +1516,11 @@ export class StudioEngine {
       this.notifyModelsChanged();
       this.notifyHistory();
       this.markDirty();
-      this.dispatchSelectionEvent(null);
+      this.notifySelectionTargetChanged();
       return true;
     }
 
     return false;
-  }
-
-  /**
-   * Dispatches studio selection event for UI components
-   */
-  public dispatchSelectionEvent(
-    detail: { type: 'model' | 'stroke'; id: string; name: string } | null
-  ): void {
-    if (typeof window !== 'undefined') {
-      window.dispatchEvent(new CustomEvent('STUDIO_SELECTION_CHANGED', { detail }));
-    }
   }
 
   /**
@@ -3690,23 +3676,6 @@ export class StudioEngine {
     this.activeSelectedModelId = modelId;
     // The on-screen selection frame is the highlight; nothing is added to the scene.
     this.notifySelectionTargetChanged();
-
-    if (modelId) {
-      const model = this.modelRoot.children.find((c) => c.uuid === modelId && c !== this.strokeRoot);
-      if (model) {
-        const isDrawingPlane = model === this.drawingPlaneMesh || model.name === 'DrawingPlaneCanvas';
-        const name = model.name || (isDrawingPlane ? 'Drawing Canvas' : '3D Model');
-        this.dispatchSelectionEvent({
-          type: 'model',
-          id: model.uuid,
-          name,
-        });
-      } else {
-        this.dispatchSelectionEvent(null);
-      }
-    } else {
-      this.dispatchSelectionEvent(null);
-    }
     this.markDirty();
   }
 
@@ -4275,18 +4244,9 @@ export class StudioEngine {
     this.transformController.scaleModelOrSurface(scaleFactor, scope);
   }
 
-  /**
-   * Resets model/surface and stroke transforms without affecting camera
-   */
-  public resetTransform(scope: TransformTargetScope = 'all'): void {
-    this.transformController.resetTransform(scope);
-  }
-
-  /**
-   * Resets model/surface transform without affecting camera
-   */
-  public resetModelOrSurface(scope: TransformTargetScope = 'all'): void {
-    this.transformController.resetModelOrSurface(scope);
+  /** Puts only the picked model back where it started, as one undo step. */
+  public resetPickedModel(): boolean {
+    return this.transformController.resetPickedModel();
   }
 
   /**
@@ -4873,7 +4833,6 @@ export class StudioEngine {
       rayTracing: false,
       contactShadowSharpness: 1.5,
       denoiser: true,
-      rayTracingBounces: 3,
       rayTracingSamples: 48,
     };
   }
@@ -5577,7 +5536,6 @@ export class StudioEngine {
     this.onShapeSnapped = undefined;
     this.onDNAInjected = undefined;
     this.onModelsChanged = undefined;
-    this.onStrokeSelected = undefined;
     this.onProjectionChange = undefined;
 
     // 3. Sub-engines

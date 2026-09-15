@@ -1105,7 +1105,7 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
   };
 
   const TOUR_PRO = [
-    { t: 0, dur: 3600, ring: { type: 'axis', i: 0 }, cap: 'Drag an axis to constrain the transform to it.' },
+    { t: 0, dur: 3600, ring: { type: 'axis', i: 0 }, cap: 'Drag an axis to move only along it.' },
     { t: 3600, dur: 3600, ring: { type: 'axis', i: 1 }, cap: 'Tap an axis to snap the view down it — tapping never transforms.' },
     { t: 7200, dur: 4000, ring: { type: 'hub' }, cap: 'Tap the hub to cycle Orbit · Move · Rotate · Resize.' },
     { t: 11200, dur: 1800, ring: null, cap: 'Hold Shift, or set snap to Free, for unconstrained drags.' }

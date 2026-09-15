@@ -94,8 +94,10 @@ export class ProjectSerializer {
           timestamp: entry.timestamp,
         };
       }
-      return entry;
-    });
+      // Model add / remove steps hold the live 3D object, which cannot be
+      // stored; the models themselves are saved separately below.
+      return null;
+    }).filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
     const serializedHistoryRedoStack = state.historyRedoStack.map((entry) => {
       if (entry.kind === 'stroke') {
@@ -118,8 +120,10 @@ export class ProjectSerializer {
           timestamp: entry.timestamp,
         };
       }
-      return entry;
-    });
+      // Model add / remove steps hold the live 3D object, which cannot be
+      // stored; the models themselves are saved separately below.
+      return null;
+    }).filter((entry): entry is NonNullable<typeof entry> => entry !== null);
 
     const uvCanvases = state.uvEngine ? state.uvEngine.exportAllCanvases() : undefined;
 

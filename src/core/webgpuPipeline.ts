@@ -84,7 +84,7 @@ export class WebGPUPipelineManager {
 
           this.gpuInfo = {
             backend: 'webgpu',
-            adapterName: info.description || info.device || adapter.name || 'WebGPU High-Performance Hardware Adapter',
+            adapterName: info.description || info.device || adapter.name || 'Built-in graphics',
             vendor: info.vendor || 'Hardware GPU Vendor',
             architecture: info.architecture || 'WebGPU Next-Gen Compute Pipeline',
             isWebGPUSupported: true,

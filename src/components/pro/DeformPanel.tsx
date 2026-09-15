@@ -254,11 +254,11 @@ export const DeformPanel: React.FC<DeformPanelProps> = ({
         </div>
       </div>
 
-      {/* 3. Guides & Curves */}
+      {/* 3. Guides & Bends */}
       <div className={cardClass}>
         <div className="flex items-center gap-1.5">
           <Shield className={`w-3.5 h-3.5 ${isLight ? 'text-neutral-900' : 'text-neutral-200'}`} />
-          <span className={subHeadingClass}>Guides & Curves</span>
+          <span className={subHeadingClass}>Guides & Bends</span>
         </div>
 
         <div className="grid grid-cols-2 gap-1.5 pt-0.5">

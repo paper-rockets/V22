@@ -46,7 +46,6 @@ export interface PaintPreset {
   category?: string;
 }
 
-export type EraserMode = 'cutout' | 'vacuum';
 
 export interface HolisticStrokeDNA {
   colorHex: string;
@@ -76,9 +75,7 @@ export type LiquifyMode = 'push' | 'pinch' | 'inflate' | 'comb';
 export interface LiquifySettings {
   mode: LiquifyMode;
   brushRadius: number; // 0.05 to 1.5
-  falloffRadius?: number; // 0.05 to 2.0
   influenceStrength: number; // 0.05 to 2.0
-  iterations?: number;
 }
 
 export interface CustomMirrorConfig {
@@ -250,7 +247,6 @@ export interface BrushSettings {
   surfaceOffset: number; // base offset to prevent coplanar z-fighting (e.g. 0.002)
   strokeSequenceIndex?: number; // Progressive sequence index to eliminate coplanar stroke z-fighting
   taperLength: number; // fraction 0.05
-  silhouetteClamping: boolean;
   stencilMasking: boolean;
   autoRecalculateNormals?: boolean; // Toggle automatic mesh normal recalculation after drawing
   // Spatial Jitter & Ribbon Vertex Deformation
@@ -258,14 +254,9 @@ export interface BrushSettings {
   jitterStrength?: number; // 0.0 to 1.0
   jitterFrequency?: number; // 1 to 20
   jitterAxis?: 'normal' | 'binormal' | 'omnidirectional';
-  // Color Math & Pipeline
-  oklabBlending?: boolean; // Perceptually uniform OKLab Cartesian color mixing
-  wboitEnabled?: boolean; // Weighted Blended Order-Independent Transparency
   // Smoothing & Latency Optimization
   smoothingAlgorithm: SmoothingAlgorithm;
   smoothingStrength: number; // 0.0 to 1.0
-  predictiveTracking?: boolean; // Optional legacy tracking flag
-  predictionFactor?: number;
   // Core Material Type & Profile
   materialType: MaterialType;
   shaderEffect?: AnimatedShaderEffect; // 27 animated GLSL shader effects
@@ -295,7 +286,6 @@ export interface BrushSettings {
   brushAngle?: number; // 0 to 180 degrees stamp rotation
   straightLineMode?: boolean; // locks stroke to straight line from start to current point
   magneticEndpointSnapping?: boolean; // magnetically connects start and end to nearby existing stroke endpoints/corners
-  adaptableCorners?: boolean; // auto-straightens multi-segment right angles / stair steps
   brushPresetId?: string; // Identifier of equipped preset (e.g. 'spatial_pipe', 'streamline_ink', etc.)
   // Raycasting & Surface Snapping Parameters
   raycastSampleDensity?: 'standard' | 'high' | 'ultra'; // Sub-step raycast resolution (16, 32, 48)
@@ -304,7 +294,6 @@ export interface BrushSettings {
   barycentricNormals?: boolean; // Smooth barycentric normal interpolation
   raycastSeamBridging?: boolean; // Micro-jitter raycast fallback across geometry seams
   // Eraser & Drafting Snapping Extensions (Phase 3)
-  eraserMode?: EraserMode; // 'cutout' (negative-space mask) vs 'vacuum' (whole-stroke continuous purge)
   shapeSnapping?: boolean; // Predictive Stroke master switch
   shapeSnapTolerance?: number; // Geometric fitting confidence threshold (0.1 to 0.5)
   predictiveLevel?: number; // Predictive Stroke level 1-5: higher smooths more; 4+ recognizes shapes
@@ -341,7 +330,6 @@ export interface PostProcessSettings {
   rayTracing: boolean;
   contactShadowSharpness: number; // 0.5 to 2.5
   denoiser: boolean;
-  rayTracingBounces?: number; // 1 to 4 bounces (default 3)
   rayTracingSamples?: number; // 24 to 96 samples (default 48)
   antiAliasing?: boolean; // Edge smoothing anti-aliasing (MSAA / FXAA)
 }

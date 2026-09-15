@@ -33,6 +33,7 @@
 /* Outside the Select tool the frame only reports what the View controls move; no handles to catch strokes. */
 .selection-frame[data-handles='false'] .selection-frame-corner,
 .selection-frame[data-handles='false'] .selection-frame-turn,
+.selection-frame-label[data-compact='true'] span,
 .selection-frame[data-handles='false'] .selection-frame-label span {
   display: none;
 }

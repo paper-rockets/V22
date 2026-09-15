@@ -258,10 +258,7 @@ export const AppModalHost: React.FC<AppModalHostProps> = ({
           isOpen={isDecimateOpen}
           onClose={() => setIsDecimateOpen(false)}
           onApplyDecimation={(epsilon, preserveTopology) => {
-            if (engine) {
-              const count = engine.decimateActiveLayerCurves(epsilon, preserveTopology);
-              console.log(`Simplified curves with RDP (epsilon: ${epsilon}), remaining points: ${count}`);
-            }
+            engine?.decimateActiveLayerCurves(epsilon, preserveTopology);
           }}
           theme={theme}
         />

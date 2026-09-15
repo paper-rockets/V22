@@ -64,25 +64,25 @@ export const LiquifyPanel: React.FC<LiquifyPanelProps> = ({
       id: 'push',
       label: 'Push',
       icon: <Move className="w-4 h-4" />,
-      desc: 'Displaces vertices along screen drag vector in 3D camera plane',
+      desc: 'Pushes the shape along the way you drag',
     },
     {
       id: 'pinch',
       label: 'Pinch',
       icon: <Shrink className="w-4 h-4" />,
-      desc: 'Attracts vertices toward brush epicenter with radial falloff',
+      desc: 'Pulls the shape in toward the middle of the brush',
     },
     {
       id: 'inflate',
       label: 'Inflate',
       icon: <Expand className="w-4 h-4" />,
-      desc: 'Repels vertices outward from brush epicenter',
+      desc: 'Puffs the shape out from the middle of the brush',
     },
     {
       id: 'comb',
       label: 'Comb',
       icon: <Wind className="w-4 h-4" />,
-      desc: 'Smooths and aligns curve tangents along your drag direction',
+      desc: 'Smooths lines out along the way you drag',
     },
   ];
 
@@ -224,7 +224,7 @@ export const LiquifyPanel: React.FC<LiquifyPanelProps> = ({
               ? 'bg-neutral-100 border-black/10 text-neutral-700 hover:bg-neutral-200'
               : 'bg-neutral-900 border-neutral-700 text-neutral-300 hover:bg-neutral-800'
           }`}
-          title="Hold to view Original Base State vs Live Deformed Mesh"
+          title="Hold to compare with the original shape"
         >
           <Eye className="w-3.5 h-3.5" />
           <span>{isCompareActive ? 'Showing Original (A)' : 'Hold to Compare A/B'}</span>

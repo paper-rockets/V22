@@ -20,9 +20,6 @@ import {
 } from './types';
 import { StudioEngine } from './core/studioEngine';
 import { Viewport } from './components/Viewport';
-import { LayerPanel } from './components/LayerPanel';
-import { BrushSettingsPanel } from './components/BrushSettingsPanel';
-import { ModelDisplayPanel } from './components/ModelDisplayPanel';
 import { ScreenCenterCrosshair } from './components/ScreenCenterCrosshair';
 import { Option3SphereNavigator } from './components/TransformNavigator/Option3SphereNavigator';
 import { JoystickNavigator, type NavigatorLayout } from './components/TransformNavigator/JoystickNavigator';
@@ -69,9 +66,6 @@ import { DebugTestPanel } from '@debug-panel';
 import {
   LiquifySettings,
   CustomMirrorConfig,
-  TranslationEventPayload,
-  RotationEventPayload,
-  ScaleEventPayload,
   NumpadTarget,
   HolisticStrokeDNA,
   ReferenceImageItem,
@@ -87,7 +81,6 @@ const DEFAULT_BRUSH_SETTINGS: BrushSettings = {
   opacity: 1.0,
   color: '#000000',
   solidColor: '#000000',
-  eraserMode: 'vacuum',
   roughness: 0.8,
   metalness: 0.0,
   emissiveIntensity: 0.0,
@@ -96,7 +89,6 @@ const DEFAULT_BRUSH_SETTINGS: BrushSettings = {
   domeFactor: 0.0,
   surfaceOffset: 0.002,
   taperLength: 0.05,
-  silhouetteClamping: true,
   stencilMasking: false,
   autoRecalculateNormals: true,
   smoothingAlgorithm: 'streamline',
@@ -114,7 +106,6 @@ const DEFAULT_BRUSH_SETTINGS: BrushSettings = {
   brushWidthMultiplier: 1.5,
   straightLineMode: false,
   magneticEndpointSnapping: true,
-  adaptableCorners: true,
   // Live glide is the default. Release-time refitting is deliberately opt-in:
   // artists should never see a finished stroke change shape after lifting a pen.
   shapeSnapping: false,
@@ -234,7 +225,6 @@ const DEFAULT_POST_SETTINGS: PostProcessSettings = {
   rayTracing: false,
   contactShadowSharpness: 1.5,
   denoiser: true,
-  rayTracingBounces: 3,
   rayTracingSamples: 48,
 };
 
@@ -532,11 +522,8 @@ export function App() {
   });
 
   // Modals & Panels
-  const [isLayersOpen, setIsLayersOpen] = useState<boolean>(false);
-  const [isSettingsOpen, setIsSettingsOpen] = useState<boolean>(false);
   const [isRenderSettingsOpen, setIsRenderSettingsOpen] = useState<boolean>(false);
   const [isModelsOpen, setIsModelsOpen] = useState<boolean>(false);
-  const [isModelDisplayOpen, setIsModelDisplayOpen] = useState<boolean>(false);
   const [modelDisplayMode, setModelDisplayMode] = useState<ModelDisplayMode>('texture');
   const [isModelVisible, setIsModelVisible] = useState<boolean>(true);
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
@@ -559,7 +546,6 @@ export function App() {
     mode: 'push',
     brushRadius: 0.25,
     influenceStrength: 0.6,
-    iterations: 1,
   });
   const [isDecimateOpen, setIsDecimateOpen] = useState<boolean>(false);
   const [isBentGuideOpen, setIsBentGuideOpen] = useState<boolean>(false);
@@ -807,7 +793,6 @@ export function App() {
         },
         openModal: (modal: string) => {
           if (modal === 'more') return false;
-          else if (modal === 'settings') setIsSettingsOpen(true);
           else if (modal === 'export') setIsExportOpen(true);
           else if (modal === 'illumination') setIsIlluminationOpen(true);
           else if (modal === 'sessions') setIsSessionModalOpen(true);
@@ -815,7 +800,6 @@ export function App() {
           return true;
         },
         closeModal: () => {
-          setIsSettingsOpen(false);
           setIsExportOpen(false);
           setIsIlluminationOpen(false);
           setIsSessionModalOpen(false);
@@ -1135,77 +1119,6 @@ export function App() {
       }, 2400);
     };
   }, [triggerAutoSave, activeModelId, theme, showGrid, canvasColor, canvasHeight, canvasOpacity, canvasWidth]);
-
-  // Transform Navigator Gizmo Handlers
-  const [isGizmoLocked, setIsGizmoLocked] = useState<boolean>(false);
-
-  const handleGizmoTranslate = useCallback(
-    (payload: TranslationEventPayload) => {
-      if (!engine) return;
-      if (payload.source.startsWith('2d-move-stick')) {
-        // Dial emits screen px for this frame already (time-based glide) - do not rescale
-        engine.translateScreenSpace(payload.deltaX, payload.deltaY, targetScope, isGizmoLocked);
-      } else if (payload.source.startsWith('3d-node')) {
-        // Dial emits world units already (time-based glide) - do not rescale here
-        if (payload.x !== 0) engine.translateAxis3D('x', payload.x, targetScope);
-        if (payload.y !== 0) engine.translateAxis3D('y', payload.y, targetScope);
-        if (payload.z !== 0) engine.translateAxis3D('z', payload.z, targetScope);
-      }
-    },
-    [engine, isGizmoLocked, targetScope]
-  );
-
-  const handleGizmoRotate = useCallback(
-    (payload: RotationEventPayload) => {
-      if (!engine) return;
-      if (payload.source === '2d-rotate-handle') {
-        engine.rotateAxis3D('z', (payload.deltaAngle * Math.PI) / 180, targetScope, isGizmoLocked);
-      } else if (payload.source === '3d-trackball-sphere') {
-        engine.rotateTrackball(payload.ry, payload.rx, targetScope);
-      } else if (payload.axis === 'x' || payload.axis === 'y' || payload.axis === 'z') {
-        engine.rotateAxis3D(payload.axis, (payload.deltaAngle * Math.PI) / 180, targetScope, isGizmoLocked);
-      }
-    },
-    [engine, isGizmoLocked, targetScope]
-  );
-
-  const handleGizmoScale = useCallback(
-    (payload: ScaleEventPayload) => {
-      if (!engine) return;
-      if (payload.handle === 'scale-y') {
-        engine.scaleAxis('y', 1 + payload.deltaScale, targetScope, isGizmoLocked);
-      } else if (payload.handle === 'scale-x') {
-        engine.scaleAxis('x', 1 + payload.deltaScale, targetScope, isGizmoLocked);
-      } else if (payload.handle === 'scale-uniform') {
-        engine.scaleAxis('uniform', 1 + payload.deltaScale, targetScope, isGizmoLocked);
-      } else if (payload.deltaScale) {
-        engine.scaleAxis('uniform', 1 + payload.deltaScale, targetScope, isGizmoLocked);
-      }
-    },
-    [engine, isGizmoLocked, targetScope]
-  );
-
-  const handleGizmoReset = useCallback(() => {
-    if (!engine) return;
-    engine.resetTransform(targetScope);
-    engine.snapToView('isometric');
-  }, [engine, targetScope]);
-
-  const handleGizmoInteractionStart = useCallback(
-    (handleName: string) => {
-      if (!engine) return;
-      engine.beginTransform(targetScope);
-    },
-    [engine, targetScope]
-  );
-
-  const handleGizmoInteractionEnd = useCallback(
-    (handleName: string) => {
-      if (!engine) return;
-      engine.endTransform();
-    },
-    [engine]
-  );
 
   // Watch layer modifications for auto-save
   useEffect(() => {
@@ -1680,12 +1593,10 @@ export function App() {
     isBentGuideOpen ||
     isCustomMirrorOpen ||
     isDecimateOpen ||
-    isSettingsOpen ||
     isARViewerOpen ||
     isClipboardOpen ||
     isScaffoldingOpen ||
     isRenderSettingsOpen ||
-    isModelDisplayOpen ||
     isLiquifyOpen;
 
   // A color editor may block drawing without removing the workspace tools.
@@ -1818,8 +1729,6 @@ export function App() {
             setBrushSettings={setBrushSettings}
             isGizmoActive={gizmoMode !== 'Hidden' && activeController !== 'hidden' && showStudioNavigator}
             onToggleGizmo={handleToggleGizmo}
-            isGizmoLocked={isGizmoLocked}
-            onToggleLock={() => setIsGizmoLocked((prev) => !prev)}
             targetScope={targetScope}
             onSelectTargetScope={handleSelectTargetScope}
             selectionMode={selectionMode}
@@ -1827,7 +1736,6 @@ export function App() {
             transformMode={navigatorTransformMode}
             onSelectTransformMode={setNavigatorTransformMode}
             activeGuide={activeGuide}
-            onGizmoReset={handleGizmoReset}
             onOpenColorStudio={() => {
               closeSheet();
               setIsColorStudioOpen(true);
@@ -1965,6 +1873,8 @@ export function App() {
               onSensitivityChange={setNavigatorSensitivity}
               projectionMode={projectionMode}
               onToggleProjection={handleToggleProjection}
+              transformMode={navigatorTransformMode}
+              onTransformModeChange={setNavigatorTransformMode}
               onClose={() => handleControllerChange('hidden')}
             />
           )
@@ -2002,51 +1912,6 @@ export function App() {
         }}
         theme={theme}
       />
-
-      {/* Layer Panel */}
-      {isLayersOpen && (
-        <LayerPanel
-          layers={layers}
-          setLayers={setLayers}
-          activeLayerId={activeLayerId}
-          setActiveLayerId={setActiveLayerId}
-          onClose={() => setIsLayersOpen(false)}
-          onClearLayerStrokes={handleClearLayerStrokes}
-          onMergeLayerDown={handleMergeLayerDown}
-          theme={theme}
-        />
-      )}
-
-      {/* 3D Model Display & Material Settings Panel */}
-      {isModelDisplayOpen && (
-        <div className="fixed top-16 right-4 z-40">
-          <ModelDisplayPanel
-            engine={engine}
-            activeModelName={activeModelName}
-            metadata={modelMetadata}
-            displayMode={modelDisplayMode}
-            onDisplayModeChange={(mode) => {
-              setModelDisplayMode(mode);
-              engine?.setModelDisplayMode(mode);
-            }}
-            onOpenLibrary={() => setIsModelsOpen(true)}
-            onClose={() => setIsModelDisplayOpen(false)}
-            theme={theme}
-          />
-        </div>
-      )}
-
-      {/* Brush Settings / Color Panel */}
-      {isSettingsOpen && (
-        <BrushSettingsPanel
-          brushSettings={brushSettings}
-          setBrushSettings={setBrushSettings}
-          onClose={() => setIsSettingsOpen(false)}
-          onRecalculateNormals={() => engine?.recalculateMeshNormals()}
-          onOpenColorStudio={() => setIsColorStudioOpen(true)}
-          theme={theme}
-        />
-      )}
 
       {/* All Deferred Modals & Overlays Host */}
       <AppModalHost

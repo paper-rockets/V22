@@ -54,7 +54,7 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
   const handleManualRecalculate = () => {
     if (onRecalculateNormals) {
       const count = onRecalculateNormals();
-      setRecalcFeedback(typeof count === 'number' ? `Normals smoothed (${count} meshes)` : 'Normals recalculated & smoothed');
+      setRecalcFeedback(typeof count === 'number' ? `Shading smoothed (${count} items)` : 'Shading smoothed');
       setTimeout(() => setRecalcFeedback(null), 2500);
     }
   };
@@ -90,11 +90,11 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
           isLight ? 'bg-[#f4f0e9]/80 border-black/10' : 'bg-neutral-950/60 border-neutral-800/80'
         }`}>
           <div className={`flex justify-between items-center font-semibold text-xs ${isLight ? 'text-neutral-900' : 'text-neutral-200'}`}>
-            <span>Viewport Render Mode</span>
+            <span>Display Mode</span>
             <span className={`text-[10px] uppercase font-mono px-2 py-0.5 rounded-full ${
               isLight ? 'bg-neutral-200 text-neutral-700' : 'bg-neutral-800 text-neutral-300'
             }`}>
-              {settings.renderMode === 'draft' ? 'Draft (Fast)' : 'Render (Composited)'}
+              {settings.renderMode === 'draft' ? 'Fast' : 'Best look'}
             </span>
           </div>
 
@@ -113,7 +113,7 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
                   : 'text-neutral-400 hover:text-neutral-200'
               }`}
             >
-              Draft Mode
+              Fast
             </button>
             <button
               onClick={() => update('renderMode', 'render')}
@@ -125,12 +125,12 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
                   : 'text-neutral-400 hover:text-neutral-200'
               }`}
             >
-              Render Mode
+              Best Look
             </button>
           </div>
         </div>
 
-        {/* GPU Pipeline & WebGPU Acceleration Card */}
+        {/* Graphics chip card */}
         <div className={`p-3 rounded-xl border space-y-2 font-mono text-[11px] ${
           isLight ? 'bg-[#f4f0e9]/80 border-black/10' : 'bg-neutral-950/60 border-neutral-800/80'
         }`}>
@@ -139,32 +139,32 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
           }`}>
             <div className="flex items-center gap-1.5">
               <Cpu className={`w-3.5 h-3.5 ${isWebGPU ? 'text-neutral-700 dark:text-zinc-300' : 'text-neutral-700 dark:text-zinc-300'}`} />
-              <span>GPU Pipeline & WebGPU</span>
+              <span>Graphics Chip</span>
             </div>
             <span className={`px-2 py-0.5 rounded-md text-[10px] font-mono ${
               isWebGPU
                 ? isLight ? 'bg-neutral-100 dark:bg-white/10 text-neutral-900 dark:text-white border border-black/10 dark:border-white/10' : 'bg-neutral-900 dark:bg-white/20 text-neutral-800 dark:text-zinc-300 border border-neutral-900 dark:border-white/40'
                 : isLight ? 'bg-neutral-100 dark:bg-white/10 text-neutral-900 dark:text-white border border-black/10 dark:border-white/10' : 'bg-neutral-900 dark:bg-white/20 text-neutral-800 dark:text-zinc-300 border border-neutral-900 dark:border-white/40'
             }`}>
-              {isWebGPU ? 'WebGPU Active' : 'WebGL2 Direct'}
+              {isWebGPU ? 'Fastest mode' : 'Standard mode'}
             </span>
           </div>
 
           <div className={`space-y-1 ${isLight ? 'text-neutral-600' : 'text-neutral-400'}`}>
             <div className="flex justify-between">
-              <span>Adapter:</span>
+              <span>Chip:</span>
               <span className={`text-right truncate max-w-[170px] ${isLight ? 'text-neutral-900 font-semibold' : 'text-neutral-200'}`} title={gpuInfo?.adapterName}>
-                {gpuInfo?.adapterName || 'Hardware GPU Device'}
+                {gpuInfo?.adapterName || 'Built-in graphics'}
               </span>
             </div>
             <div className="flex justify-between">
-              <span>Max Texture:</span>
+              <span>Largest image:</span>
               <span className={isLight ? 'text-neutral-900 font-semibold' : 'text-neutral-200'}>{gpuInfo?.maxTextureDimension2D || 4096}px</span>
             </div>
             <div className="flex justify-between">
-              <span>Compute Support:</span>
+              <span>Extra speed:</span>
               <span className={gpuInfo?.computeSupport ? (isLight ? 'text-neutral-900 dark:text-neutral-200 font-semibold' : 'text-neutral-700 dark:text-zinc-300') : (isLight ? 'text-neutral-700' : 'text-neutral-300')}>
-                {gpuInfo?.computeSupport ? 'Enabled (Direct)' : 'Raster Stencil'}
+                {gpuInfo?.computeSupport ? 'Yes' : 'No'}
               </span>
             </div>
           </div>
@@ -177,7 +177,7 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 font-semibold text-neutral-700 dark:text-zinc-300">
               <Zap className="w-3.5 h-3.5" />
-              <span>Studio Path Tracing</span>
+              <span>Realistic Lighting</span>
             </div>
             <input
               type="checkbox"
@@ -192,7 +192,7 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
             <div className={`flex items-center justify-between text-[11px] font-mono px-2.5 py-1.5 rounded-lg border ${
               isLight ? 'bg-white/80 border-black/10' : 'bg-neutral-900/80 border-neutral-800'
             }`}>
-              <span className={isLight ? 'text-neutral-600' : 'text-neutral-400'}>State:</span>
+              <span className={isLight ? 'text-neutral-600' : 'text-neutral-400'}>Status:</span>
               <span className={
                 pathTracingProgress?.converged
                   ? 'text-emerald-600 dark:text-emerald-400 font-semibold'
@@ -201,10 +201,10 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
                   : 'text-neutral-600 dark:text-neutral-300'
               }>
                 {pathTracingProgress?.converged
-                  ? `Converged (${pathTracingProgress.maxSamples}s)`
+                  ? 'Finished'
                   : pathTracingProgress?.isStationary && (pathTracingProgress?.samples ?? 0) > 0
-                  ? `Sampling (${pathTracingProgress.samples}/${pathTracingProgress.maxSamples})`
-                  : 'Interactive (60 FPS)'}
+                  ? `Improving (${pathTracingProgress.samples} of ${pathTracingProgress.maxSamples})`
+                  : 'Live preview'}
               </span>
             </div>
           )}
@@ -214,8 +214,8 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
               {/* Quality Preset / Max Samples */}
               <div className="space-y-1">
                 <div className={`flex justify-between ${isLight ? 'text-neutral-700' : 'text-neutral-300'}`}>
-                  <span>Target Samples</span>
-                  <span className={`font-mono ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>{settings.rayTracingSamples ?? 48} samples</span>
+                  <span>Quality</span>
+                  <span className={`font-mono ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>{settings.rayTracingSamples ?? 48} passes</span>
                 </div>
                 <div className="grid grid-cols-3 gap-1 pt-0.5">
                   {[24, 48, 64].map((s) => (
@@ -233,27 +233,10 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
                           : 'bg-neutral-900 border-neutral-800 text-neutral-400 hover:bg-neutral-800'
                       }`}
                     >
-                      {s === 24 ? 'Mobile 24' : s === 48 ? 'Studio 48' : 'Photo 64'}
+                      {s === 24 ? 'Quick' : s === 48 ? 'Good' : 'Best'}
                     </button>
                   ))}
                 </div>
-              </div>
-
-              {/* Light Bounces */}
-              <div className="space-y-1">
-                <div className={`flex justify-between ${isLight ? 'text-neutral-700' : 'text-neutral-300'}`}>
-                  <span>Light Bounces</span>
-                  <span className={`font-mono ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>{settings.rayTracingBounces ?? 3} bounces</span>
-                </div>
-                <input
-                  type="range"
-                  min="1"
-                  max="4"
-                  step="1"
-                  value={settings.rayTracingBounces ?? 3}
-                  onChange={(e) => update('rayTracingBounces', parseInt(e.target.value, 10))}
-                  className={`w-full accent-neutral-900 dark:accent-neutral-100 h-1.5 rounded cursor-pointer ${isLight ? 'bg-neutral-200' : 'bg-neutral-800'}`}
-                />
               </div>
             </div>
           )}
@@ -288,7 +271,7 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
           </div>
           {settings.renderMode === 'draft' && (
             <p className={`text-[10px] leading-relaxed ${isLight ? 'text-neutral-500' : 'text-neutral-500'}`}>
-              Switch to Render Mode to apply this display finish.
+              Switch Display Mode to Best Look to see this.
             </p>
           )}
         </div>
@@ -367,8 +350,8 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
           {settings.toonShading && (
             <div className="space-y-1 pt-1">
               <div className={`flex justify-between ${isLight ? 'text-neutral-700' : 'text-neutral-300'}`}>
-                <span>Luminance Steps</span>
-                <span className={`font-mono ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>{settings.toonSteps} bands</span>
+                <span>Shade Steps</span>
+                <span className={`font-mono ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>{settings.toonSteps} shades</span>
               </div>
               <input
                 type="range"
@@ -390,7 +373,7 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5 font-semibold text-neutral-700 dark:text-zinc-300">
               <Camera className="w-3.5 h-3.5" />
-              <span>Depth of Field (DoF)</span>
+              <span>Background Blur</span>
             </div>
             <input
               type="checkbox"
@@ -404,7 +387,7 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
             <div className="space-y-2.5 pt-1">
               <div className="space-y-1">
                 <div className={`flex justify-between ${isLight ? 'text-neutral-700' : 'text-neutral-300'}`}>
-                  <span>Aperture Blur Radius</span>
+                  <span>Blur Amount</span>
                   <span className={`font-mono ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>{(settings.dofAperture * 100).toFixed(1)}</span>
                 </div>
                 <input
@@ -493,17 +476,17 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
           )}
         </div>
 
-        {/* 6. Mesh Normals & Shading Smoothness */}
+        {/* 6. Smooth shading */}
         {onRecalculateNormals && (
           <div className={`p-3 rounded-xl border space-y-2 ${
             isLight ? 'bg-[#f4f0e9]/80 border-black/10' : 'bg-neutral-950/60 border-neutral-800/80'
           }`}>
             <div className="flex items-center gap-1.5 font-semibold text-neutral-700 dark:text-zinc-300">
               <RefreshCw className="w-3.5 h-3.5" />
-              <span>Mesh Normals & Smooth Shading</span>
+              <span>Smooth Out Shading</span>
             </div>
             <p className={`text-[10px] leading-tight ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
-              Recalculates vertex normal vectors across accumulated strokes & model meshes to eliminate faceting and restore smooth PBR lighting.
+              Fixes blocky, faceted shading on your lines and 3D models.
             </p>
             <button
               id="btn-render-recalculate-normals"
@@ -523,7 +506,7 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
               ) : (
                 <>
                   <RefreshCw className="w-4 h-4 text-neutral-700 dark:text-zinc-300" />
-                  <span>Recalculate & Smooth All Normals Now</span>
+                  <span>Smooth All Shading Now</span>
                 </>
               )}
             </button>

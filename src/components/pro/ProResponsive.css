@@ -294,6 +294,18 @@
   }
 }
 
+/* Phone: the Select sheet stays short and does not dim the drawing, so the
+   selection outline stays visible while choosing what to select. */
+@media (max-width: 639px) {
+  .paperrocket-pro-panel[data-mode='select'] {
+    max-height: min(46dvh, 400px) !important;
+  }
+
+  .paperrocket-context-backdrop[data-mode='select'] {
+    background: transparent !important;
+  }
+}
+
 /* Tablet portrait: lower sheet leaving 65-75% artwork area open, with >=18px clearance above bottom dock */
 @media (min-width: 640px) and (max-width: 1023px) and (orientation: portrait) {
   .paperrocket-studio-quick-group {

@@ -280,7 +280,7 @@ export const StudioImporter: React.FC<StudioImporterProps> = ({
               </h1>
               <p className="text-xs text-neutral-400 leading-tight">
                 {stage === 'choose'
-                  ? 'Import your own file or select a starter 3D mesh'
+                  ? 'Import your own file or pick a starter 3D model'
                   : '360° interactive preview and placement settings'}
               </p>
             </div>
@@ -307,7 +307,7 @@ export const StudioImporter: React.FC<StudioImporterProps> = ({
           {stage === 'saving' && (
             <div className="h-64 flex flex-col items-center justify-center gap-3">
               <Loader2 className="w-8 h-8 animate-spin text-neutral-500" />
-              <span className="text-sm font-bold">Processing 3D mesh…</span>
+              <span className="text-sm font-bold">Loading 3D model…</span>
             </div>
           )}
 

@@ -285,7 +285,7 @@ const Shader3DSphereModal: React.FC<{
                 className="flex items-center gap-2 text-xs font-semibold text-sky-400 hover:text-sky-300 mb-2 transition-colors cursor-pointer"
               >
                 <FileCode className="w-4 h-4" />
-                <span>{showCode ? 'Hide Shader GLSL Code' : 'View Shader GLSL Code'}</span>
+                <span>{showCode ? 'Hide Effect Code' : 'Show Effect Code'}</span>
               </button>
 
               {showCode && (
@@ -495,7 +495,7 @@ export const ShaderPresetManager: React.FC<ShaderPresetManagerProps> = ({ onSwit
                 )}
               </div>
               <p className="text-[11px] text-neutral-400 hidden sm:block">
-                View all shader presets rendered as in the app. Check items you want to delete.
+                View all effects as they look in the app. Check items you want to delete.
               </p>
             </div>
           </div>
@@ -543,7 +543,7 @@ export const ShaderPresetManager: React.FC<ShaderPresetManagerProps> = ({ onSwit
             <Search className="w-4 h-4 text-neutral-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             <input
               type="text"
-              placeholder="Search shader presets…"
+              placeholder="Search effects…"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full h-9 pl-9 pr-8 rounded-xl bg-neutral-900 border border-neutral-700/80 text-xs text-neutral-200 placeholder-neutral-500 focus:outline-none focus:border-sky-500 transition-colors"
@@ -635,7 +635,7 @@ export const ShaderPresetManager: React.FC<ShaderPresetManagerProps> = ({ onSwit
         {filteredPresets.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 text-center text-neutral-400">
             <Search className="w-12 h-12 text-neutral-600 mb-3" />
-            <h3 className="text-sm font-semibold text-neutral-300">No shader presets found</h3>
+            <h3 className="text-sm font-semibold text-neutral-300">No effects found</h3>
             <p className="text-xs text-neutral-500 mt-1">Try clearing your search query or changing category.</p>
             <button
               onClick={() => {
@@ -736,7 +736,7 @@ export const ShaderPresetManager: React.FC<ShaderPresetManagerProps> = ({ onSwit
                       {(preset.vertexShader || preset.fragmentShader) && (
                         <span
                           className="absolute bottom-1 right-1 text-[9px] bg-black/70 backdrop-blur-xs text-sky-300 px-1 py-0.5 rounded font-mono"
-                          title="Animated GLSL Shader"
+                          title="Animated effect"
                         >
                           GLSL
                         </span>

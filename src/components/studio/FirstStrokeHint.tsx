@@ -79,7 +79,7 @@ export const FirstStrokeHint: React.FC<FirstStrokeHintProps> = ({
               ? 'text-neutral-400 hover:text-neutral-700 hover:bg-black/5'
               : 'text-neutral-400 hover:text-neutral-100 hover:bg-white/10'
           }`}
-          aria-label="Dismiss first-stroke hint"
+          aria-label="Dismiss first-line hint"
           title="Dismiss hint"
         >
           <X className="w-4 h-4" />

@@ -34,6 +34,20 @@ type HandleDrag = {
 const FRAME_PAD = 10;
 /** Keeps handles reachable when the selection is larger than the screen. */
 const EDGE_INSET = 12;
+/** On-screen controls the label must never sit on top of. */
+const OBSTACLE_SELECTOR = [
+  '.nv-dock',
+  '.nv-control-rail',
+  '.jn-wrap',
+  '[data-selection-action-bar]',
+  '.paperrocket-studio-mode-group',
+  '.paperrocket-studio-quick-group',
+].join(',');
+
+type ScreenBox = { left: number; top: number; right: number; bottom: number };
+
+const overlaps = (a: ScreenBox, b: ScreenBox) =>
+  a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
 
 /**
  * The single on-screen highlight for the current selection: a frame that
@@ -88,7 +102,27 @@ export const SelectionFrame: React.FC<SelectionFrameProps> = ({
     let lastRevision = -1;
     let lastWidth = -1;
     let lastHeight = -1;
+    let lastObstacleKey = '';
+    let obstacleCheckCountdown = 0;
+    let obstacles: ScreenBox[] = [];
     const lastCamera = new Float32Array(16);
+
+    // Controls open, close and move without the camera moving, so their
+    // positions are re-read a few times a second rather than every frame.
+    const readObstacles = (container: HTMLElement) => {
+      const origin = container.getBoundingClientRect();
+      const boxes: ScreenBox[] = [];
+      document.querySelectorAll<HTMLElement>(OBSTACLE_SELECTOR).forEach((element) => {
+        const r = element.getBoundingClientRect();
+        if (r.width === 0 || r.height === 0) return;
+        boxes.push({ left: r.left - origin.left, top: r.top - origin.top, right: r.right - origin.left, bottom: r.bottom - origin.top });
+      });
+      const key = boxes.map((b) => `${Math.round(b.left)},${Math.round(b.top)},${Math.round(b.right)},${Math.round(b.bottom)}`).join('|');
+      const changed = key !== lastObstacleKey;
+      lastObstacleKey = key;
+      obstacles = boxes;
+      return changed;
+    };
 
     const tick = () => {
       frame = requestAnimationFrame(tick);
@@ -106,7 +140,12 @@ export const SelectionFrame: React.FC<SelectionFrameProps> = ({
       const revision = engine.getSelectionRevision();
       const width = container.clientWidth;
       const height = container.clientHeight;
-      if (!cameraMoved && revision === lastRevision && width === lastWidth && height === lastHeight) return;
+      let obstaclesMoved = false;
+      if (--obstacleCheckCountdown <= 0) {
+        obstacleCheckCountdown = 15;
+        obstaclesMoved = readObstacles(container);
+      }
+      if (!cameraMoved && !obstaclesMoved && revision === lastRevision && width === lastWidth && height === lastHeight) return;
       if (revision !== lastRevision) setSummary(engine.getSelectionSummary(scope));
       lastRevision = revision;
       lastWidth = width;
@@ -131,8 +170,13 @@ export const SelectionFrame: React.FC<SelectionFrameProps> = ({
       box.hidden = false;
       label.hidden = false;
       const left = Math.max(EDGE_INSET, rect.x - FRAME_PAD);
-      // Leave room above for the turn handle, which sits 60px over the frame.
-      const top = Math.max(EDGE_INSET + 62, rect.y - FRAME_PAD);
+      // Leave room above for the turn handle, which sits 60px over the frame,
+      // and keep that handle clear of a toolbar pinned to the top of the screen.
+      let topLimit = EDGE_INSET + 62;
+      for (const o of obstacles) {
+        if (o.top < height * 0.25 && o.left < width / 2 && o.right > width / 2) topLimit = Math.max(topLimit, o.bottom + 62);
+      }
+      const top = Math.max(topLimit, rect.y - FRAME_PAD);
       const right = Math.min(width - EDGE_INSET, rect.x + rect.width + FRAME_PAD);
       const bottom = Math.min(height - EDGE_INSET, rect.y + rect.height + FRAME_PAD);
       const w = Math.max(24, right - left);
@@ -140,13 +184,39 @@ export const SelectionFrame: React.FC<SelectionFrameProps> = ({
       box.style.transform = `translate(${Math.round(left)}px, ${Math.round(top)}px)`;
       box.style.width = `${Math.round(w)}px`;
       box.style.height = `${Math.round(h)}px`;
-      // The label sits under the frame (the turn handle owns the space above),
-      // or inside its bottom edge when the frame reaches the bottom of the screen.
-      const below = top + h + 64 < height;
-      label.dataset.placement = below ? 'below' : 'inside';
-      const labelX = Math.min(Math.max(EDGE_INSET, left), width - 240);
-      const labelY = below ? top + h + 14 : top + h - 58;
-      label.style.transform = `translate(${Math.round(labelX)}px, ${Math.round(labelY)}px)`;
+      // The label prefers the spot under the frame (the turn handle owns the
+      // space above), then the frame's inner edges, and skips any spot that
+      // would cover the View controls, the toolbars or the tool rail.
+      const place = () => {
+        const labelW = label.offsetWidth || 240;
+        const labelH = label.offsetHeight || 46;
+        const clampX = (x: number) => Math.min(Math.max(EDGE_INSET, x), Math.max(EDGE_INSET, width - labelW - EDGE_INSET));
+        const candidates = [
+          { placement: 'below', x: clampX(left), y: top + h + 14 },
+          { placement: 'below', x: clampX(left + w - labelW), y: top + h + 14 },
+          { placement: 'inside', x: clampX(left + 10), y: top + h - labelH - 10 },
+          { placement: 'inside', x: clampX(left + 10), y: top + 10 },
+        ];
+        const fit = candidates.find((c) => {
+          const b = { left: c.x, top: c.y, right: c.x + labelW, bottom: c.y + labelH };
+          return b.top >= EDGE_INSET && b.bottom <= height - EDGE_INSET && !obstacles.some((o) => overlaps(b, o));
+        });
+        return { fit, fallback: candidates[top + h + labelH + 20 < height ? 0 : 2] };
+      };
+      // Full label outside the frame first; if the controls leave no room there,
+      // drop the gesture hint and try again before covering the drawing.
+      label.dataset.compact = 'false';
+      const full = place();
+      let chosen = full.fit;
+      if (!chosen || chosen.placement === 'inside') {
+        label.dataset.compact = 'true';
+        const compact = place().fit;
+        if (compact && (!chosen || compact.placement !== 'inside')) chosen = compact;
+        else label.dataset.compact = 'false';
+      }
+      if (!chosen) chosen = full.fallback;
+      label.dataset.placement = chosen.placement;
+      label.style.transform = `translate(${Math.round(chosen.x)}px, ${Math.round(chosen.y)}px)`;
     };
 
     root.hidden = false;

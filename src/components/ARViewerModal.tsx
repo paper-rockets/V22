@@ -68,7 +68,7 @@ export const ARViewerModal: React.FC<ARViewerModalProps> = ({
   const handleStartRealAR = async () => {
     if (!engine) return;
     try {
-      setStatusMsg('Connecting AR session...');
+      setStatusMsg('Starting AR view...');
       const success = await engine.startWebXRSession();
       if (success) {
         setArState((prev) => ({ ...prev, isActive: true, hasHitTest: true }));

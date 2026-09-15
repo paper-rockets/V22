@@ -71,7 +71,7 @@ export const ShapesSheet: React.FC<ShapesSheetProps> = ({
   return (
     <StudioSheet id="shapes" title="Line Assist" theme={theme} tall compact>
       <p className="pb-2 text-[11px] leading-4 opacity-65">
-        One place to steady a stroke, clean it up, or make it straight.
+        One place to steady a line, clean it up, or make it straight.
       </p>
 
       {/* ---------------------------------------------------------------- */}
@@ -247,7 +247,7 @@ export const ShapesSheet: React.FC<ShapesSheetProps> = ({
         <div className="min-w-0 flex-1">
           <div className="text-sm font-bold">Ruler</div>
           <div className="text-[10px] leading-4 opacity-65">
-            Every stroke comes out perfectly straight, whatever you draw.
+            Every line comes out perfectly straight, whatever you draw.
           </div>
         </div>
         {straightOnly && <Check className="h-4 w-4 shrink-0" strokeWidth={2.5} />}

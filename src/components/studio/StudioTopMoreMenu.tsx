@@ -126,7 +126,7 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
         }`}
       >
         <div className="shrink-0 mb-2 sm:mb-3 flex min-h-11 items-center justify-between gap-3 border-b border-black/5 dark:border-white/5 pb-1">
-          <h2 id="studio-more-title" className="text-base font-semibold">Workspace</h2>
+          <h2 id="studio-more-title" className="text-base font-semibold">Menu</h2>
           <button
             type="button"
             onClick={onClose}
@@ -143,7 +143,7 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
           {onOpenSessions && (
             <ActionButton icon={<FolderOpen className="h-5 w-5" strokeWidth={1.7} />} label="Projects" description="Save, open, and manage projects" onSelect={select(onOpenSessions)} isLight={isLight} />
           )}
-          <ActionButton icon={<Settings className="h-5 w-5" strokeWidth={1.7} />} label="Studio settings" description="Canvas, appearance, and workspace preferences" onSelect={select(onOpenSettings)} isLight={isLight} />
+          <ActionButton icon={<Settings className="h-5 w-5" strokeWidth={1.7} />} label="Studio settings" description="Canvas, appearance, and app preferences" onSelect={select(onOpenSettings)} isLight={isLight} />
           <ActionButton
             icon={isFullscreen ? <Minimize2 className="h-5 w-5" strokeWidth={1.7} /> : <Maximize2 className="h-5 w-5" strokeWidth={1.7} />}
             label={isFullscreen ? 'Exit full screen' : 'Full screen'}

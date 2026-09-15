@@ -193,7 +193,7 @@ export const BentGuideModal: React.FC<BentGuideModalProps> = ({
           <div className="flex items-center justify-between text-xs">
             <span className={`font-medium flex items-center gap-1 ${t.textPrimary}`}>
               <Activity className={`w-3 h-3 ${isLight ? 'text-neutral-900 dark:text-zinc-200' : 'text-neutral-700 dark:text-zinc-300'}`} />
-              <span>Curve Tension</span>
+              <span>Bend Tightness</span>
             </span>
             <span className={`font-mono text-xs font-bold ${isLight ? 'text-neutral-900 dark:text-zinc-200' : 'text-neutral-800 dark:text-zinc-300'}`}>
               {tension.toFixed(2)}
@@ -215,9 +215,9 @@ export const BentGuideModal: React.FC<BentGuideModalProps> = ({
             }`}
           />
           <div className={`flex justify-between text-[9px] font-mono ${t.textMuted}`}>
-            <span>0.0 (Loose / Spline)</span>
-            <span>0.5 (Centripetal)</span>
-            <span>1.0 (Taut / Linear)</span>
+            <span>Loose</span>
+            <span>Medium</span>
+            <span>Tight</span>
           </div>
         </div>
 
@@ -322,7 +322,7 @@ export const BentGuideModal: React.FC<BentGuideModalProps> = ({
           className={`w-full py-1.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all ${t.btnSecondary}`}
         >
           <Spline className={`w-3.5 h-3.5 ${isLight ? 'text-neutral-700 dark:text-zinc-300' : 'text-neutral-700 dark:text-zinc-300'}`} />
-          <span>Convert Last Drawn Curve to Guide</span>
+          <span>Turn My Last Line into a Guide</span>
         </button>
       </div>
 

@@ -80,7 +80,7 @@ const PROXIES: Array<{
   {
     type: 'capsule',
     label: 'Organic Capsule',
-    desc: 'Smooth curved capsule scaffold for organic sculpts',
+    desc: 'Smooth rounded capsule for soft, organic shapes',
     icon: Cylinder,
   },
 ];
@@ -146,7 +146,7 @@ export const ScaffoldingModal: React.FC<ScaffoldingModalProps> = ({
     if (asScaffold) {
       const config = engine.loadCollisionMeshFromObject(
         group,
-        `Parametric ${primitiveConfig.type.toUpperCase()} Scaffold`
+        `${primitiveConfig.type.charAt(0).toUpperCase()}${primitiveConfig.type.slice(1)} Guide Shape`
       );
       setSelectedScaffoldId(config.id);
       setScaffolds(engine.getScaffolds());
@@ -154,7 +154,7 @@ export const ScaffoldingModal: React.FC<ScaffoldingModalProps> = ({
     } else {
       // Add as standard scene model to modelRoot so it is selectable, movable and deletable
       const typeName = primitiveConfig.type.charAt(0).toUpperCase() + primitiveConfig.type.slice(1);
-      engine.addPrimitiveToScene(group, `Primitive ${typeName}`);
+      engine.addPrimitiveToScene(group, typeName);
       onClose();
     }
   };
@@ -333,7 +333,7 @@ export const ScaffoldingModal: React.FC<ScaffoldingModalProps> = ({
           {/* Primitive Shape Selector */}
           <div className="space-y-1">
             <span className={`text-[10px] font-bold uppercase tracking-wider ${t.textSecondary}`}>
-              Primitive Geometry
+              Basic Shape
             </span>
             <div className="grid grid-cols-4 gap-1">
               {(
@@ -549,7 +549,7 @@ export const ScaffoldingModal: React.FC<ScaffoldingModalProps> = ({
               {selectedScaffold && (
                 <div className={`p-3 rounded-xl border space-y-2.5 animate-in fade-in duration-100 ${t.innerCard}`}>
                   <div className={`text-[10px] font-bold uppercase tracking-wider ${isLight ? 'text-neutral-900' : 'text-zinc-300'}`}>
-                    Render Mode & Shader Pass
+                    How It Looks
                   </div>
 
                   {/* Render Mode Grid */}

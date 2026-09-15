@@ -194,6 +194,7 @@ export class TransformController {
       strokeIds: scope === 'selected_strokes' ? [...this.ctx.getSelectedStrokeIds()] : undefined,
     };
     this.currentTransformTotalMatrix.identity();
+    if (scope === 'model') this.rememberPickedModelHome();
   }
 
   /**
@@ -926,81 +927,34 @@ export class TransformController {
     this.ctx.modelRoot.updateMatrixWorld(true);
   }
 
-  /**
-   * Resets model/surface and stroke transforms without affecting camera
-   */
-  public resetTransform(scope: TransformTargetScope = 'all'): void {
-    if (scope === 'all' || scope === 'model') {
-      this.ctx.modelRoot.position.set(0, 0, 0);
-      this.ctx.modelRoot.rotation.set(0, 0, 0);
-      this.ctx.modelRoot.scale.set(1, 1, 1);
-      this.ctx.modelRoot.updateMatrixWorld(true);
+  private getPickedModel(): THREE.Object3D | undefined {
+    const id = this.ctx.getActiveSelectedModelId();
+    return id ? this.ctx.modelRoot.children.find((c) => c.uuid === id) : undefined;
+  }
 
-      const modelChildren = this.ctx.modelRoot.children.filter((c) => c !== this.ctx.strokeRoot);
-      modelChildren.forEach((child) => {
-        if (child.userData && child.userData.initialPosition) {
-          child.position.copy(child.userData.initialPosition);
-        } else {
-          child.position.set(0, 0, 0);
-        }
-        if (child.userData && child.userData.initialRotation) {
-          child.rotation.copy(child.userData.initialRotation);
-        } else {
-          child.rotation.set(0, 0, 0);
-        }
-        if (child.userData && child.userData.initialScale) {
-          child.scale.copy(child.userData.initialScale);
-        } else {
-          child.scale.set(1, 1, 1);
-        }
-        child.updateMatrixWorld(true);
-      });
-    }
-    if (scope === 'all' || scope === 'strokes' || scope === 'active_layer') {
-      this.ctx.strokeRoot.position.set(0, 0, 0);
-      this.ctx.strokeRoot.rotation.set(0, 0, 0);
-      this.ctx.strokeRoot.scale.set(1, 1, 1);
-      this.ctx.strokeRoot.updateMatrixWorld(true);
-
-      this.ctx.getStrokes().forEach(({ meshes }) => {
-        meshes.forEach((m) => {
-          m.position.set(0, 0, 0);
-          m.rotation.set(0, 0, 0);
-          m.scale.set(1, 1, 1);
-          m.updateMatrixWorld(true);
-        });
-      });
-    }
-    if (scope === 'all' || scope === 'guide') {
-      const guideMesh = this.ctx.getActiveGuideMesh?.();
-      if (guideMesh) {
-        guideMesh.position.set(0, 0, 0);
-        guideMesh.rotation.set(0, 0, 0);
-        guideMesh.scale.set(1, 1, 1);
-        guideMesh.updateMatrixWorld(true);
-      } else {
-        const guideRoot = this.ctx.getGuideRoot?.();
-        const scaffoldRoot = this.ctx.getScaffoldRoot?.();
-        if (guideRoot) {
-          guideRoot.position.set(0, 0, 0);
-          guideRoot.rotation.set(0, 0, 0);
-          guideRoot.scale.set(1, 1, 1);
-          guideRoot.updateMatrixWorld(true);
-        }
-        if (scaffoldRoot) {
-          scaffoldRoot.position.set(0, 0, 0);
-          scaffoldRoot.rotation.set(0, 0, 0);
-          scaffoldRoot.scale.set(1, 1, 1);
-          scaffoldRoot.updateMatrixWorld(true);
-        }
-      }
+  /** Remembers where the picked model sat before its first move, so Reset can return it there. */
+  private rememberPickedModelHome(): void {
+    const model = this.getPickedModel();
+    if (model && !model.userData.homeMatrix) {
+      model.updateMatrix();
+      model.userData.homeMatrix = model.matrix.clone();
     }
   }
 
   /**
-   * Resets model/surface transform without affecting camera
+   * Puts only the picked model back where it was before it was first moved.
+   * Recorded as one undo step. Returns false when there is nothing to put back.
    */
-  public resetModelOrSurface(scope: TransformTargetScope = 'all'): void {
-    this.resetTransform(scope);
+  public resetPickedModel(): boolean {
+    const model = this.getPickedModel();
+    const home = model?.userData.homeMatrix as THREE.Matrix4 | undefined;
+    if (!model || !home) return false;
+    model.updateMatrix();
+    if (model.matrix.equals(home)) return false;
+    const back = home.clone().multiply(model.matrix.clone().invert());
+    this.beginTransform('model');
+    this.applyTransformMatrix(back, 'model');
+    this.endTransform();
+    return true;
   }
 }

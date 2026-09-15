@@ -295,7 +295,7 @@ export const CustomMirrorModal: React.FC<CustomMirrorModalProps> = ({
                       onClick={() =>
                         onOpenNumpad?.({
                           id: `mirror_norm_${axis}`,
-                          title: `Mirror Normal ${axis.toUpperCase()}`,
+                          title: `Mirror Direction ${axis.toUpperCase()}`,
                           value: val,
                           min: -1.0,
                           max: 1.0,

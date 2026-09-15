@@ -241,7 +241,7 @@ export const ProRail: React.FC<ProRailProps> = ({
       ...previous,
       drawingMode: nextPlacement === 'space' ? 'spatial_3d' : 'surface',
     }));
-    if (targetScope === 'guide') onSelectTargetScope?.('all');
+    if (targetScope === 'guide') onSelectTargetScope?.('active_layer');
     closeSheet();
   };
 
@@ -617,7 +617,7 @@ export const ProRail: React.FC<ProRailProps> = ({
                             ? isLight ? 'text-neutral-300' : 'text-neutral-700 font-medium'
                             : 'opacity-60'
                         }`}>
-                          Draw floating 3D strokes in mid-air
+                          Draw floating 3D lines in mid-air
                         </span>
                       </div>
                     </button>
@@ -671,7 +671,7 @@ export const ProRail: React.FC<ProRailProps> = ({
                     }`}>
                       <div className="flex flex-col min-w-0 pr-1">
                         <span className={`text-xs font-bold leading-tight ${isLight ? 'text-neutral-900' : 'text-white'}`}>
-                          Surface + Air in One Stroke
+                          Surface + Air in One Line
                         </span>
                         <span className="text-[10px] opacity-70 leading-tight mt-0.5">
                           Start on a surface, then continue into open air

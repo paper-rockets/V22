@@ -245,7 +245,7 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
       {/* 1. STUDIO */}
       <SectionHeader title="Studio" isLight={isLight} />
 
-      <Row icon={isLight ? Sun : Moon} label="Studio Theme" hint="Viewport and interface contrast" isLight={isLight}>
+      <Row icon={isLight ? Sun : Moon} label="Studio Theme" hint="Light or dark look for the app" isLight={isLight}>
         <div className="flex gap-1 w-40">
           <button
             type="button"
@@ -530,7 +530,7 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
           )}
 
           {onOpenRenderSettings && (
-            <Row icon={Sliders} label="Picture Quality" hint="Visual fidelity, glow, and viewport rendering" isLight={isLight}>
+            <Row icon={Sliders} label="Picture Quality" hint="How good your drawing looks, plus glow" isLight={isLight}>
               <button type="button" onClick={onOpenRenderSettings} className={actionBtn}>
                 <Sliders className="w-4 h-4" />
                 <span>Picture Quality</span>
@@ -647,7 +647,7 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
                       ? 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-800'
                       : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-neutral-200'
                   }`}
-                  title={`Restore session from ${autoSaveMeta.formattedDate || 'autosave'}`}
+                  title={`Restore project from ${autoSaveMeta.formattedDate || 'autosave'}`}
                 >
                   <RotateCcw className="w-3.5 h-3.5 text-current" />
                   <span>Restore</span>

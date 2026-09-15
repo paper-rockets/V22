@@ -59,7 +59,14 @@ export const SelectionActionBar: React.FC<SelectionActionBarProps> = ({
     <div
       role="toolbar"
       aria-label="Selection actions"
-      className={`fixed bottom-[max(84px,calc(74px+env(safe-area-inset-bottom)))] left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 rounded-2xl shadow-2xl border backdrop-blur-md animate-in fade-in slide-in-from-bottom-2 duration-150 select-none max-w-[calc(100vw-32px)] ${
+      data-selection-action-bar=""
+      // The bar sits inside the drawing area: keep its taps from also counting
+      // as a tap on empty space, which would clear the selection first.
+      onPointerDown={(e) => e.stopPropagation()}
+      onPointerMove={(e) => e.stopPropagation()}
+      onPointerUp={(e) => e.stopPropagation()}
+      onPointerCancel={(e) => e.stopPropagation()}
+      className={`fixed top-[calc(60px+env(safe-area-inset-top))] sm:top-auto sm:bottom-[max(84px,calc(74px+env(safe-area-inset-bottom)))] left-1/2 -translate-x-1/2 z-40 flex items-center gap-1.5 px-3 py-1.5 rounded-2xl shadow-2xl border backdrop-blur-md animate-in fade-in duration-150 select-none max-w-[calc(100vw-32px)] ${
         isLight
           ? 'bg-white/95 border-black/15 text-neutral-800 shadow-[0_12px_40px_rgba(0,0,0,0.15)]'
           : 'bg-[#15171c]/95 border-white/20 text-neutral-100 shadow-[0_16px_50px_rgba(0,0,0,0.7)]'
@@ -116,7 +123,8 @@ export const SelectionActionBar: React.FC<SelectionActionBarProps> = ({
               ? 'bg-neutral-100 hover:bg-neutral-200 border-black/10 text-neutral-700'
               : 'bg-white/5 hover:bg-white/10 border-white/10 text-neutral-300'
           }`}
-          title="Reset position & rotation to center"
+          title="Put the model back where it started"
+          aria-label="Put the model back where it started"
         >
           <RotateCcw className="w-3.5 h-3.5" />
         </button>

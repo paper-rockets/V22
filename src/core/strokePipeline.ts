@@ -28,7 +28,6 @@ export interface StrokePipelineContext {
   getCustomMirrorNormal: () => THREE.Vector3;
   sampleColorAtScreen: (screenX: number, screenY: number, clientX?: number, clientY?: number) => string;
   raycastModel: (screenX: number, screenY: number, settings?: BrushSettings) => any;
-  onStrokeSelected?: (stroke: StrokeDescriptor | null) => void;
   onDNAInjected?: (dna: HolisticStrokeDNA) => void;
   onAutoSaveTrigger?: (reason: string) => void;
   notifyHistory: () => void;
@@ -599,20 +598,17 @@ export class StrokePipeline {
     }
 
     if (!strokeId) {
-      this.ctx.onStrokeSelected?.(null);
       return null;
     }
 
     const stroke = this.ctx.strokes.get(strokeId);
     if (!stroke) {
       this.selectedStrokeId = null;
-      this.ctx.onStrokeSelected?.(null);
       return null;
     }
 
     // The on-screen selection frame (SelectionFrame) is the highlight, so no
     // box is added to the scene: a scene box went stale as soon as the line moved.
-    this.ctx.onStrokeSelected?.(stroke.descriptor);
     return stroke.descriptor;
   }
 
@@ -634,7 +630,6 @@ export class StrokePipeline {
 
     if (!strokeIds || strokeIds.length === 0) {
       this.selectedStrokeId = null;
-      this.ctx.onStrokeSelected?.(null);
       return null;
     }
 

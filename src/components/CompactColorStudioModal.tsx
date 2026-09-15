@@ -927,8 +927,8 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
                     key={isShader ? `mini-shader-${item.presetId}-${index}` : `mini-color-${item.hex}-${index}`}
                     type="button"
                     onClick={() => handleSelectRecent(item)}
-                    aria-label={isShader ? `Use shader ${item.name}` : `Use color ${item.hex}`}
-                    title={isShader ? `Shader: ${item.name}` : item.hex}
+                    aria-label={isShader ? `Use effect ${item.name}` : `Use color ${item.hex}`}
+                    title={isShader ? `Effect: ${item.name}` : item.hex}
                     className={`h-7 w-7 shrink-0 rounded-full border overflow-hidden shadow-xs transition-transform active:scale-95 flex items-center justify-center relative ${
                       isSelected
                         ? 'ring-2 ring-sky-500 scale-105 border-transparent'
@@ -971,8 +971,8 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
                         key={isShader ? `recent-shader-${item.presetId}-${index}` : `recent-color-${item.hex}-${index}`}
                         type="button"
                         onClick={() => handleSelectRecent(item)}
-                        aria-label={isShader ? `Use shader ${item.name}` : `Use color ${item.hex}`}
-                        title={isShader ? `Shader: ${item.name}` : item.hex}
+                        aria-label={isShader ? `Use effect ${item.name}` : `Use color ${item.hex}`}
+                        title={isShader ? `Effect: ${item.name}` : item.hex}
                         className={`relative aspect-square min-h-0 w-full rounded-full border overflow-hidden shadow-xs transition-transform active:scale-95 flex items-center justify-center ${
                           isSelected
                             ? isLight
@@ -1142,7 +1142,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
                   aria-expanded={showUniforms}
                 >
                   <span className={`text-[11px] font-bold uppercase tracking-wider ${isLight ? 'text-neutral-700' : 'text-neutral-400'}`}>
-                    Shader Uniforms
+                    Effect Settings
                   </span>
                   <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showUniforms ? 'rotate-180' : ''} ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`} />
                 </button>

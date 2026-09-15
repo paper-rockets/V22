@@ -259,7 +259,7 @@ export const ModelLibraryModal: React.FC<ModelLibraryModalProps> = ({
                 3D Models
               </h2>
               <p className={`text-xs ${isLight ? 'text-neutral-500' : 'text-zinc-400'}`}>
-                Library, Auto Previews & Ingestion
+                Your 3D Models
               </p>
             </div>
           </div>

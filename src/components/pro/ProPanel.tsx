@@ -33,8 +33,6 @@ export interface ProPanelProps {
   setBrushSettings?: React.Dispatch<React.SetStateAction<BrushSettings>>;
   isGizmoActive?: boolean;
   onToggleGizmo?: () => void;
-  isGizmoLocked?: boolean;
-  onToggleLock?: () => void;
   onOpenNumpad?: (target: NumpadTarget) => void;
   onOpenColorStudio?: () => void;
   activeModelName?: string;
@@ -48,7 +46,6 @@ export interface ProPanelProps {
   onSelectSelectionMode?: (mode: 'pointer' | 'lasso') => void;
   transformMode?: 'move' | 'rotate' | 'look' | 'scale';
   onSelectTransformMode?: (mode: 'move' | 'rotate' | 'look' | 'scale') => void;
-  onGizmoReset?: () => void;
   // Deform Mode props
   liquifySettings?: LiquifySettings;
   setLiquifySettings?: (settings: LiquifySettings) => void;
@@ -90,8 +87,6 @@ export const ProPanel: React.FC<ProPanelProps> = ({
   setBrushSettings = () => {},
   isGizmoActive = true,
   onToggleGizmo = () => {},
-  isGizmoLocked = false,
-  onToggleLock = () => {},
   onOpenNumpad,
   onOpenColorStudio,
   activeModelName = 'Default Model',
@@ -105,7 +100,6 @@ export const ProPanel: React.FC<ProPanelProps> = ({
   onSelectSelectionMode,
   transformMode = 'move',
   onSelectTransformMode,
-  onGizmoReset,
   liquifySettings,
   setLiquifySettings,
   isLiquifyOpen,
@@ -165,6 +159,7 @@ export const ProPanel: React.FC<ProPanelProps> = ({
     <>
       {/* Outside click/tap dismiss backdrop */}
       <div
+        data-mode={mode}
         className="paperrocket-context-backdrop fixed inset-0 z-30 bg-black/20 sm:bg-black/10 animate-in fade-in duration-150 pointer-events-auto"
         onClick={() => {
           haptics.trigger('light');
@@ -178,6 +173,7 @@ export const ProPanel: React.FC<ProPanelProps> = ({
         aria-label={`${title} Panel`}
         data-theme={theme}
         data-menu-width="wide"
+        data-mode={mode}
         data-dock-position={dockPreferences.position}
         className={`paperrocket-pro-panel paperrocket-context-panel fixed z-40 select-none flex flex-col border shadow-2xl animate-in fade-in duration-150 overflow-hidden ${
         light
@@ -215,12 +211,9 @@ export const ProPanel: React.FC<ProPanelProps> = ({
             setBrushSettings={setBrushSettings}
             isGizmoActive={isGizmoActive}
             onToggleGizmo={onToggleGizmo}
-            isGizmoLocked={isGizmoLocked}
-            onToggleLock={onToggleLock}
             onOpenNumpad={onOpenNumpad}
             targetScope={targetScope}
             onSelectTargetScope={onSelectTargetScope}
-            onGizmoReset={onGizmoReset}
             selectionMode={selectionMode}
             onSelectSelectionMode={onSelectSelectionMode}
             transformMode={transformMode}

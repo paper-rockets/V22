@@ -68,7 +68,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
     if (!engine) return;
     const mesh = p.factory();
     if (mesh) {
-      engine.addPrimitiveToScene(mesh, `Primitive ${p.name}`);
+      engine.addPrimitiveToScene(mesh, p.name);
       setSpawnNotice(`Added ${p.name} · Move controls ready`);
       setTimeout(() => setSpawnNotice(null), 2400);
       onShapeSpawned?.(p.name);

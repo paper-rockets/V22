@@ -90,7 +90,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       );
       if (savedPath) {
         PlatformBridge.triggerHaptic('success');
-        setSuccess('UV Texture map exported successfully!');
+        setSuccess('Painted surface image exported!');
       }
     } catch (e: any) {
       console.error(e);
@@ -226,7 +226,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   </span>
                 </div>
                 <span className={`text-xs ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
-                  Full 3D model with integrated stroke geometries
+                  Full 3D model with all your lines included
                 </span>
               </div>
             </div>
@@ -292,7 +292,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
                   Texture Image · 2K PNG
                 </span>
                 <span className={`text-xs ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
-                  2048 × 2048 UV painted surface texture map
+                  2048 × 2048 image of the paint on your model
                 </span>
               </div>
             </div>
