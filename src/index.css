@@ -2,8 +2,8 @@
 
 :root {
   /* Every Studio menu uses one of these two widths. */
-  --studio-menu-compact: 288px;
-  --studio-menu-wide: 380px;
+  --studio-menu-compact: 240px;
+  --studio-menu-wide: 336px;
 }
 
 html,
