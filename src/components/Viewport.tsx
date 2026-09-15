@@ -8,10 +8,12 @@ import {
   LightingPreset,
   LiquifySettings,
   NumpadTarget,
+  TransformTargetScope,
 } from '../types';
 import { StudioEngine } from '../core/studioEngine';
 import { StylusRadialMenu, RadialMenuPosition } from './StylusRadialMenu';
 import { SelectionActionBar, SelectionInfo } from './pro/SelectionActionBar';
+import { SelectionFrame } from './pro/SelectionFrame';
 import {
   RotateCw,
   Maximize2,
@@ -61,7 +63,33 @@ interface ViewportProps {
   onToggleDisableContextMenu?: () => void;
   theme?: 'light' | 'dark';
   onStylusDetected?: (detected: boolean) => void;
+  selectionMode?: 'pointer' | 'lasso';
+  targetScope?: TransformTargetScope;
+  onSelectTargetScope?: (scope: TransformTargetScope) => void;
+  onSelectLayer?: (layerId: string) => void;
+  onSelectModel?: (modelId: string | null) => void;
+  /** What a one-finger or mouse drag on the selection does. */
+  transformMode?: 'move' | 'rotate' | 'look' | 'scale';
+  /** Shows the selection frame outside the Select tool, e.g. while the controller is in Move. */
+  showSelectionFrame?: boolean;
 }
+
+/** One pointer gesture of the Select tool, from press to release. */
+type SelectGesture =
+  | { kind: 'idle' }
+  | { kind: 'pending'; pointerId: number; startX: number; startY: number; lastX: number; lastY: number; onSelection: boolean }
+  | { kind: 'transform'; pointerId: number; lastX: number; lastY: number; action: 'move' | 'turn' | 'scale' }
+  | { kind: 'camera'; pointerId: number; lastX: number; lastY: number; pan: boolean }
+  | { kind: 'lasso'; pointerId: number; points: { x: number; y: number }[] }
+  | { kind: 'pinch'; onSelection: boolean; lastDist: number; lastAngle: number; lastMidX: number; lastMidY: number }
+  /** A pinch ended while a finger is still down; ignore it until it lifts. */
+  | { kind: 'finished' };
+
+const DRAG_THRESHOLD_MOUSE = 5;
+const DRAG_THRESHOLD_TOUCH = 10;
+/** How close a tap must land to a thin line to pick it. */
+const PICK_RADIUS_MOUSE = 14;
+const PICK_RADIUS_TOUCH = 28;
 
 export const Viewport: React.FC<ViewportProps> = ({
   tool,
@@ -92,12 +120,26 @@ export const Viewport: React.FC<ViewportProps> = ({
   onToggleDisableContextMenu,
   theme = 'dark',
   onStylusDetected,
+  selectionMode = 'pointer',
+  targetScope: targetScopeProp,
+  onSelectTargetScope,
+  onSelectLayer,
+  onSelectModel,
+  transformMode = 'move',
+  showSelectionFrame = false,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<StudioEngine | null>(null);
   const [engineInstance, setEngineInstance] = useState<StudioEngine | null>(null);
 
   const [metadata, setMetadata] = useState<ModelMetadata | null>(null);
+  const targetScope: TransformTargetScope = targetScopeProp ?? 'active_layer';
+  const isSelectTool = tool === 'pointer' || tool === 'select';
+  const selectGestureRef = useRef<SelectGesture>({ kind: 'idle' });
+  const selectPointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
+  const [isLassoVisible, setIsLassoVisible] = useState(false);
+  const lassoPathRef = useRef<SVGPolylineElement | null>(null);
+  const wheelTransformTimerRef = useRef<number | null>(null);
   const [isOrbiting, setIsOrbiting] = useState<boolean>(false);
   const [touchDist, setTouchDist] = useState<number | null>(null);
   const [isStylusDetected, setIsStylusDetected] = useState<boolean>(() => {
@@ -151,49 +193,50 @@ export const Viewport: React.FC<ViewportProps> = ({
   const cursorGroupRef = useRef<SVGGElement | null>(null);
   const [rulerDrag, setRulerDrag] = useState<{ startX: number; startY: number; currentX: number; currentY: number; active: boolean } | null>(null);
 
-  // Global Delete / Backspace Keyboard Shortcut
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
-        if (tag === 'input' || tag === 'textarea') return;
-        if (engineRef.current?.deleteActiveSelection()) {
-          triggerHaptic(20);
-          showGestureToast('Deleted', 'Selection removed • Undo available');
-        }
-      }
-    };
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-
-  // Selection Action Bar state & handlers
+  // Selection action bar: follows the shared selection while the Select tool is on.
   const [activeSelection, setActiveSelection] = useState<SelectionInfo | null>(null);
+  const targetScopeRef = useRef(targetScope);
+  targetScopeRef.current = targetScope;
+  const isSelectToolRef = useRef(isSelectTool);
+  isSelectToolRef.current = isSelectTool;
 
   useEffect(() => {
-    const handleSelectionChange = (e: any) => {
-      setActiveSelection(e.detail || null);
+    const refresh = () => {
+      const engine = engineRef.current;
+      const scope = targetScopeRef.current;
+      if (!engine || !isSelectToolRef.current || scope === 'all' || scope === 'guide') {
+        setActiveSelection(null);
+        return;
+      }
+      const summary = engine.getSelectionSummary(scope);
+      setActiveSelection(
+        summary.isEmpty || (scope === 'model' && (!engine.getActiveSelectedModelId() || engine.isCanvasSelected()))
+          ? null
+          : { type: scope === 'model' ? 'model' : 'stroke', id: scope, name: summary.label }
+      );
     };
-    window.addEventListener('STUDIO_SELECTION_CHANGED', handleSelectionChange);
-    return () => window.removeEventListener('STUDIO_SELECTION_CHANGED', handleSelectionChange);
-  }, []);
+    refresh();
+    window.addEventListener('STUDIO_SELECTION_TARGET_CHANGED', refresh);
+    return () => window.removeEventListener('STUDIO_SELECTION_TARGET_CHANGED', refresh);
+  }, [isSelectTool, targetScope, engineInstance]);
 
   const handleCloneSelection = useCallback(() => {
-    if (!engineRef.current) return;
-    const cloned = engineRef.current.cloneModel();
-    if (cloned) {
+    const engine = engineRef.current;
+    if (!engine) return;
+    const count = engine.cloneSelection(targetScopeRef.current);
+    if (count > 0) {
       triggerHaptic(25);
-      showGestureToast('Cloned', `${cloned.name || 'Object'} duplicated`);
+      showGestureToast('Copied', targetScopeRef.current === 'model' ? 'Model duplicated' : `${count} line${count === 1 ? '' : 's'} duplicated`);
     }
   }, []);
 
   const handleDeleteSelection = useCallback(() => {
-    if (!engineRef.current) return;
-    const success = engineRef.current.deleteActiveSelection();
-    if (success) {
+    const engine = engineRef.current;
+    if (!engine) return;
+    const count = engine.deleteSelection(targetScopeRef.current);
+    if (count > 0) {
       triggerHaptic(30);
-      showGestureToast('Deleted', 'Selection removed • Undo available');
-      setActiveSelection(null);
+      showGestureToast('Deleted', 'Undo brings it back');
     }
   }, []);
 
@@ -205,11 +248,26 @@ export const Viewport: React.FC<ViewportProps> = ({
   }, []);
 
   const handleDeselect = useCallback(() => {
-    if (!engineRef.current) return;
-    engineRef.current.selectStroke(null);
-    engineRef.current.setActiveSelectedModel(null);
-    setActiveSelection(null);
-  }, []);
+    const engine = engineRef.current;
+    if (!engine) return;
+    engine.setSelectedStrokes([]);
+    engine.setActiveSelectedModel(null);
+    onSelectModel?.(null);
+    onSelectTool?.('brush');
+  }, [onSelectModel, onSelectTool]);
+
+  // Delete / Backspace removes the selection, only while selecting.
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Delete' && e.key !== 'Backspace') return;
+      const tag = (e.target as HTMLElement)?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || !isSelectToolRef.current) return;
+      e.preventDefault();
+      handleDeleteSelection();
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [handleDeleteSelection]);
 
   // 2. Hardware-Isolated Touch Pointer Map (Strictly segregated from stylus)
   const touchPointersRef = useRef<Map<number, { x: number; y: number }>>(new Map());
@@ -271,8 +329,7 @@ export const Viewport: React.FC<ViewportProps> = ({
     if (!containerRef.current) return;
 
     const engine = new StudioEngine(containerRef.current);
-    engineRef.current = engine;
-    setEngineInstance(engine);
+    engineRef.current = engine;    setEngineInstance(engine);
 
     engine.onMetadataUpdate = (m) => setMetadata(m);
 
@@ -325,32 +382,6 @@ export const Viewport: React.FC<ViewportProps> = ({
   useEffect(() => {
     engineRef.current?.setGrid(showGrid);
   }, [showGrid]);
-
-  // Global Delete / Backspace key listener to delete selected 3D strokes
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if (
-        document.activeElement &&
-        (document.activeElement.tagName === 'INPUT' ||
-          document.activeElement.tagName === 'TEXTAREA')
-      ) {
-        return;
-      }
-
-      if (e.key === 'Delete' || e.key === 'Backspace') {
-        const engine = engineRef.current;
-        if (engine && engine.getSelectedStrokeId()) {
-          e.preventDefault();
-          engine.deleteSelectedStroke();
-          triggerHaptic(30);
-          showGestureToast('Curve Deleted', 'Selected 3D stroke removed');
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
 
   /**
    * Cached viewport rect.
@@ -445,6 +476,318 @@ export const Viewport: React.FC<ViewportProps> = ({
     return 'Ultra-Wide Panoramic';
   };
 
+  // =========================================================================
+  // SELECT TOOL: tap, lasso, and direct move / resize / turn
+  // Mouse, finger and pen share one path. Only right / middle / Alt mouse
+  // drags fall through to the camera code below.
+  // =========================================================================
+
+  const toContainerPoint = (clientX: number, clientY: number) => {
+    const rect = getRect();
+    return rect ? { x: clientX - rect.left, y: clientY - rect.top } : { x: clientX, y: clientY };
+  };
+
+  const isOverSelection = (engine: StudioEngine, clientX: number, clientY: number, pad: number) => {
+    const scope = targetScope;
+    if (engine.getSelectionSummary(scope).isEmpty) return false;
+    const r = engine.getSelectionScreenRect(scope);
+    if (!r) return false;
+    const p = toContainerPoint(clientX, clientY);
+    return p.x >= r.x - pad && p.x <= r.x + r.width + pad && p.y >= r.y - pad && p.y <= r.y + r.height + pad;
+  };
+
+  const dragActionForMode = (shiftKey: boolean): 'move' | 'turn' | 'scale' => {
+    if (shiftKey || transformMode === 'rotate') return 'turn';
+    if (transformMode === 'scale') return 'scale';
+    return 'move';
+  };
+
+  /** Picks what is under a tap and makes it the selection, switching "What to select" when needed. */
+  const selectAtPoint = (engine: StudioEngine, clientX: number, clientY: number, isTouch: boolean, additive: boolean): boolean => {
+    const rect = getRect();
+    if (!rect) return false;
+    const point = getSafeNormalizedPoint(clientX, clientY, rect);
+    if (!point) return false;
+    const hit = engine.pickSelectable(point.x, point.y, isTouch ? PICK_RADIUS_TOUCH : PICK_RADIUS_MOUSE);
+
+    if (targetScope === 'all') return hit !== null;
+
+    if (hit?.type === 'stroke') {
+      if (targetScope === 'selected_strokes') {
+        const current = engine.getSelectedStrokeIds();
+        const next = additive
+          ? current.includes(hit.id) ? current.filter((id) => id !== hit.id) : [...current, hit.id]
+          : [hit.id];
+        engine.setSelectedStrokes(next);
+        showGestureToast(`${next.length} line${next.length === 1 ? '' : 's'} picked`, 'Drag to move it');
+      } else {
+        engine.setActiveLayer(hit.layerId);
+        onSelectLayer?.(hit.layerId);
+        onSelectTargetScope?.('active_layer');
+        const layerName = layers.find((l) => l.id === hit.layerId)?.name || 'Layer';
+        showGestureToast(`${layerName} selected`, 'Drag to move the whole layer');
+      }
+      triggerHaptic(15);
+      return true;
+    }
+
+    if (hit?.type === 'model' || hit?.type === 'canvas') {
+      engine.setActiveSelectedModel(hit.id);
+      onSelectModel?.(hit.id);
+      onSelectTargetScope?.('model');
+      showGestureToast(
+        hit.type === 'canvas' ? 'Canvas selected' : '3D model selected',
+        hit.type === 'canvas' ? 'Drag to move it · lines stay put' : 'Drag to move it'
+      );
+      triggerHaptic(15);
+      return true;
+    }
+
+    // Tapping empty space clears picked lines or a picked model. A layer stays
+    // selected: it is always what the controller moves in "Current layer".
+    if (targetScope === 'selected_strokes') engine.setSelectedStrokes([]);
+    if (targetScope === 'model') {
+      engine.setActiveSelectedModel(null);
+      onSelectModel?.(null);
+    }
+    return false;
+  };
+
+  const startSelectTransform = (engine: StudioEngine, pointerId: number, x: number, y: number, action: 'move' | 'turn' | 'scale') => {
+    engine.beginTransform(targetScope);
+    selectGestureRef.current = { kind: 'transform', pointerId, lastX: x, lastY: y, action };
+  };
+
+  /** Moves the selection so the point under (fromX, fromY) ends up under (toX, toY). */
+  const dragSelectionBetween = (engine: StudioEngine, fromX: number, fromY: number, toX: number, toY: number) => {
+    const rect = getRect();
+    if (!rect || rect.width <= 0 || rect.height <= 0) return;
+    const ndc = (x: number, y: number) => [((x - rect.left) / rect.width) * 2 - 1, -(((y - rect.top) / rect.height) * 2 - 1)];
+    const [fx, fy] = ndc(fromX, fromY);
+    const [tx, ty] = ndc(toX, toY);
+    engine.dragSelection(fx, fy, tx, ty, targetScope);
+  };
+
+  const applySelectTransform = (
+    engine: StudioEngine,
+    action: 'move' | 'turn' | 'scale',
+    fromX: number,
+    fromY: number,
+    toX: number,
+    toY: number
+  ) => {
+    if (action === 'move') dragSelectionBetween(engine, fromX, fromY, toX, toY);
+    else if (action === 'turn') engine.rotateTrackball(toX - fromX, toY - fromY, targetScope);
+    else engine.scaleAxis('uniform', Math.exp(-(toY - fromY) * 0.006), targetScope, false);
+  };
+
+  const pinchValues = () => {
+    const pts: { x: number; y: number }[] = Array.from(selectPointersRef.current.values());
+    const [a, b] = pts;
+    return {
+      dist: Math.hypot(b.x - a.x, b.y - a.y),
+      angle: Math.atan2(b.y - a.y, b.x - a.x),
+      midX: (a.x + b.x) / 2,
+      midY: (a.y + b.y) / 2,
+    };
+  };
+
+  const updateLassoPath = (points: { x: number; y: number }[]) => {
+    lassoPathRef.current?.setAttribute('points', points.map((p) => `${p.x},${p.y}`).join(' '));
+  };
+
+  const finishGesture = (engine: StudioEngine) => {
+    const g = selectGestureRef.current;
+    if (g.kind === 'transform' || (g.kind === 'pinch' && g.onSelection)) engine.endTransform();
+    if (g.kind === 'lasso') setIsLassoVisible(false);
+  };
+
+  const handleSelectPointerDown = (e: React.PointerEvent<HTMLDivElement>, engine: StudioEngine): boolean => {
+    if (e.pointerType === 'mouse' && (e.button === 1 || e.button === 2 || e.altKey || isPanMode)) return false;
+    const isTouch = e.pointerType === 'touch';
+    if (e.pointerType === 'pen') lastPenEventTimeRef.current = Date.now();
+    // Palm rejection: a finger landing while the pen is down, or just after, is
+    // ignored. Time-based only: the hover flag can stay set long after the pen
+    // is put away, which would make every finger tap do nothing.
+    if (isTouch && Date.now() - lastPenEventTimeRef.current < 500) return true;
+
+    try {
+      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+    } catch (_) {}
+    selectPointersRef.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+    if (selectPointersRef.current.size === 2) {
+      const g = selectGestureRef.current;
+      const onSelection =
+        (g.kind === 'pending' && g.onSelection) || (g.kind === 'transform');
+      if (g.kind === 'lasso') setIsLassoVisible(false);
+      if (onSelection && g.kind !== 'transform') engine.beginTransform(targetScope);
+      const v = pinchValues();
+      selectGestureRef.current = { kind: 'pinch', onSelection, lastDist: v.dist, lastAngle: v.angle, lastMidX: v.midX, lastMidY: v.midY };
+      return true;
+    }
+    if (selectPointersRef.current.size > 2) return true;
+
+    const onSelection = isOverSelection(engine, e.clientX, e.clientY, isTouch ? 16 : 6);
+    if (selectionMode === 'lasso' && !onSelection) {
+      const p = toContainerPoint(e.clientX, e.clientY);
+      selectGestureRef.current = { kind: 'lasso', pointerId: e.pointerId, points: [p] };
+      updateLassoPath([p]);
+      setIsLassoVisible(true);
+      return true;
+    }
+    selectGestureRef.current = {
+      kind: 'pending',
+      pointerId: e.pointerId,
+      startX: e.clientX,
+      startY: e.clientY,
+      lastX: e.clientX,
+      lastY: e.clientY,
+      onSelection,
+    };
+    return true;
+  };
+
+  const handleSelectPointerMove = (e: React.PointerEvent<HTMLDivElement>, engine: StudioEngine): boolean => {
+    const g = selectGestureRef.current;
+    const tracked = selectPointersRef.current.get(e.pointerId);
+    if (!tracked) {
+      // Hover: show a move cursor over the selection.
+      if (e.pointerType === 'mouse' && containerRef.current) {
+        containerRef.current.style.cursor = isOverSelection(engine, e.clientX, e.clientY, 6) ? 'move' : '';
+      }
+      return g.kind !== 'idle';
+    }
+    tracked.x = e.clientX;
+    tracked.y = e.clientY;
+
+    if (g.kind === 'pinch') {
+      if (selectPointersRef.current.size < 2) return true;
+      const v = pinchValues();
+      const dMidX = v.midX - g.lastMidX;
+      const dMidY = v.midY - g.lastMidY;
+      if (g.onSelection) {
+        if (g.lastDist > 4 && v.dist > 4) engine.scaleAxis('uniform', Math.max(0.5, Math.min(2, v.dist / g.lastDist)), targetScope, false);
+        let dAngle = v.angle - g.lastAngle;
+        while (dAngle > Math.PI) dAngle -= Math.PI * 2;
+        while (dAngle < -Math.PI) dAngle += Math.PI * 2;
+        engine.rotateAroundViewAxis(dAngle, targetScope);
+        dragSelectionBetween(engine, g.lastMidX, g.lastMidY, v.midX, v.midY);
+      } else {
+        engine.zoom((g.lastDist - v.dist) * 2.2);
+        engine.pan(dMidX * 1.2, dMidY * 1.2);
+      }
+      g.lastDist = v.dist;
+      g.lastAngle = v.angle;
+      g.lastMidX = v.midX;
+      g.lastMidY = v.midY;
+      return true;
+    }
+
+    if (g.kind === 'lasso' && g.pointerId === e.pointerId) {
+      const p = toContainerPoint(e.clientX, e.clientY);
+      const last = g.points[g.points.length - 1];
+      if (Math.hypot(p.x - last.x, p.y - last.y) >= 4) {
+        g.points.push(p);
+        updateLassoPath(g.points);
+      }
+      return true;
+    }
+
+    if (g.kind === 'pending' && g.pointerId === e.pointerId) {
+      const threshold = e.pointerType === 'touch' ? DRAG_THRESHOLD_TOUCH : DRAG_THRESHOLD_MOUSE;
+      if (Math.hypot(e.clientX - g.startX, e.clientY - g.startY) < threshold) return true;
+      let grab = g.onSelection;
+      // Grab-and-drag: pressing on something new picks it and moves it in one motion.
+      if (!grab && targetScope !== 'all') {
+        grab = selectAtPoint(engine, g.startX, g.startY, e.pointerType === 'touch', false);
+      }
+      if (grab && !engine.getSelectionSummary(targetScope).isEmpty) {
+        startSelectTransform(engine, e.pointerId, g.startX, g.startY, dragActionForMode(e.shiftKey));
+      } else {
+        selectGestureRef.current = {
+          kind: 'camera',
+          pointerId: e.pointerId,
+          lastX: g.startX,
+          lastY: g.startY,
+          pan: e.shiftKey || e.buttons === 4,
+        };
+      }
+    }
+
+    const active = selectGestureRef.current;
+    if (active.kind === 'transform' && active.pointerId === e.pointerId) {
+      applySelectTransform(engine, active.action, active.lastX, active.lastY, e.clientX, e.clientY);
+      active.lastX = e.clientX;
+      active.lastY = e.clientY;
+      return true;
+    }
+    if (active.kind === 'camera' && active.pointerId === e.pointerId) {
+      const dx = e.clientX - active.lastX;
+      const dy = e.clientY - active.lastY;
+      if (active.pan) engine.pan(dx * 1.2, dy * 1.2);
+      else engine.orbit(dx * 1.2, dy * 1.2);
+      active.lastX = e.clientX;
+      active.lastY = e.clientY;
+      return true;
+    }
+    return true;
+  };
+
+  const handleSelectPointerUp = (e: React.PointerEvent<HTMLDivElement>, engine: StudioEngine): boolean => {
+    if (!selectPointersRef.current.has(e.pointerId)) return false;
+    try {
+      (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch (_) {}
+    selectPointersRef.current.delete(e.pointerId);
+    const g = selectGestureRef.current;
+    const remaining = selectPointersRef.current.size;
+
+    if (g.kind === 'pinch') {
+      if (remaining < 2) {
+        finishGesture(engine);
+        selectGestureRef.current = remaining === 0 ? { kind: 'idle' } : { kind: 'finished' };
+      }
+      return true;
+    }
+    if (remaining > 0 && g.kind === 'finished') return true;
+
+    if (g.kind === 'pending' && g.pointerId === e.pointerId && e.type !== 'pointercancel') {
+      selectAtPoint(engine, g.startX, g.startY, e.pointerType === 'touch', e.shiftKey);
+    } else if (g.kind === 'lasso' && g.pointerId === e.pointerId) {
+      const lassoScope = targetScope === 'model' ? 'model' : 'selected_strokes';
+      const result = g.points.length >= 3 ? engine.lassoSelect(g.points, lassoScope) : { count: 0, type: 'none' as const };
+      if (result.count > 0) {
+        if (lassoScope === 'selected_strokes') onSelectTargetScope?.('selected_strokes');
+        else onSelectModel?.((result as { ids: string[] }).ids[0] ?? null);
+        showGestureToast(
+          lassoScope === 'model' ? '3D model picked' : `${result.count} line${result.count === 1 ? '' : 's'} picked`,
+          'Drag inside the frame to move'
+        );
+        triggerHaptic(20);
+      } else {
+        showGestureToast('Nothing inside the loop', 'Draw a loop around the lines you want');
+      }
+    } else if (g.kind === 'transform') {
+      triggerHaptic(10);
+    }
+
+    finishGesture(engine);
+    if (remaining === 0) selectGestureRef.current = { kind: 'idle' };
+    return true;
+  };
+
+  // Leaving the Select tool mid-gesture must not leave a transform open.
+  useEffect(() => {
+    if (isSelectTool) return;
+    const engine = engineRef.current;
+    if (engine) finishGesture(engine);
+    selectGestureRef.current = { kind: 'idle' };
+    selectPointersRef.current.clear();
+    if (containerRef.current) containerRef.current.style.cursor = '';
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isSelectTool]);
+
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (isRadialMenuOpen) return;
     e.preventDefault();
@@ -452,6 +795,7 @@ export const Viewport: React.FC<ViewportProps> = ({
     refreshRect();
     const engine = engineRef.current;
     if (!engine) return;
+    if (isSelectTool && handleSelectPointerDown(e, engine)) return;
 
     // =========================================================================
     // 1. HARDWARE BRANCH: STYLUS / PEN (STRICTLY DRAWING / MANIPULATION)
@@ -497,21 +841,7 @@ export const Viewport: React.FC<ViewportProps> = ({
       lastNormalizedPos.current.x = coords.x;
       lastNormalizedPos.current.y = coords.y;
       lastPointerPos.current.x = e.clientX;
-      lastPointerPos.current.y = e.clientY;      // Unified Selection Tool (Strokes, Models & Primitives)
-      if (tool === 'pointer' || tool === 'select') {
-        const res = engine.raycastSelection(coords.x, coords.y);
-        if (res.type === 'stroke') {
-          triggerHaptic(20);
-          showGestureToast('Curve Selected', 'Tap Delete or Clone on-screen');
-        } else if (res.type === 'model') {
-          triggerHaptic(20);
-          showGestureToast('Object Selected', `${res.name || '3D Object'} • Tap Delete or Clone`);
-        } else {
-          engine.selectStroke(null);
-          engine.setActiveSelectedModel(null);
-        }
-        return;
-      }
+      lastPointerPos.current.y = e.clientY;
 
       // Ruler / Straight Line Drag Setup
       if (brushSettings.straightLineMode) {
@@ -663,22 +993,6 @@ export const Viewport: React.FC<ViewportProps> = ({
       if (touchCount === 1) {
         const coords = getNormalizedCoords(e);
 
-        if (tool === 'pointer' || tool === 'select') {
-          const res = engine.raycastSelection(coords.x, coords.y);
-          if (res.type === 'stroke') {
-            triggerHaptic(20);
-            showGestureToast('Curve Selected', 'Tap Delete or Clone on-screen');
-          } else if (res.type === 'model') {
-            triggerHaptic(20);
-            showGestureToast('Object Selected', `${res.name || '3D Object'} • Tap Delete or Clone`);
-          } else {
-            engine.selectStroke(null);
-            engine.setActiveSelectedModel(null);
-          }
-          setIsOrbiting(false);
-          return;
-        }
-
         // STRICT HARDWARE LOCK: If a stylus is detected on the device,
         // touch is strictly reserved for camera navigation (orbiting) and never draws,
         // preventing accidental strokes from finger/palm contact.
@@ -737,21 +1051,6 @@ export const Viewport: React.FC<ViewportProps> = ({
       lastPointerPos.current.x = e.clientX;
       lastPointerPos.current.y = e.clientY;
 
-      if (tool === 'pointer' || tool === 'select') {
-        const res = engine.raycastSelection(coords.x, coords.y);
-        if (res.type === 'stroke') {
-          triggerHaptic(20);
-          showGestureToast('Curve Selected', 'Tap Delete or Clone on-screen');
-        } else if (res.type === 'model') {
-          triggerHaptic(20);
-          showGestureToast('Object Selected', `${res.name || '3D Object'} • Tap Delete or Clone`);
-        } else {
-          engine.selectStroke(null);
-          engine.setActiveSelectedModel(null);
-        }
-        return;
-      }
-
       // Ruler / Straight Line Drag Setup
       if (brushSettings.straightLineMode) {
         setRulerDrag({
@@ -804,6 +1103,7 @@ export const Viewport: React.FC<ViewportProps> = ({
     if ((window as any).__NAVIGATOR_ACTIVE__ && e.pointerType !== 'pen') return;
     const engine = engineRef.current;
     if (!engine) return;
+    if (isSelectTool && !isOrbiting && handleSelectPointerMove(e, engine)) return;
 
     // Track 2D screen coordinates for cursor reticle preview (DOM-based, zero React re-renders)
     if (cursorGroupRef.current && (tool === 'brush' || tool === 'eraser') && !rulerDrag?.active) {
@@ -1091,6 +1391,7 @@ export const Viewport: React.FC<ViewportProps> = ({
     } catch (_) {}
 
     const engine = engineRef.current;
+    if (engine && handleSelectPointerUp(e, engine)) return;
     if (rulerDrag?.active) {
       setRulerDrag(null);
     }
@@ -1196,7 +1497,19 @@ export const Viewport: React.FC<ViewportProps> = ({
 
   const handleWheel = (e: React.WheelEvent<HTMLDivElement>) => {
     e.preventDefault();
-    engineRef.current?.zoom(e.deltaY * 0.8);
+    const engine = engineRef.current;
+    // Over the selection, the wheel resizes it; one wheel burst is one undo step.
+    if (engine && isSelectTool && isOverSelection(engine, e.clientX, e.clientY, 6)) {
+      if (wheelTransformTimerRef.current === null) engine.beginTransform(targetScope);
+      else window.clearTimeout(wheelTransformTimerRef.current);
+      engine.scaleAxis('uniform', Math.max(0.8, Math.min(1.25, Math.exp(-e.deltaY * 0.0015))), targetScope, false);
+      wheelTransformTimerRef.current = window.setTimeout(() => {
+        wheelTransformTimerRef.current = null;
+        engineRef.current?.endTransform();
+      }, 250);
+      return;
+    }
+    engine?.zoom(e.deltaY * 0.8);
     showNavPod(2500);
   };
 
@@ -1273,7 +1586,7 @@ export const Viewport: React.FC<ViewportProps> = ({
       }}
       onWheel={handleWheel}
       onContextMenu={handleContextMenu}
-      className="relative w-full h-full touch-none select-none cursor-crosshair overflow-hidden"
+      className={`relative w-full h-full touch-none select-none overflow-hidden ${isSelectTool ? 'cursor-default' : 'cursor-crosshair'}`}
     >
       {/* Dynamic 2D / Screen-Space Brush & Super Zap Vacuum Eraser Reticle Indicator (Direct DOM, zero React re-renders) */}
       {!rulerDrag?.active && (tool === 'brush' || tool === 'eraser') && (
@@ -1324,6 +1637,29 @@ export const Viewport: React.FC<ViewportProps> = ({
               </g>
             )}
           </g>
+        </svg>
+      )}
+
+      {/* The one selection highlight: frame, resize corners, turn handle and label */}
+      <SelectionFrame
+        engine={engineInstance}
+        scope={targetScope}
+        visible={isSelectTool}
+        followController={showSelectionFrame}
+        theme={theme}
+      />
+
+      {/* Lasso loop while it is being drawn (points are updated directly, not through React) */}
+      {isLassoVisible && (
+        <svg className="pointer-events-none absolute inset-0 w-full h-full z-[23] overflow-visible" aria-hidden="true">
+          <polyline
+            ref={lassoPathRef}
+            fill={theme === 'light' ? 'rgb(8 145 178 / 0.10)' : 'rgb(34 211 238 / 0.10)'}
+            stroke={theme === 'light' ? '#0891b2' : '#22d3ee'}
+            strokeWidth={2}
+            strokeDasharray="6 4"
+            strokeLinejoin="round"
+          />
         </svg>
       )}
 

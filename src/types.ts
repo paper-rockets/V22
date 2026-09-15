@@ -405,7 +405,20 @@ export interface ViewportState {
 
 export type TransformJoystickMode = '2d' | '3d';
 
-export type TransformTargetScope = 'all' | 'strokes' | 'active_layer' | 'model' | 'guide';
+/**
+ * What move / turn / resize acts on. 'selected_strokes' is the set of lines
+ * picked by tap or lasso; 'strokes' (every line in the scene) is kept for
+ * saved undo history.
+ */
+export type TransformTargetScope = 'all' | 'strokes' | 'active_layer' | 'model' | 'guide' | 'selected_strokes';
+
+/** The one description of the current selection shared by the frame, panel and controller. */
+export interface SelectionSummary {
+  scope: TransformTargetScope;
+  label: string;
+  detail: string;
+  isEmpty: boolean;
+}
 
 export interface ActiveGuideReference {
   type: 'bent' | 'scaffold';

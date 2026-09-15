@@ -44,6 +44,10 @@ export interface ProPanelProps {
   onOpenImporter?: () => void;
   targetScope?: TransformTargetScope;
   onSelectTargetScope?: (scope: TransformTargetScope) => void;
+  selectionMode?: 'pointer' | 'lasso';
+  onSelectSelectionMode?: (mode: 'pointer' | 'lasso') => void;
+  transformMode?: 'move' | 'rotate' | 'look' | 'scale';
+  onSelectTransformMode?: (mode: 'move' | 'rotate' | 'look' | 'scale') => void;
   onGizmoReset?: () => void;
   // Deform Mode props
   liquifySettings?: LiquifySettings;
@@ -97,6 +101,10 @@ export const ProPanel: React.FC<ProPanelProps> = ({
   onOpenImporter = () => {},
   targetScope = 'all',
   onSelectTargetScope = () => {},
+  selectionMode = 'pointer',
+  onSelectSelectionMode,
+  transformMode = 'move',
+  onSelectTransformMode,
   onGizmoReset,
   liquifySettings,
   setLiquifySettings,
@@ -213,6 +221,10 @@ export const ProPanel: React.FC<ProPanelProps> = ({
             targetScope={targetScope}
             onSelectTargetScope={onSelectTargetScope}
             onGizmoReset={onGizmoReset}
+            selectionMode={selectionMode}
+            onSelectSelectionMode={onSelectSelectionMode}
+            transformMode={transformMode}
+            onSelectTransformMode={onSelectTransformMode}
             theme={theme}
           />
         )}

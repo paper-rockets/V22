@@ -50,6 +50,8 @@ export class StrokePipeline {
   public selectedStrokeId: string | null = null;
   public selectionHighlightGroup: THREE.Group | null = null;
   public clipboardStrokes: StrokeDescriptor[] = [];
+  /** Ids created by the most recent paste, so the copies can become the selection. */
+  public lastPastedIds: string[] = [];
 
   constructor(ctx: StrokePipelineContext) {
     this.ctx = ctx;
@@ -449,10 +451,20 @@ export class StrokePipeline {
    */
   public copyStrokes(layerId?: string): number {
     const targetId = layerId || this.ctx.getActiveLayerId();
+    return this.copyMatchingStrokes((descriptor) => !targetId || descriptor.layerId === targetId);
+  }
+
+  /** Copies exactly these lines (for example the ones picked with the lasso). */
+  public copyStrokeIds(ids: string[]): number {
+    const wanted = new Set(ids);
+    return this.copyMatchingStrokes((descriptor) => wanted.has(descriptor.id));
+  }
+
+  private copyMatchingStrokes(matches: (descriptor: StrokeDescriptor) => boolean): number {
     const copied: StrokeDescriptor[] = [];
 
     this.ctx.strokes.forEach(({ descriptor }) => {
-      if (!targetId || descriptor.layerId === targetId) {
+      if (matches(descriptor)) {
         copied.push({
           ...descriptor,
           points: descriptor.points.map((p) => ({
@@ -521,6 +533,7 @@ export class StrokePipeline {
       this.ctx.strokes.set(newId, { descriptor: desc, meshes: [mesh] });
       newBatch.push(desc);
     }
+    this.lastPastedIds = newBatch.map((desc) => desc.id);
 
     if (newBatch.length > 0) {
       this.ctx.pushUndoAction({
@@ -597,27 +610,42 @@ export class StrokePipeline {
       return null;
     }
 
-    // Build bounding highlight box
-    const group = new THREE.Group();
-    const box = new THREE.Box3();
-    for (const m of stroke.meshes) {
-      m.geometry.computeBoundingBox();
-      if (m.geometry.boundingBox) {
-        const meshBox = m.geometry.boundingBox.clone().applyMatrix4(m.matrixWorld);
-        box.union(meshBox);
-      }
-    }
-
-    if (!box.isEmpty()) {
-      const helper = new THREE.Box3Helper(box, new THREE.Color(0xa1a1aa));
-      (helper.material as THREE.LineBasicMaterial).depthTest = false;
-      group.add(helper);
-      this.selectionHighlightGroup = group;
-      this.ctx.helperRoot.add(group);
-    }
-
+    // The on-screen selection frame (SelectionFrame) is the highlight, so no
+    // box is added to the scene: a scene box went stale as soon as the line moved.
     this.ctx.onStrokeSelected?.(stroke.descriptor);
     return stroke.descriptor;
+  }
+
+  /**
+   * Set selection highlight for multiple strokes (e.g. from lasso or layer selection)
+   */
+  public selectMultipleStrokes(strokeIds: string[]): THREE.Box3 | null {
+    if (this.selectionHighlightGroup) {
+      this.ctx.helperRoot.remove(this.selectionHighlightGroup);
+      this.selectionHighlightGroup.traverse((child: any) => {
+        if (child.geometry) child.geometry.dispose();
+        if (child.material) {
+          if (Array.isArray(child.material)) child.material.forEach((m: any) => m.dispose());
+          else child.material.dispose();
+        }
+      });
+      this.selectionHighlightGroup = null;
+    }
+
+    if (!strokeIds || strokeIds.length === 0) {
+      this.selectedStrokeId = null;
+      this.ctx.onStrokeSelected?.(null);
+      return null;
+    }
+
+    this.selectedStrokeId = strokeIds[0];
+    const box = new THREE.Box3();
+    for (const id of strokeIds) {
+      const stroke = this.ctx.strokes.get(id);
+      if (!stroke) continue;
+      for (const m of stroke.meshes) box.expandByObject(m);
+    }
+    return box.isEmpty() ? null : box;
   }
 
   public getSelectedStrokeId(): string | null {

@@ -28,12 +28,16 @@ export interface Option3SphereNavigatorProps {
   onSensitivityChange?: (sens: number) => void;
   projectionMode?: 'perspective' | 'orthographic';
   onToggleProjection?: () => void;
+  transformMode?: 'move' | 'rotate' | 'look' | 'scale';
+  onTransformModeChange?: (mode: 'move' | 'rotate' | 'look' | 'scale') => void;
 }
 
 interface TargetItem {
   id: string;
   name: string;
   note?: string;
+  /** The shared selection scope this entry stands for. */
+  scope: TransformTargetScope;
   object: THREE.Object3D;
   home?: { p: THREE.Vector3; q: THREE.Quaternion };
 }
@@ -64,6 +68,10 @@ const MOVE_STEPS = [
   { v: 1, lbl: '1' }
 ];
 
+type NavMode = 'move' | 'rotate' | 'look' | 'scale';
+
+const MODE_LABELS: Record<NavMode, string> = { look: 'Orbit', move: 'Move', rotate: 'Rotate', scale: 'Resize' };
+
 const DEG = Math.PI / 180;
 const CROP = 0.055;
 const MIN_RAD = 0.55;
@@ -87,13 +95,15 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
   onSensitivityChange,
   projectionMode = 'perspective',
   onToggleProjection,
+  transformMode,
+  onTransformModeChange,
 }: Option3SphereNavigatorProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const [isListOpen, setIsListOpen] = useState<boolean>(false);
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const [targetsList, setTargetsList] = useState<TargetItem[]>([]);
   const [currentIdx, setCurrentIdx] = useState<number>(0);
-  const [mode, setModeState] = useState<'move' | 'rotate' | 'look'>('look');
+  const [mode, setModeState] = useState<NavMode>('look');
   const [rotStep, setRotStep] = useState<number>(15);
   const [moveStep, setMoveStep] = useState<number>(0.5);
   const [historyLen, setHistoryLen] = useState<number>(0);
@@ -112,7 +122,7 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
   // Mutable math state (exact mirror of Build 9 reference script)
   const gzRef = useRef({
     size: 210,
-    mode: 'look' as 'move' | 'rotate' | 'look',
+    mode: 'look' as NavMode,
     rotStep: 15,
     moveStep: 0.5,
     active: null as any,
@@ -137,9 +147,8 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
     target: engine?.cameraTarget ? engine.cameraTarget.clone() : new THREE.Vector3(0, 1.1, 0)
   });
 
-  const selBoxRef = useRef(new THREE.Box3());
-  const localBoxRef = useRef(new THREE.Box3());
-  const outlineRef = useRef<THREE.Box3Helper | null>(null);
+  /** Engine selection revision after this navigator's own last change; anything else means re-sync. */
+  const ownRevisionRef = useRef(-1);
   const historyRef = useRef<Array<{ o: THREE.Object3D; p: THREE.Vector3; q: THREE.Quaternion }>>([]);
   const flightRef = useRef<{
     p0: number;
@@ -211,10 +220,6 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
       axesRef.current[0].tone = themeRef.current.up;
       axesRef.current[1].tone = themeRef.current.side;
       axesRef.current[2].tone = themeRef.current.front;
-    }
-
-    if (outlineRef.current) {
-      (outlineRef.current.material as THREE.LineBasicMaterial).color.set(dark ? 0xf2ede6 : 0x332e28);
     }
   }, [isDark]);
 
@@ -372,37 +377,31 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
     };
   }, [isMenuOpen, showAdvanced, isListOpen, positionMenu]);
 
-  // Outline for active target (only show during active Transform Move/Rotate, never in Look mode)
+  // The selection highlight is the shared on-screen SelectionFrame, drawn by the
+  // viewport; the navigator only asks for a redraw after it changes the scene.
   const markSelection = useCallback(() => {
-    const targetObj = targetObjRef.current;
-    const outline = outlineRef.current;
-    if (!targetObj || !outline || gzRef.current.mode === 'look') {
-      if (outline) outline.visible = false;
-      return;
-    }
-    targetObj.updateWorldMatrix(true, false);
-    localBoxRef.current.setFromObject(targetObj);
-    if (localBoxRef.current.isEmpty()) {
-      outline.visible = false;
-      return;
-    }
-    targetObj.worldToLocal(localBoxRef.current.min);
-    targetObj.worldToLocal(localBoxRef.current.max);
-    selBoxRef.current.copy(localBoxRef.current).applyMatrix4(targetObj.matrixWorld).expandByScalar(0.09);
-    outline.visible = true;
     engine?.markDirty();
   }, [engine]);
 
-  // Target sync
+  // Target sync: the gizmo pivots on the center of exactly what the shared
+  // selection would move, so it always agrees with the frame and the Select panel.
   const syncFromTarget = useCallback(() => {
     const targetObj = targetObjRef.current;
-    if (!targetObj) return;
-    targetObj.updateWorldMatrix(true, false);
-    targetObj.getWorldPosition(objRef.current.pos);
-    targetObj.getWorldQuaternion(objRef.current.quat);
-    if (scopeRef.current === 'active_layer' && engine) {
-      objRef.current.pos.copy(engine.getSelectionCenter('active_layer'));
-      objRef.current.quat.identity();
+    if (engine) {
+      objRef.current.pos.copy(engine.getSelectionCenter(scopeRef.current));
+      if (scopeRef.current === 'model' && targetObj) {
+        targetObj.updateWorldMatrix(true, false);
+        targetObj.getWorldQuaternion(objRef.current.quat);
+      } else {
+        objRef.current.quat.identity();
+      }
+      ownRevisionRef.current = engine.getSelectionRevision();
+    } else if (targetObj) {
+      targetObj.updateWorldMatrix(true, false);
+      targetObj.getWorldPosition(objRef.current.pos);
+      targetObj.getWorldQuaternion(objRef.current.quat);
+    } else {
+      return;
     }
     dispRef.current.pos.copy(objRef.current.pos);
     dispRef.current.quat.copy(objRef.current.quat);
@@ -410,7 +409,17 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
     committedPoseRef.current.quat.copy(objRef.current.quat);
   }, [engine]);
 
-  useEffect(() => { syncFromTarget(); }, [targetScope, activeLayerId, syncFromTarget]);
+  useEffect(() => { syncFromTarget(); }, [targetScope, activeLayerId, activeModelId, syncFromTarget]);
+
+  // Sync external transformMode from SelectPanel
+  useEffect(() => {
+    if (!transformMode) return;
+    if (transformMode !== gzRef.current.mode) {
+      setMode(transformMode);
+    }
+  }, [transformMode]);
+
+
 
   const commit = useCallback(() => {
     const targetObj = targetObjRef.current;
@@ -426,6 +435,7 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
       // Use the engine's scope-aware path so layer gestures touch only that
       // layer's meshes and keep stroke descriptors/export coordinates in sync.
       engine.applyTransformMatrix(matrix, scopeRef.current);
+      ownRevisionRef.current = engine.getSelectionRevision();
       previous.pos.copy(dispRef.current.pos);
       previous.quat.copy(dispRef.current.quat);
       markSelection();
@@ -564,6 +574,14 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
       ctx.beginPath();
       ctx.moveTo(ax + 3.6, ay - 0.4); ctx.lineTo(ax - 1.5, ay + 3.6); ctx.lineTo(ax - 2.8, ay - 2.6);
       ctx.closePath(); ctx.fill();
+    } else if (gzRef.current.mode === 'scale') {
+      // Two corner brackets pulling apart: resize.
+      const s = r * 0.78, k = r * 0.42;
+      ctx.beginPath();
+      ctx.moveTo(cx - s, cy - s + k); ctx.lineTo(cx - s, cy - s); ctx.lineTo(cx - s + k, cy - s);
+      ctx.moveTo(cx + s, cy + s - k); ctx.lineTo(cx + s, cy + s); ctx.lineTo(cx + s - k, cy + s);
+      ctx.moveTo(cx - s * 0.45, cy - s * 0.45); ctx.lineTo(cx + s * 0.45, cy + s * 0.45);
+      ctx.stroke();
     } else {
       ctx.beginPath(); ctx.arc(cx, cy, r * 0.34, 0, Math.PI * 2); ctx.fill();
       ctx.beginPath(); ctx.arc(cx, cy, r * 0.9, 0, Math.PI * 2); ctx.stroke();
@@ -644,6 +662,9 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
           ctx.lineTo(ax - 1, ay - 2.5);
           ctx.closePath();
           ctx.fill();
+        } else if (gz.mode === 'scale') {
+          const side = m.hand * 0.78;
+          ctx.fillRect(m.hand * 1.0, -side / 2, side, side);
         } else {
           const base = m.hand * 0.92, wide = m.hand * 0.5;
           ctx.beginPath();
@@ -738,6 +759,10 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
           ctx.lineTo(ax - 1.2, ay - 2.9);
           ctx.closePath();
           ctx.fill();
+        } else if (gz.mode === 'scale') {
+          // Square caps read as "stretch along this axis".
+          const side = m.hand * 0.9;
+          ctx.fillRect(m.hand * 1.08, -side / 2, side, side);
         } else {
           const base = m.hand * 1.02, wide = m.hand * 0.56;
           ctx.beginPath();
@@ -846,13 +871,19 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
     el.classList.remove('nv-live');
     const targets = targetsRef.current;
     const current = currentRef.current;
-    const what = targets[current] ? targets[current].name : '—';
+    // Name the target in the same words as the selection frame and Select panel.
+    const what = engine
+      ? engine.getSelectionSummary(scopeRef.current).label
+      : targets[current] ? targets[current].name : '—';
     if (gzRef.current.mode === 'look') {
       el.innerHTML = '';
       return;
     }
-    el.innerHTML = '<b>' + what + '</b> · ' + (gzRef.current.mode === 'move' ? 'move' : 'rotate');
-  }, []);
+    el.textContent = '';
+    const name = document.createElement('b');
+    name.textContent = what;
+    el.append(name, ' · ' + MODE_LABELS[gzRef.current.mode].toLowerCase());
+  }, [engine]);
 
   const say = useCallback((text: string, live?: boolean) => {
     if (gzRef.current.mode === 'look' && !tourRef.current) return;
@@ -893,9 +924,7 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
     const camera = engine?.getCamera();
     const H = window.innerHeight || 900;
     if (camera && camera instanceof THREE.PerspectiveCamera) {
-      const targetPos = new THREE.Vector3();
-      if (targetObjRef.current) targetObjRef.current.getWorldPosition(targetPos);
-      else targetPos.copy(camRef.current.target);
+      const targetPos = objRef.current.pos;
       const distanceToTarget = camera.position.distanceTo(targetPos) || camRef.current.radius || 10;
       return (2 * distanceToTarget * Math.tan((camera.fov * DEG) / 2)) / H;
     }
@@ -1020,7 +1049,7 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
     return (tie || near[0]).h;
   };
 
-  const setMode = (m: 'move' | 'rotate' | 'look') => {
+  const setMode = (m: NavMode) => {
     gzRef.current.mode = m;
     setModeState(m);
     if (nvRef.current) nvRef.current.dataset.mode = m;
@@ -1028,6 +1057,7 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
     idleHint();
     drawGizmo();
     saveLayout();
+    onTransformModeChange?.(m);
   };
 
   const setOrient = (pitch: number, roll: number, label: string) => {
@@ -1039,13 +1069,11 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
 
   const lookAtIt = () => {
     stopTour();
-    const targetObj = targetObjRef.current;
     let center = objRef.current.pos.clone();
     let desiredRadius: number | undefined = undefined;
 
-    if (targetObj) {
-      targetObj.updateWorldMatrix(true, false);
-      const box = new THREE.Box3().setFromObject(targetObj);
+    if (engine) {
+      const box = engine.getSelectionBox(scopeRef.current);
       if (!box.isEmpty()) {
         box.getCenter(center);
         const sphere = box.getBoundingSphere(new THREE.Sphere());
@@ -1058,6 +1086,9 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
   };
 
   const resetTarget = () => {
+    // Lines and layers keep their shape in their points, so snapping their scene
+    // object back would desync them; Undo is the way back for those.
+    if (scopeRef.current !== 'model') return;
     stopTour(); pushHistory();
     const targets = targetsRef.current;
     const current = currentRef.current;
@@ -1076,7 +1107,7 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
   const TOUR_PRO = [
     { t: 0, dur: 3600, ring: { type: 'axis', i: 0 }, cap: 'Drag an axis to constrain the transform to it.' },
     { t: 3600, dur: 3600, ring: { type: 'axis', i: 1 }, cap: 'Tap an axis to snap the view down it — tapping never transforms.' },
-    { t: 7200, dur: 4000, ring: { type: 'hub' }, cap: 'Tap the hub to cycle Orbit · Move · Rotate.' },
+    { t: 7200, dur: 4000, ring: { type: 'hub' }, cap: 'Tap the hub to cycle Orbit · Move · Rotate · Resize.' },
     { t: 11200, dur: 1800, ring: null, cap: 'Hold Shift, or set snap to Free, for unconstrained drags.' }
   ];
 
@@ -1167,18 +1198,20 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
     jumpDisplay();
     markSelection();
     applyObject();
-    setMenu(false);
     if (!quiet) {
-      say('target · <b>' + targets[i].name + '</b>', true);
+      setMenu(false);
+      const safeName = targets[i].name.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
+      say('target · <b>' + safeName + '</b>', true);
     }
     if (!quiet) {
-      if (targets[i].note === 'drawing layer') {
-        onSelectLayer?.(targets[i].id);
-        onSelectTargetScope?.('active_layer');
-      } else if (targets[i].note === '3D model') {
-        onSelectModel?.(targets[i].id);
-        onSelectTargetScope?.('model');
+      // Picking a target here changes "What to select" in the Select panel too.
+      const target = targets[i];
+      if (target.scope === 'active_layer') {
+        onSelectLayer?.(target.id);
+      } else if (target.scope === 'model') {
+        onSelectModel?.(target.id);
       }
+      onSelectTargetScope?.(target.scope);
     }
   }, [syncFromTarget, jumpDisplay, markSelection, applyObject, say, onSelectLayer, onSelectModel, onSelectTargetScope, setMenu]);
 
@@ -1191,127 +1224,76 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
     });
     targetsRef.current = formatted;
     setTargetsList(formatted);
-    selectTarget(Math.min(currentRef.current, formatted.length - 1), true);
-  }, [selectTarget]);
+  }, []);
 
-  // Populate targets from engine and multi-model state
+  /** The list entry that stands for the shared selection right now. */
+  const indexForSelection = useCallback((list: TargetItem[]) => {
+    const selectedModelId = engine?.getActiveSelectedModelId() ?? activeModelId;
+    const byScope = (scope: TransformTargetScope, id?: string | null) =>
+      list.findIndex((t) => t.scope === scope && (id ? t.id === id : true));
+    if (targetScope === 'active_layer') {
+      const idx = byScope('active_layer', activeLayerId);
+      return idx >= 0 ? idx : byScope('active_layer');
+    }
+    if (targetScope === 'model') {
+      const idx = byScope('model', selectedModelId);
+      return idx >= 0 ? idx : byScope('model');
+    }
+    return byScope(targetScope);
+  }, [engine, targetScope, activeLayerId, activeModelId]);
+
+  // Build the target list in the same terms as the Select panel's "What to select".
   useEffect(() => {
     if (!engine) return;
     const list: TargetItem[] = [];
     const drawingPlane = engine.getDrawingPlane();
     const sceneRoot = engine.getModelRoot();
-    const strokeRoot = (engine as any).strokeRoot;
+    const strokeRoot = engine.getStrokeRoot();
 
-    // 1. Everything / Scene Root
-    if (sceneRoot) {
-      list.push({
-        id: 'scene',
-        name: 'Scene root',
-        note: 'all objects',
-        object: sceneRoot
+    if (layers && layers.length > 0) {
+      layers.forEach((l) => {
+        list.push({ id: l.id, name: l.name || 'Layer', note: 'layer', scope: 'active_layer', object: strokeRoot });
       });
     }
 
-    // 2. Drawing Canvas
-    if (drawingPlane) {
-      list.push({
-        id: 'canvas',
-        name: 'Drawing Canvas',
-        note: 'paint surface',
-        object: drawingPlane
-      });
-    }
+    list.push({ id: 'selected_strokes', name: 'Picked lines', note: 'lines', scope: 'selected_strokes', object: strokeRoot });
 
-    // 3. All individual 3D models loaded in the scene
     if (sceneRoot?.children) {
       let modelCount = 0;
       sceneRoot.children.forEach((child) => {
-        if (child === strokeRoot) return;
-        if (child === drawingPlane || child.name === 'DrawingPlaneCanvas') return;
+        if (child === strokeRoot || child === drawingPlane || child.name === 'DrawingPlaneCanvas') return;
         if ((child as any).isLine || (child as any).isPoints || (child as any).isCamera) return;
-
         modelCount++;
         const modelName = child.name && child.name !== 'Scene' && child.name !== 'Object3D'
           ? child.name
-          : `3D Model ${modelCount}`;
-
-        list.push({
-          id: child.uuid,
-          name: modelName,
-          note: '3D model',
-          object: child
-        });
+          : `3D model ${modelCount}`;
+        list.push({ id: child.uuid, name: modelName, note: '3D model', scope: 'model', object: child });
       });
     }
 
-    // 4. All 3D Brush Strokes
-    if (strokeRoot && strokeRoot.children && strokeRoot.children.length > 0) {
-      list.push({
-        id: 'strokes',
-        name: 'Brush Strokes',
-        note: '3D paint strokes',
-        object: strokeRoot
-      });
+    if (drawingPlane) {
+      list.push({ id: drawingPlane.uuid, name: 'Drawing canvas', note: '3D model', scope: 'model', object: drawingPlane });
     }
 
-    // 5. Drawing Layers
-    if (layers && layers.length > 0) {
-      layers.forEach(l => {
-        const layerInStrokes = strokeRoot?.children?.find((c: any) => c.name === `LayerGroup_${l.id}` || (c as any).userData?.layerId === l.id);
-        const layerObj = layerInStrokes || (drawingPlane?.getObjectByName?.(l.id) || (drawingPlane?.children?.find((c: any) => (c as any).userData?.layerId === l.id))) || strokeRoot;
-        if (layerObj) {
-          list.push({
-            id: l.id,
-            name: l.name || 'Layer',
-            note: 'drawing layer',
-            object: layerObj
-          });
-        }
-      });
-    }
-
-    if (list.length === 0) {
-      const dummy = new THREE.Group();
-      list.push({
-        id: 'canvas',
-        name: 'Drawing Canvas',
-        note: 'paint surface',
-        object: dummy
-      });
-    }
+    list.push({ id: 'scene', name: 'Everything', note: 'all', scope: 'all', object: sceneRoot });
 
     setTargets(list);
+  }, [engine, models, layers, setTargets]);
 
-    // If an active model was already selected, keep it selected; otherwise default to activeModelId or canvas
-    if (activeModelId) {
-      const mIdx = list.findIndex(t => t.id === activeModelId);
-      if (mIdx >= 0) {
-        selectTarget(mIdx, true);
-        return;
-      }
-    }
-    const canvasIdx = list.findIndex(t => t.id === 'canvas');
-    selectTarget(canvasIdx >= 0 ? canvasIdx : 0, true);
-  }, [engine, models, layers, activeModelId, setTargets, selectTarget]);
-
-  // Sync selected target when activeModelId changes from outside
+  // Follow the shared selection: panel choice, tapped layer or model, lasso.
   useEffect(() => {
-    if (activeModelId) {
-      const idx = targetsRef.current.findIndex(t => t.id === activeModelId);
-      if (idx >= 0 && idx !== currentRef.current) {
+    if (!targetsList || targetsList.length === 0) return;
+    const idx = indexForSelection(targetsList);
+    if (idx >= 0) {
+      if (idx !== currentRef.current || targetObjRef.current !== targetsList[idx].object) {
         selectTarget(idx, true);
       }
+    } else {
+      // No list entry (e.g. a 3D guide): still pivot on what the scope moves.
+      syncFromTarget();
     }
-  }, [activeModelId, selectTarget]);
-
-  useEffect(() => {
-    if (activeLayerId) {
-      const idx = targetsRef.current.findIndex(t => t.id === activeLayerId);
-      if (idx >= 0 && idx !== currentRef.current) {
-        selectTarget(idx, true);
-      }
-    }
-  }, [activeLayerId, selectTarget]);
+    idleHint();
+  }, [targetsList, indexForSelection, selectTarget, syncFromTarget, idleHint]);
 
   const sizeToBox = useCallback(() => {
     gzRef.current.size = window.innerWidth < 640 ? 160 : 190;
@@ -1429,6 +1411,32 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
         pushHistory();
         engine?.beginTransform(scopeRef.current);
         drag.committed = true;
+        drag.lastX = e.clientX;
+        drag.lastY = e.clientY;
+      }
+
+      if (gzRef.current.mode === 'scale') {
+        // Resize applies straight to the engine: the hub resizes evenly (drag
+        // up to grow), an axis handle stretches along that axis.
+        if (!engine) return;
+        const ddx = e.clientX - drag.lastX, ddy = e.clientY - drag.lastY;
+        drag.lastX = e.clientX;
+        drag.lastY = e.clientY;
+        if (act.type === 'hub') {
+          const factor = Math.exp(-ddy * 0.006);
+          engine.scaleAxis('uniform', factor, scopeRef.current, false);
+          say('resize', true);
+        } else if (drag.hit) {
+          const hp = project(drag.hit.dir, m);
+          const nx = (hp.x - m.c) / hp.rad, ny = (hp.y - m.c) / hp.rad;
+          const along = ddx * nx + ddy * ny;
+          const axis = drag.hit.a.lbl.toLowerCase() as 'x' | 'y' | 'z';
+          engine.scaleAxis(axis, Math.exp(along * 0.006), scopeRef.current, false);
+          say(drag.hit.a.lbl + '  stretch', true);
+        }
+        ownRevisionRef.current = engine.getSelectionRevision();
+        tick(Math.round((ddx + ddy) / 12));
+        return;
       }
 
       if (act.type === 'hub') {
@@ -1517,7 +1525,8 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
       if (!drag.moved && drag.hit) {
         faceDirection(drag.hit.dir, drag.hit.sign > 0 ? drag.hit.a.lbl : drag.hit.a.back);
       } else if (!drag.moved && gzRef.current.active && gzRef.current.active.type === 'hub') {
-        setMode(gzRef.current.mode === 'look' ? 'move' : gzRef.current.mode === 'move' ? 'rotate' : 'look');
+        const cycle: Record<NavMode, NavMode> = { look: 'move', move: 'rotate', rotate: 'scale', scale: 'look' };
+        setMode(cycle[gzRef.current.mode]);
       }
       gzRef.current.active = null; dragRef.current = null;
       nvRef.current?.classList.remove('nv-grabbing', 'nv-focus');
@@ -1569,27 +1578,6 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
     };
   }, [setMenu]);
 
-  // 3D Scene Outline
-  useEffect(() => {
-    if (!engine) return;
-    const scene = engine.getScene();
-    const dark = isDark();
-    const outline = new THREE.Box3Helper(selBoxRef.current, dark ? 0xf2ede6 : 0x332e28);
-    const mat = outline.material as THREE.LineBasicMaterial;
-    if (mat) {
-      mat.transparent = true;
-      mat.opacity = 0.55;
-    }
-    outline.visible = false;
-    scene.add(outline);
-    outlineRef.current = outline;
-
-    return () => {
-      scene.remove(outline);
-      outline.dispose?.();
-    };
-  }, [engine, isDark]);
-
   // Boot & main animation loop
   useEffect(() => {
     let animId: number;
@@ -1630,7 +1618,17 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
         }
       }
 
-      if (easeDisplay(dt)) drawGizmo(now);
+      const easing = easeDisplay(dt);
+      if (easing) drawGizmo(now);
+
+      // Something other than this navigator changed the selection (a tap, a
+      // drag on the frame, undo): re-center the gizmo on it once settled.
+      if (engine && !easing && !dragRef.current && !tourRef.current &&
+          engine.getSelectionRevision() !== ownRevisionRef.current) {
+        syncFromTarget();
+        idleHint();
+        drawGizmo(now);
+      }
     };
 
     sizeToBox();
@@ -1661,7 +1659,7 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
       cancelAnimationFrame(animId);
       window.removeEventListener('resize', onResize);
     };
-  }, [sizeToBox, readTheme, applyObject, applyCamera, idleHint, placeFromAnchor, drawGizmo, easeDisplay, engine]);
+  }, [sizeToBox, readTheme, applyObject, applyCamera, idleHint, placeFromAnchor, drawGizmo, easeDisplay, engine, syncFromTarget]);
 
   // Theme change
   useEffect(() => {
@@ -1688,7 +1686,7 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
           <button type="button" className="nv-mode-badge"
             onClick={(event) => { event.stopPropagation(); setMenu(!isMenuOpen); }}
             aria-label="Choose navigator mode and target" aria-expanded={isMenuOpen}>
-            {mode === 'look' ? 'Orbit' : mode === 'move' ? 'Move' : 'Rotate'}
+            {MODE_LABELS[mode]}
             <ChevronDown size={11} />
           </button>
           <button type="button" className="nv-view-btn nv-view-btn--more"
@@ -1709,6 +1707,7 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
           sensitivity={navigatorSensitivity} onSensitivityChange={onSensitivityChange}
           projectionMode={projectionMode} onToggleProjection={onToggleProjection}
           transformMode={mode} onTransformModeChange={(next) => { stopTour(); setMode(next); }}
+          modes={['look', 'move', 'rotate', 'scale']}
           onSelectView={(view) => engine?.snapToView(view === 'side' ? 'right' : view === 'angle' ? 'isometric' : view)}
           onResetView={() => { engine?.resetCamera(); engine?.snapToView('isometric'); }}
           onHide={onClose} onDismiss={() => setMenu(false)}
@@ -1792,6 +1791,14 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
               >
                 Rotate
               </button>
+              <button
+                className="nv-mode"
+                id="nv-scale"
+                aria-pressed={mode === 'scale'}
+                onClick={() => { stopTour(); setMode('scale'); }}
+              >
+                Resize
+              </button>
             </div>
 
             <div className="nv-sec">Rotate snap</div>
@@ -1849,9 +1856,11 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
               <button className="nv-act" id="nv-undo" disabled={historyLen === 0} onClick={() => { stopTour(); undo(); }}>
                 Undo
               </button>
-              <button className="nv-act" id="nv-reset" onClick={resetTarget}>
-                Reset
-              </button>
+              {targetScope === 'model' && (
+                <button className="nv-act" id="nv-reset" onClick={resetTarget}>
+                  Reset
+                </button>
+              )}
             </div>
 
             <button

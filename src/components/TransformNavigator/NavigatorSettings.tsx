@@ -5,7 +5,9 @@ import type { NavigatorLayout } from './JoystickNavigator';
 import { haptics } from '../../utils/haptics';
 import './navigatorControls.css';
 
-export type NavigatorTransformMode = 'look' | 'move' | 'rotate';
+export type NavigatorTransformMode = 'look' | 'move' | 'rotate' | 'scale';
+
+const MODE_LABELS: Record<NavigatorTransformMode, string> = { look: 'Orbit', move: 'Move', rotate: 'Rotate', scale: 'Resize' };
 
 export interface NavigatorSettingsProps {
   theme?: 'light' | 'dark';
@@ -22,6 +24,8 @@ export interface NavigatorSettingsProps {
   onToggleProjection?: () => void;
   transformMode: NavigatorTransformMode;
   onTransformModeChange: (mode: NavigatorTransformMode) => void;
+  /** Modes this navigator supports; Resize is only offered where it is wired. */
+  modes?: NavigatorTransformMode[];
   onSelectView?: (view: 'front' | 'side' | 'top' | 'angle') => void;
   onResetView?: () => void;
   onHide?: () => void;
@@ -34,7 +38,7 @@ export function NavigatorSettings({
   theme = 'dark', targetScope = 'all', onSelectTargetScope,
   layers = [], activeLayerId, onSelectLayer, layout, onLayoutChange,
   sensitivity = 1, onSensitivityChange, projectionMode = 'perspective',
-  onToggleProjection, transformMode, onTransformModeChange,
+  onToggleProjection, transformMode, onTransformModeChange, modes = ['look', 'move', 'rotate'],
   onSelectView, onResetView, onHide, onDismiss,
 }: NavigatorSettingsProps) {
   const tap = (action: () => void) => { haptics.trigger('light'); action(); };
@@ -48,16 +52,17 @@ export function NavigatorSettings({
       <fieldset className="navigator-field">
         <legend>Mode</legend>
         <div className="navigator-segments" role="group" aria-label="Navigator mode">
-          {(['look', 'move', 'rotate'] as const).map((value) => <button key={value} type="button" aria-pressed={transformMode === value} onClick={() => tap(() => onTransformModeChange(value))}>{value === 'look' ? 'Orbit' : value === 'move' ? 'Move' : 'Rotate'}</button>)}
+          {modes.map((value) => <button key={value} type="button" aria-pressed={transformMode === value} onClick={() => tap(() => onTransformModeChange(value))}>{MODE_LABELS[value]}</button>)}
         </div>
       </fieldset>
 
       {onSelectTargetScope && <fieldset className="navigator-field">
-        <legend>Transform target</legend>
-        <div className="navigator-target-grid" role="group" aria-label="Choose what moves and rotates">
+        <legend>What to select</legend>
+        {/* Same choices, in the same words, as the Select panel. */}
+        <div className="navigator-target-grid" role="group" aria-label="What to select">
           {([
-            ['all', 'Canvas + models'], ['model', 'Model'],
-            ['strokes', 'Canvas strokes'], ['active_layer', 'Current layer'],
+            ['active_layer', 'Current layer'], ['selected_strokes', 'Lines'],
+            ['model', '3D models'], ['all', 'Everything'],
           ] as const).map(([scope, label]) => <button key={scope} type="button" aria-pressed={targetScope === scope} onClick={() => tap(() => onSelectTargetScope(scope))}>{label}</button>)}
         </div>
       </fieldset>}

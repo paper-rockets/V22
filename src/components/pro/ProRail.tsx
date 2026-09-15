@@ -275,10 +275,13 @@ export const ProRail: React.FC<ProRailProps> = ({
                 openSheet === 'create' ||
                 openSheet === 'deform' ||
                 openSheet === 'layers';
+              const isSelecting = tool === 'select' || tool === 'pointer';
               const isActive =
                 id === 'erase'
                   ? tool === 'eraser'
                   : openSheet === id ||
+                    // Select stays lit after its menu closes, because taps still select.
+                    (id === 'select' && isSelecting && !anotherModeIsOpen) ||
                     (id === 'draw' && !anotherModeIsOpen && (tool === 'brush' || tool === 'free_brush' || tool === 'eyedropper'));
               return (
                 <button

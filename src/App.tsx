@@ -644,7 +644,9 @@ export function App() {
   // Multi-Model & Target Scope State
   const [loadedModels, setLoadedModels] = useState<LoadedModelInfo[]>([]);
   const [activeModelId, setActiveModelId] = useState<string | null>(null);
-  const [targetScope, setTargetScope] = useState<TransformTargetScope>('all');
+  const [targetScope, setTargetScope] = useState<TransformTargetScope>('active_layer');
+  const [selectionMode, setSelectionMode] = useState<'pointer' | 'lasso'>('pointer');
+  const [navigatorTransformMode, setNavigatorTransformMode] = useState<'move' | 'rotate' | 'look' | 'scale'>('move');
   const [activeGuide, setActiveGuide] = useState<ActiveGuideReference | null>(null);
 
   // Storage Permission & Bulletproof IndexedDB Auto-Save Hook
@@ -1035,7 +1037,12 @@ export function App() {
 
   const handleSelectTargetScope = useCallback((scope: TransformTargetScope) => {
     setTargetScope(scope);
-  }, []);
+    // Choosing "3D models" with nothing picked yet picks the last model, so
+    // the frame and controller show something to move straight away.
+    if (scope === 'model' && engine && !engine.getActiveSelectedModelId() && activeModelId) {
+      engine.setActiveSelectedModel(activeModelId);
+    }
+  }, [engine, activeModelId]);
 
   const handleEngineReady = useCallback((inst: StudioEngine) => {
     setEngine(inst);
@@ -1694,6 +1701,18 @@ export function App() {
       {/* Main 3D Viewport */}
       <Viewport
         tool={tool}
+        selectionMode={selectionMode}
+        targetScope={targetScope}
+        onSelectTargetScope={handleSelectTargetScope}
+        onSelectLayer={handleSelectLayer}
+        onSelectModel={handleSelectModel}
+        transformMode={navigatorTransformMode}
+        showSelectionFrame={
+          navigatorTransformMode !== 'look' &&
+          gizmoMode !== 'Hidden' &&
+          activeController !== 'hidden' &&
+          showStudioNavigator
+        }
         onSelectTool={setTool}
         brushSettings={brushSettings}
         onUpdateBrushSettings={(newSettings) =>
@@ -1802,6 +1821,10 @@ export function App() {
             onToggleLock={() => setIsGizmoLocked((prev) => !prev)}
             targetScope={targetScope}
             onSelectTargetScope={handleSelectTargetScope}
+            selectionMode={selectionMode}
+            onSelectSelectionMode={setSelectionMode}
+            transformMode={navigatorTransformMode}
+            onSelectTransformMode={setNavigatorTransformMode}
             activeGuide={activeGuide}
             onGizmoReset={handleGizmoReset}
             onOpenColorStudio={() => {
@@ -1904,7 +1927,7 @@ export function App() {
 
       {/* 3D Navigation Controller: Option 3 Sphere Navigator */}
       {gizmoMode !== 'Hidden' && activeController !== 'hidden' && showStudioNavigator &&
-        !isAnyModalActive && !isColorStudioOpen && openSheet === null && !studioShelfOpen && (
+        !isAnyModalActive && !isColorStudioOpen && !studioShelfOpen && (
           navigatorStyle === 'sphere' ? (
             <Option3SphereNavigator
               engine={engine}
@@ -1924,6 +1947,8 @@ export function App() {
               onSensitivityChange={setNavigatorSensitivity}
               projectionMode={projectionMode}
               onToggleProjection={handleToggleProjection}
+              transformMode={navigatorTransformMode}
+              onTransformModeChange={setNavigatorTransformMode}
             />
           ) : (
             <JoystickNavigator
@@ -1946,7 +1971,7 @@ export function App() {
 
       {/* 3D Navigator Floating Restore Pill when View controls are Closed / Hidden */}
       {(gizmoMode === 'Hidden' || activeController === 'hidden' || !showStudioNavigator) &&
-        !isAnyModalActive && !isColorStudioOpen && openSheet === null && !studioShelfOpen && (
+        !isAnyModalActive && !isColorStudioOpen && !studioShelfOpen && (
           <button
             type="button"
             onClick={() => handleToggleNavigator(true)}

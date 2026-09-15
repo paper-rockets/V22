@@ -90,6 +90,7 @@ export class ProjectSerializer {
           inverseMatrix: entry.inverseMatrix.toArray(),
           forwardMatrix: entry.forwardMatrix.toArray(),
           layerId: entry.layerId,
+          strokeIds: entry.strokeIds,
           timestamp: entry.timestamp,
         };
       }
@@ -113,6 +114,7 @@ export class ProjectSerializer {
           inverseMatrix: entry.inverseMatrix.toArray(),
           forwardMatrix: entry.forwardMatrix.toArray(),
           layerId: entry.layerId,
+          strokeIds: entry.strokeIds,
           timestamp: entry.timestamp,
         };
       }

@@ -5,6 +5,13 @@ export interface TransformUndoItem {
   scope: TransformTargetScope;
   inverseMatrix: THREE.Matrix4;
   layerId?: string;
+  strokeIds?: string[];
+}
+
+/** Pins a transform to the exact layer or lines it started on, so undo moves the same things back. */
+export interface TransformTargets {
+  layerId?: string;
+  strokeIds?: string[];
 }
 
 export interface TransformRedoItem {
@@ -19,6 +26,7 @@ export interface TransformContext {
   getTargetMeshes: () => THREE.Mesh[];
   getStrokes: () => Map<string, { descriptor: StrokeDescriptor; meshes: THREE.Mesh[] }>;
   getActiveLayerId: () => string;
+  getSelectedStrokeIds: () => string[];
   getActiveSelectedModelId: () => string | null;
   getDrawingPlaneMesh: () => THREE.Mesh | null;
   getCamera: () => THREE.PerspectiveCamera;
@@ -33,6 +41,7 @@ export interface TransformContext {
     inverseMatrix: THREE.Matrix4;
     forwardMatrix: THREE.Matrix4;
     layerId?: string;
+    strokeIds?: string[];
     timestamp: number;
   }) => void;
   clearHistoryRedo: () => void;
@@ -45,7 +54,12 @@ export class TransformController {
   private ctx: TransformContext;
 
   public transformActiveScope: TransformTargetScope = 'all';
+  private transformActiveTargets: TransformTargets = {};
   public currentTransformTotalMatrix: THREE.Matrix4 = new THREE.Matrix4();
+  /** Bumped on every applied transform so on-screen selection frames know to re-measure. */
+  public revision = 0;
+  private readonly _padScratch = new THREE.Vector3();
+  private readonly _objectBoxScratch = new THREE.Box3();
   public transformUndoStack: TransformUndoItem[] = [];
   public transformRedoStack: TransformRedoItem[] = [];
 
@@ -62,7 +76,19 @@ export class TransformController {
    * Calculates the geometric bounding center of the targeted selection (model, strokes, or active layer)
    */
   public getSelectionCenter(scope: TransformTargetScope = 'all'): THREE.Vector3 {
-    const box = new THREE.Box3();
+    const box = this.getSelectionBox(scope);
+    if (box.isEmpty()) {
+      return this.ctx.getCameraTarget().clone();
+    }
+    return box.getCenter(new THREE.Vector3());
+  }
+
+  /**
+   * World-space bounds of exactly what a transform with this scope would move.
+   * Empty when there is nothing to move.
+   */
+  public getSelectionBox(scope: TransformTargetScope = 'all', out: THREE.Box3 = new THREE.Box3()): THREE.Box3 {
+    const box = out.makeEmpty();
     let hasContent = false;
 
     const targetMeshes = this.ctx.getTargetMeshes();
@@ -70,54 +96,55 @@ export class TransformController {
     const strokes = this.ctx.getStrokes();
     const activeLayerId = this.ctx.getActiveLayerId();
 
-    if (scope === 'model' || scope === 'all') {
-      if (scope === 'model' && activeSelectedModelId) {
-        const targetModel = this.ctx.modelRoot.children.find((c) => c.uuid === activeSelectedModelId);
-        if (targetModel) {
-          box.setFromObject(targetModel);
-          if (!box.isEmpty()) hasContent = true;
-        }
-      } else if (targetMeshes.length > 0) {
-        if (scope === 'model') {
-          for (const mesh of targetMeshes) {
-            box.expandByObject(mesh);
-            hasContent = true;
-          }
-        } else {
-          box.setFromObject(this.ctx.modelRoot);
-          if (!box.isEmpty()) hasContent = true;
-        }
+    // Lines are measured from their points: stroke geometry buffers are
+    // over-allocated, and the unused vertices at the origin would stretch the box.
+    const expandByStroke = (descriptor: StrokeDescriptor) => {
+      if (descriptor.points.length === 0) return;
+      const pad = Math.max(0.01, (descriptor.settings?.size ?? 0.02) / 2);
+      for (const p of descriptor.points) {
+        box.min.min(this._padScratch.copy(p.position).subScalar(pad));
+        box.max.max(this._padScratch.copy(p.position).addScalar(pad));
       }
+      hasContent = true;
+    };
+    const expandByModels = (objects: THREE.Object3D[]) => {
+      for (const object of objects) {
+        const objectBox = this._objectBoxScratch.setFromObject(object);
+        if (objectBox.isEmpty()) continue;
+        box.union(objectBox);
+        hasContent = true;
+      }
+    };
+    const modelChildren = () => this.ctx.modelRoot.children.filter((c) => c !== this.ctx.strokeRoot);
+
+    if (scope === 'model') {
+      // Mirrors applyTransformMatrix: with no model picked, every model moves.
+      const targetModel = activeSelectedModelId
+        ? this.ctx.modelRoot.children.find((c) => c.uuid === activeSelectedModelId)
+        : undefined;
+      if (targetModel) expandByModels([targetModel]);
+      else if (activeSelectedModelId === null && modelChildren().length > 0) expandByModels(modelChildren());
+      else if (targetMeshes.length > 0) expandByModels(targetMeshes);
+    }
+
+    if (scope === 'all') {
+      expandByModels(modelChildren());
     }
 
     if (scope === 'strokes' || scope === 'all') {
-      if (strokes.size > 0) {
-        const strokeBox = new THREE.Box3().setFromObject(this.ctx.strokeRoot);
-        if (!strokeBox.isEmpty()) {
-          if (hasContent) {
-            box.union(strokeBox);
-          } else {
-            box.copy(strokeBox);
-            hasContent = true;
-          }
-        }
-      }
+      strokes.forEach(({ descriptor }) => expandByStroke(descriptor));
     }
 
     if (scope === 'active_layer') {
-      const layerBox = new THREE.Box3();
-      let layerFound = false;
-      strokes.forEach(({ descriptor, meshes }) => {
-        if (descriptor.layerId === activeLayerId) {
-          meshes.forEach((m) => {
-            layerBox.expandByObject(m);
-            layerFound = true;
-          });
-        }
+      strokes.forEach(({ descriptor }) => {
+        if (descriptor.layerId === activeLayerId) expandByStroke(descriptor);
       });
-      if (layerFound && !layerBox.isEmpty()) {
-        box.copy(layerBox);
-        hasContent = true;
+    }
+
+    if (scope === 'selected_strokes') {
+      for (const id of this.ctx.getSelectedStrokeIds()) {
+        const entry = strokes.get(id);
+        if (entry) expandByStroke(entry.descriptor);
       }
     }
 
@@ -139,13 +166,8 @@ export class TransformController {
       }
     }
 
-    if (!hasContent || box.isEmpty()) {
-      return this.ctx.getCameraTarget().clone();
-    }
-
-    const center = new THREE.Vector3();
-    box.getCenter(center);
-    return center;
+    if (!hasContent) box.makeEmpty();
+    return box;
   }
 
   /**
@@ -167,6 +189,10 @@ export class TransformController {
    */
   public beginTransform(scope: TransformTargetScope = 'all'): void {
     this.transformActiveScope = scope;
+    this.transformActiveTargets = {
+      layerId: this.ctx.getActiveLayerId(),
+      strokeIds: scope === 'selected_strokes' ? [...this.ctx.getSelectedStrokeIds()] : undefined,
+    };
     this.currentTransformTotalMatrix.identity();
   }
 
@@ -179,18 +205,21 @@ export class TransformController {
       if ((this.transformActiveScope as string) !== 'camera') {
         const inv = this.currentTransformTotalMatrix.clone().invert();
         const fwd = this.currentTransformTotalMatrix.clone();
-        const activeLayerId = this.ctx.getActiveLayerId();
+        const layerId = this.transformActiveTargets.layerId ?? this.ctx.getActiveLayerId();
+        const strokeIds = this.transformActiveTargets.strokeIds;
         this.transformUndoStack.push({
           scope: this.transformActiveScope,
           inverseMatrix: inv,
-          layerId: activeLayerId,
+          layerId,
+          strokeIds,
         });
         this.ctx.pushHistoryUndo({
           kind: 'transform',
           scope: this.transformActiveScope,
           inverseMatrix: inv,
           forwardMatrix: fwd,
-          layerId: activeLayerId,
+          layerId,
+          strokeIds,
           timestamp: Date.now(),
         });
         this.transformRedoStack = [];
@@ -203,13 +232,18 @@ export class TransformController {
   /**
    * Applies an arbitrary 4x4 matrix transformation across target meshes, strokes, and descriptors
    */
-  public applyTransformMatrix(matrix: THREE.Matrix4, scope: TransformTargetScope = 'all'): void {
+  public applyTransformMatrix(
+    matrix: THREE.Matrix4,
+    scope: TransformTargetScope = 'all',
+    targets?: TransformTargets
+  ): void {
     this.currentTransformTotalMatrix.premultiply(matrix);
+    this.revision++;
 
     const targetMeshes = this.ctx.getTargetMeshes();
     const activeSelectedModelId = this.ctx.getActiveSelectedModelId();
     const strokes = this.ctx.getStrokes();
-    const activeLayerId = this.ctx.getActiveLayerId();
+    const activeLayerId = targets?.layerId ?? this.ctx.getActiveLayerId();
 
     if (scope === 'model') {
       if (activeSelectedModelId) {
@@ -289,6 +323,20 @@ export class TransformController {
       });
       // An empty layer is an empty selection. Never move unrelated scene
       // objects as a fallback for a layer-specific gesture.
+    } else if (scope === 'selected_strokes') {
+      const ids = targets?.strokeIds ?? this.ctx.getSelectedStrokeIds();
+      for (const id of ids) {
+        const entry = strokes.get(id);
+        if (!entry) continue;
+        entry.meshes.forEach((mesh) => {
+          mesh.applyMatrix4(matrix);
+          mesh.updateMatrixWorld(true);
+        });
+        entry.descriptor.points.forEach((p) => {
+          p.position.applyMatrix4(matrix);
+          p.normal.transformDirection(matrix).normalize();
+        });
+      }
     } else if (scope === 'guide') {
       const guideMesh = this.ctx.getActiveGuideMesh?.();
       if (guideMesh) {
@@ -354,6 +402,97 @@ export class TransformController {
 
     const transMatrix = new THREE.Matrix4().makeTranslation(worldDelta.x, worldDelta.y, worldDelta.z);
     this.applyTransformMatrix(transMatrix, scope);
+  }
+
+  /**
+   * Direct manipulation move: the selection stays under the finger or cursor,
+   * so this ignores navigator sensitivity.
+   */
+  public translateScreenExact(deltaScreenX: number, deltaScreenY: number, scope: TransformTargetScope = 'all'): void {
+    const camera = this.ctx.getCamera() as THREE.Camera;
+    const container = this.ctx.getContainer();
+    const viewHeightPx = container?.clientHeight || 800;
+    let worldPerPixel: number;
+    if ((camera as THREE.OrthographicCamera).isOrthographicCamera) {
+      const ortho = camera as THREE.OrthographicCamera;
+      worldPerPixel = (ortho.top - ortho.bottom) / ortho.zoom / viewHeightPx;
+    } else {
+      const persp = camera as THREE.PerspectiveCamera;
+      const dist = Math.max(0.05, persp.position.distanceTo(this.getSelectionCenter(scope)));
+      worldPerPixel = (2 * dist * Math.tan(THREE.MathUtils.degToRad(persp.fov / 2))) / viewHeightPx;
+    }
+    const right = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 0).normalize();
+    const up = new THREE.Vector3().setFromMatrixColumn(camera.matrixWorld, 1).normalize();
+    const worldDelta = new THREE.Vector3()
+      .addScaledVector(right, deltaScreenX * worldPerPixel)
+      .addScaledVector(up, -deltaScreenY * worldPerPixel);
+    this.applyTransformMatrix(new THREE.Matrix4().makeTranslation(worldDelta.x, worldDelta.y, worldDelta.z), scope);
+  }
+
+  /**
+   * Direct manipulation move from one pointer position to another (normalized
+   * device coordinates). Lines and layers slide along the drawing canvas so
+   * they stay on its surface; everything else slides parallel to the screen.
+   * Either way the grabbed point stays under the finger or cursor.
+   */
+  public dragSelection(
+    fromNdcX: number,
+    fromNdcY: number,
+    toNdcX: number,
+    toNdcY: number,
+    scope: TransformTargetScope = 'all'
+  ): void {
+    const camera = this.ctx.getCamera();
+    const center = this.getSelectionCenter(scope);
+    const cameraForward = camera.getWorldDirection(new THREE.Vector3()).normalize();
+    let normal = cameraForward.clone();
+    const plane = this.ctx.getDrawingPlaneMesh();
+    if (plane && plane.visible && (scope === 'active_layer' || scope === 'selected_strokes')) {
+      const planeNormal = new THREE.Vector3(0, 0, 1)
+        .applyQuaternion(plane.getWorldQuaternion(new THREE.Quaternion()))
+        .normalize();
+      // A canvas seen nearly edge-on would turn tiny pointer moves into huge jumps.
+      if (Math.abs(planeNormal.dot(cameraForward)) > 0.25) normal = planeNormal;
+    }
+    const dragPlane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal, center);
+    const raycaster = new THREE.Raycaster();
+    const from = new THREE.Vector3();
+    const to = new THREE.Vector3();
+    raycaster.setFromCamera(new THREE.Vector2(fromNdcX, fromNdcY), camera);
+    if (!raycaster.ray.intersectPlane(dragPlane, from)) return;
+    raycaster.setFromCamera(new THREE.Vector2(toNdcX, toNdcY), camera);
+    if (!raycaster.ray.intersectPlane(dragPlane, to)) return;
+    const delta = to.sub(from);
+    if (delta.lengthSq() < 1e-12) return;
+    this.applyTransformMatrix(new THREE.Matrix4().makeTranslation(delta.x, delta.y, delta.z), scope);
+  }
+
+  /**
+   * Direct manipulation turn: spins the selection about its own center, around
+   * the line of sight. A positive angle is clockwise on screen, matching
+   * Math.atan2 in screen pixels (y down).
+   */
+  public rotateAroundViewAxis(deltaAngleRad: number, scope: TransformTargetScope = 'all'): void {
+    if (Math.abs(deltaAngleRad) < 1e-6) return;
+    const camera = this.ctx.getCamera();
+    const center = this.getSelectionCenter(scope);
+    // Rotating about the direction the camera looks (away from the viewer) turns clockwise on screen.
+    const forward = camera.getWorldDirection(new THREE.Vector3()).normalize();
+    let axis = forward;
+    const plane = this.ctx.getDrawingPlaneMesh();
+    if (plane && plane.visible && (scope === 'active_layer' || scope === 'selected_strokes')) {
+      // Lines on the canvas turn within the canvas, so they stay on its surface.
+      const planeNormal = new THREE.Vector3(0, 0, 1)
+        .applyQuaternion(plane.getWorldQuaternion(new THREE.Quaternion()))
+        .normalize();
+      const facing = planeNormal.dot(forward);
+      if (Math.abs(facing) > 0.25) axis = facing >= 0 ? planeNormal : planeNormal.negate();
+    }
+    const finalMat = new THREE.Matrix4()
+      .makeTranslation(center.x, center.y, center.z)
+      .multiply(new THREE.Matrix4().makeRotationAxis(axis, deltaAngleRad))
+      .multiply(new THREE.Matrix4().makeTranslation(-center.x, -center.y, -center.z));
+    this.applyTransformMatrix(finalMat, scope);
   }
 
   /**
@@ -726,17 +865,9 @@ export class TransformController {
    */
   public snapActiveToGround(targetScope: TransformTargetScope = 'model'): void {
     const groundY = -1.2;
-    let targetObj: THREE.Object3D | null = null;
-
-    const activeSelectedModelId = this.ctx.getActiveSelectedModelId();
-    if (activeSelectedModelId) {
-      targetObj = this.ctx.modelRoot.children.find((c) => c.uuid === activeSelectedModelId) || null;
-    }
-    if (!targetObj) {
-      targetObj = this.ctx.modelRoot.children.find((c) => c !== this.ctx.strokeRoot) || this.ctx.modelRoot;
-    }
-
-    const box = new THREE.Box3().setFromObject(targetObj);
+    // Measure exactly what will move, so a layer or picked lines land on the
+    // ground rather than being offset by some unrelated model's height.
+    const box = this.getSelectionBox(targetScope);
     if (box.isEmpty()) return;
 
     const deltaY = groundY - box.min.y;

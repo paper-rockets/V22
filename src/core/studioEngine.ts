@@ -32,6 +32,7 @@ import {
   LoadedModelInfo,
   ProjectSaveData,
   ActiveGuideReference,
+  SelectionSummary,
 } from '../types';
 import {
   DEFAULT_SHAPE_SNAP_TOLERANCE,
@@ -123,6 +124,15 @@ const _ndcScratch = new THREE.Vector2();
 const _cameraOffset = new THREE.Vector3();
 const _viewDirScratch = new THREE.Vector3();
 const _worldNormalScratch = new THREE.Vector3();
+
+/** Pixel distance from (px, py) to the segment (ax, ay)-(bx, by). */
+function distanceToSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
+  const dx = bx - ax;
+  const dy = by - ay;
+  const lenSq = dx * dx + dy * dy;
+  const t = lenSq > 0 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / lenSq)) : 0;
+  return Math.hypot(px - (ax + t * dx), py - (ay + t * dy));
+}
 const _worldPointScratch = new THREE.Vector3();
 const _localPointScratch = new THREE.Vector3();
 const _localNormalScratch = new THREE.Vector3();
@@ -187,6 +197,7 @@ export type UnifiedHistoryEntry =
       inverseMatrix: THREE.Matrix4;
       forwardMatrix: THREE.Matrix4;
       layerId?: string;
+      strokeIds?: string[];
       timestamp: number;
     }
   | {
@@ -464,7 +475,13 @@ export class StudioEngine {
   private currentLayers: Layer[] = [];
 
   private activeSelectedModelId: string | null = null;
-  private modelSelectionHighlightHelper: THREE.BoxHelper | null = null;
+  private activeSelectedLayerId: string | null = null;
+  /** Lines picked by tap or lasso; the target of the 'selected_strokes' scope. */
+  private selectedStrokeIds: string[] = [];
+  /** Bumped whenever what is selected changes (not when it moves; see getSelectionRevision). */
+  private selectionChangeCount = 0;
+  private readonly selectionBoxScratch = new THREE.Box3();
+  private readonly selectionCornerScratch = new THREE.Vector3();
   private guideHelperMesh: THREE.Mesh | null = null;
   private cachedRect: DOMRect | null = null;
   private drawingPlaneMesh: THREE.Mesh | null = null;
@@ -620,6 +637,7 @@ export class StudioEngine {
       getTargetMeshes: () => this.targetMeshes,
       getStrokes: () => this.strokes,
       getActiveLayerId: () => this.activeLayerId,
+      getSelectedStrokeIds: () => this.selectedStrokeIds,
       getActiveSelectedModelId: () => this.activeSelectedModelId,
       getDrawingPlaneMesh: () => this.drawingPlaneMesh,
       getCamera: () => this.camera,
@@ -1520,50 +1538,284 @@ export class StudioEngine {
   }
 
   /**
-   * Unified raycast selection: tests 3D stroke curves, and if none hit, raycasts 3D models/primitives
+   * Records which layer the user picked. The on-screen selection frame (see
+   * getSelectionScreenRect) is the only highlight, so nothing is added to the scene.
    */
-  public raycastSelection(screenX: number, screenY: number): { type: 'stroke' | 'model' | 'none'; id?: string; name?: string } {
-    const strokeId = this.raycastStroke(screenX, screenY);
-    if (strokeId) {
-      this.selectStroke(strokeId);
-      this.setActiveSelectedModel(null);
-      const sel = { type: 'stroke' as const, id: strokeId, name: '3D Curve' };
-      this.dispatchSelectionEvent(sel);
-      return sel;
-    }
+  public selectLayer(layerId: string | null): void {
+    this.activeSelectedLayerId = layerId;
+    this.notifySelectionTargetChanged();
+  }
 
-    // Raycast model/primitive
-    const hit = this.raycastModel(screenX, screenY);
-    if (hit && hit.mesh) {
-      let curr: THREE.Object3D | null = hit.mesh;
-      let topChild: THREE.Object3D | null = null;
-      while (curr && curr.parent) {
-        if (curr.parent === this.modelRoot) {
-          topChild = curr;
-          break;
+  // ==========================================
+  // SELECTION (shared by the frame, Select panel and navigator)
+  // ==========================================
+
+  /** Tells React surfaces the selection changed: SelectPanel, SelectionFrame and navigator listen. */
+  private notifySelectionTargetChanged(): void {
+    this.selectionChangeCount++;
+    this.markDirty();
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('STUDIO_SELECTION_TARGET_CHANGED'));
+    }
+  }
+
+  /** Changes whenever what is selected changes or the selection is moved. */
+  public getSelectionRevision(): number {
+    return this.selectionChangeCount * 1_000_003 + this.transformController.revision + this.strokes.size * 7919;
+  }
+
+  public setSelectedStrokes(ids: string[]): void {
+    this.selectedStrokeIds = ids.filter((id) => this.strokes.has(id));
+    this.strokePipeline.selectedStrokeId = this.selectedStrokeIds[0] ?? null;
+    this.notifySelectionTargetChanged();
+  }
+
+  public getSelectedStrokeIds(): string[] {
+    this.selectedStrokeIds = this.selectedStrokeIds.filter((id) => this.strokes.has(id));
+    return this.selectedStrokeIds;
+  }
+
+  public getSelectionBox(scope: TransformTargetScope, out?: THREE.Box3): THREE.Box3 {
+    return this.transformController.getSelectionBox(scope, out);
+  }
+
+  /**
+   * Screen rectangle (in container pixels) around what the scope would move,
+   * or null when that is nothing or it is entirely behind the camera.
+   */
+  public getSelectionScreenRect(scope: TransformTargetScope): { x: number; y: number; width: number; height: number } | null {
+    const box = this.transformController.getSelectionBox(scope, this.selectionBoxScratch);
+    if (box.isEmpty()) return null;
+    const width = this.container.clientWidth;
+    const height = this.container.clientHeight;
+    const camera = this.camera;
+    camera.updateMatrixWorld();
+    const p = this.selectionCornerScratch;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    let visibleCorners = 0;
+    for (let i = 0; i < 8; i++) {
+      p.set(i & 1 ? box.max.x : box.min.x, i & 2 ? box.max.y : box.min.y, i & 4 ? box.max.z : box.min.z);
+      p.project(camera);
+      if (p.z > 1) continue;
+      visibleCorners++;
+      const sx = (p.x + 1) * 0.5 * width;
+      const sy = (1 - p.y) * 0.5 * height;
+      minX = Math.min(minX, sx); maxX = Math.max(maxX, sx);
+      minY = Math.min(minY, sy); maxY = Math.max(maxY, sy);
+    }
+    if (visibleCorners === 0) return null;
+    return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+  }
+
+  /** Plain-language description of the current selection for labels. */
+  public getSelectionSummary(scope: TransformTargetScope): SelectionSummary {
+    const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
+    const countLayerLines = (layerId: string) => {
+      let n = 0;
+      this.strokes.forEach(({ descriptor }) => { if (descriptor.layerId === layerId) n++; });
+      return n;
+    };
+    switch (scope) {
+      case 'active_layer': {
+        const layer = this.currentLayers.find((l) => l.id === this.activeLayerId);
+        const lines = countLayerLines(this.activeLayerId);
+        return { scope, label: layer?.name || 'Current layer', detail: lines ? plural(lines, 'line') : 'Empty layer', isEmpty: lines === 0 };
+      }
+      case 'selected_strokes': {
+        const count = this.getSelectedStrokeIds().length;
+        return { scope, label: count ? plural(count, 'line') : 'No lines picked', detail: count ? 'Picked lines' : 'Tap or lasso lines', isEmpty: count === 0 };
+      }
+      case 'model': {
+        const model = this.activeSelectedModelId
+          ? this.modelRoot.children.find((c) => c.uuid === this.activeSelectedModelId)
+          : null;
+        if (!model) {
+          // With nothing picked, moving "3D models" moves all of them (see applyTransformMatrix).
+          const hasModels = this.modelRoot.children.some((c) => c !== this.strokeRoot);
+          return hasModels
+            ? { scope, label: 'All 3D models', detail: 'Tap one to pick just it', isEmpty: false }
+            : { scope, label: 'No 3D models', detail: 'Add a model to move it', isEmpty: true };
         }
-        curr = curr.parent;
+        const isCanvas = model === this.drawingPlaneMesh || model.name === 'DrawingPlaneCanvas';
+        return { scope, label: isCanvas ? 'Drawing canvas' : model.name || '3D model', detail: '3D model', isEmpty: false };
       }
+      case 'all':
+        return { scope, label: 'Everything', detail: plural(this.strokes.size, 'line') + ' and models', isEmpty: false };
+      case 'strokes':
+        return { scope, label: 'All lines', detail: plural(this.strokes.size, 'line'), isEmpty: this.strokes.size === 0 };
+      case 'guide':
+        return { scope, label: '3D guide', detail: 'Guides and wires', isEmpty: !this.getActiveGuideMesh() };
+    }
+  }
 
-      if (
-        topChild &&
-        topChild !== this.strokeRoot &&
-        topChild !== this.drawingPlaneMesh &&
-        topChild.name !== 'DrawingPlaneCanvas' &&
-        !topChild.name?.includes('DrawingPlane')
-      ) {
-        this.selectStroke(null);
-        this.setActiveSelectedModel(topChild.uuid);
-        this.notifyModelsChanged();
-        this.markDirty();
-        return { type: 'model', id: topChild.uuid, name: topChild.name || '3D Object' };
+  /**
+   * What is under a tap. Lines are thin, so a miss by the ray still counts when
+   * the tap lands within `radiusPx` of a line on screen.
+   */
+  public pickSelectable(
+    ndcX: number,
+    ndcY: number,
+    radiusPx: number
+  ):
+    | { type: 'stroke'; id: string; layerId: string }
+    | { type: 'model'; id: string }
+    | { type: 'canvas'; id: string }
+    | null {
+    const hitStrokeId = this.strokePipeline.raycastStroke(ndcX, ndcY);
+    const nearStrokeId = hitStrokeId ?? this.findStrokeNearScreenPoint(ndcX, ndcY, radiusPx);
+    if (nearStrokeId) {
+      const entry = this.strokes.get(nearStrokeId);
+      if (entry) return { type: 'stroke', id: nearStrokeId, layerId: entry.descriptor.layerId };
+    }
+    const hit = this.raycastModel(ndcX, ndcY);
+    if (hit?.mesh) {
+      let curr: THREE.Object3D | null = hit.mesh;
+      while (curr && curr.parent && curr.parent !== this.modelRoot) curr = curr.parent;
+      if (!curr || curr.parent !== this.modelRoot || curr === this.strokeRoot) return null;
+      // The canvas is picked on its own; lines drawn on it stay where they are.
+      if (curr === this.drawingPlaneMesh || curr.name?.includes('DrawingPlane')) {
+        return { type: 'canvas', id: curr.uuid };
       }
+      return { type: 'model', id: curr.uuid };
+    }
+    return null;
+  }
+
+  /** True when the picked "model" is the drawing canvas, which cannot be duplicated or deleted. */
+  public isCanvasSelected(): boolean {
+    return Boolean(this.drawingPlaneMesh && this.activeSelectedModelId === this.drawingPlaneMesh.uuid);
+  }
+
+  private findStrokeNearScreenPoint(ndcX: number, ndcY: number, radiusPx: number): string | null {
+    const width = this.container.clientWidth;
+    const height = this.container.clientHeight;
+    const tapX = (ndcX + 1) * 0.5 * width;
+    const tapY = (1 - ndcY) * 0.5 * height;
+    const p = this.selectionCornerScratch;
+    let bestId: string | null = null;
+    let bestDist = radiusPx;
+    this.strokes.forEach(({ descriptor, meshes }, id) => {
+      if (!meshes.some((m) => m.visible)) return;
+      let prevX = NaN, prevY = NaN;
+      for (const point of descriptor.points) {
+        p.copy(point.position).project(this.camera);
+        if (p.z > 1) { prevX = NaN; continue; }
+        const sx = (p.x + 1) * 0.5 * width;
+        const sy = (1 - p.y) * 0.5 * height;
+        const d = Number.isNaN(prevX) ? Math.hypot(sx - tapX, sy - tapY) : distanceToSegment(tapX, tapY, prevX, prevY, sx, sy);
+        if (d < bestDist) { bestDist = d; bestId = id; }
+        prevX = sx; prevY = sy;
+      }
+    });
+    return bestId;
+  }
+
+  /** Deletes what the scope targets, as one undoable step. Returns what was removed. */
+  public deleteSelection(scope: TransformTargetScope): number {
+    if (scope === 'model') {
+      const model = this.activeSelectedModelId
+        ? this.modelRoot.children.find((c) => c.uuid === this.activeSelectedModelId && c !== this.drawingPlaneMesh)
+        : null;
+      if (!model) return 0;
+      return this.deleteActiveSelection() ? 1 : 0;
+    }
+    let ids: string[] = [];
+    if (scope === 'selected_strokes') ids = [...this.getSelectedStrokeIds()];
+    else if (scope === 'active_layer') {
+      this.strokes.forEach(({ descriptor }, id) => { if (descriptor.layerId === this.activeLayerId) ids.push(id); });
+    }
+    if (ids.length === 0) return 0;
+    const removed: StrokeDescriptor[] = [];
+    for (const id of ids) {
+      const entry = this.strokes.get(id);
+      if (!entry) continue;
+      removed.push(entry.descriptor);
+      entry.meshes.forEach((m) => {
+        if (m.parent) m.parent.remove(m);
+        m.geometry.dispose();
+      });
+      this.strokes.delete(id);
+    }
+    this.historyUndoStack.push({ kind: 'stroke', action: { type: 'erase', strokes: removed }, timestamp: Date.now() });
+    this.historyRedoStack = [];
+    this.selectStroke(null);
+    this.setSelectedStrokes([]);
+    this.markDirty();
+    this.notifyHistory();
+    return removed.length;
+  }
+
+  /** Duplicates what the scope targets, slightly offset. Returns how many things were copied. */
+  public cloneSelection(scope: TransformTargetScope): number {
+    if (scope === 'model') {
+      return this.activeSelectedModelId && this.cloneModel() ? 1 : 0;
+    }
+    let count = 0;
+    if (scope === 'active_layer') {
+      if (this.strokePipeline.copyStrokes(this.activeLayerId) === 0) return 0;
+      count = this.strokePipeline.pasteStrokes(this.activeLayerId);
+    } else if (scope === 'selected_strokes') {
+      const ids = this.getSelectedStrokeIds();
+      if (this.strokePipeline.copyStrokeIds(ids) === 0) return 0;
+      count = this.strokePipeline.pasteStrokes(this.activeLayerId);
+      this.setSelectedStrokes(this.strokePipeline.lastPastedIds);
+    }
+    if (count > 0) this.notifySelectionTargetChanged();
+    return count;
+  }
+
+  /**
+   * Picks the lines (or, for models, the models) whose shape falls inside a
+   * lasso drawn on screen. Polygon points are container pixels.
+   */
+  public lassoSelect(
+    polygon2D: { x: number; y: number }[],
+    scope: TransformTargetScope
+  ): { type: 'stroke' | 'model' | 'none'; count: number; ids: string[] } {
+    const width = this.container.clientWidth;
+    const height = this.container.clientHeight;
+    if (!polygon2D || polygon2D.length < 3 || width <= 0 || height <= 0) {
+      return { type: 'none', count: 0, ids: [] };
     }
 
-    this.selectStroke(null);
-    this.setActiveSelectedModel(null);
-    this.dispatchSelectionEvent(null);
-    return { type: 'none' };
+    const pointInPoly = (px: number, py: number): boolean => {
+      let inside = false;
+      for (let i = 0, j = polygon2D.length - 1; i < polygon2D.length; j = i++) {
+        const xi = polygon2D[i].x, yi = polygon2D[i].y;
+        const xj = polygon2D[j].x, yj = polygon2D[j].y;
+        if ((yi > py) !== (yj > py) && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) inside = !inside;
+      }
+      return inside;
+    };
+    const p = this.selectionCornerScratch;
+    const toScreenInside = (world: THREE.Vector3) => {
+      p.copy(world).project(this.camera);
+      if (p.z > 1) return false;
+      return pointInPoly((p.x + 1) * 0.5 * width, (1 - p.y) * 0.5 * height);
+    };
+
+    if (scope === 'model') {
+      const ids: string[] = [];
+      for (const child of this.modelRoot.children) {
+        if (child === this.strokeRoot || child === this.drawingPlaneMesh || child.name === 'DrawingPlaneCanvas') continue;
+        const box = new THREE.Box3().setFromObject(child);
+        if (!box.isEmpty() && toScreenInside(box.getCenter(new THREE.Vector3()))) ids.push(child.uuid);
+      }
+      this.setActiveSelectedModel(ids[0] ?? null);
+      return ids.length ? { type: 'model', count: 1, ids: [ids[0]] } : { type: 'none', count: 0, ids: [] };
+    }
+
+    // A line counts when most of its points are inside, so a lasso that only
+    // clips the tip of a long line does not grab it.
+    const ids: string[] = [];
+    this.strokes.forEach(({ descriptor, meshes }, id) => {
+      if (!meshes.some((m) => m.visible) || descriptor.points.length === 0) return;
+      let inside = 0;
+      for (const point of descriptor.points) if (toScreenInside(point.position)) inside++;
+      if (inside / descriptor.points.length >= 0.5) ids.push(id);
+    });
+    this.setSelectedStrokes(ids);
+    return ids.length ? { type: 'stroke', count: ids.length, ids } : { type: 'none', count: 0, ids: [] };
   }
 
   /**
@@ -2957,7 +3209,7 @@ export class StudioEngine {
         }
       }
     } else if (entry.kind === 'transform') {
-      this.applyTransformMatrix(entry.inverseMatrix, entry.scope);
+      this.applyTransformMatrix(entry.inverseMatrix, entry.scope, { layerId: entry.layerId, strokeIds: entry.strokeIds });
     } else if (entry.kind === 'uv') {
       this.uvEngine.undo();
     } else if (entry.kind === 'primitive') {
@@ -3027,7 +3279,7 @@ export class StudioEngine {
         }
       }
     } else if (entry.kind === 'transform') {
-      this.applyTransformMatrix(entry.forwardMatrix, entry.scope);
+      this.applyTransformMatrix(entry.forwardMatrix, entry.scope, { layerId: entry.layerId, strokeIds: entry.strokeIds });
     } else if (entry.kind === 'uv') {
       this.uvEngine.redo();
     } else if (entry.kind === 'primitive') {
@@ -3044,9 +3296,11 @@ export class StudioEngine {
    * Sets the active layer for subsequent strokes
    */
   public setActiveLayer(layerId: string, opacity: number = 1.0): void {
+    const changed = this.activeLayerId !== layerId;
     this.activeLayerId = layerId;
     this.activeLayerOpacity = opacity;
     this.uvEngine?.setActiveLayer(layerId);
+    if (changed) this.notifySelectionTargetChanged();
   }
 
   public getActiveLayerId(): string {
@@ -3058,6 +3312,8 @@ export class StudioEngine {
    */
   public syncLayers(layers: Layer[]): void {
     this.currentLayers = [...layers];
+    // Layer names appear in the selection label.
+    this.notifySelectionTargetChanged();
     const layerMap = new Map(layers.map((l) => [l.id, l]));
 
     // Compute effective hierarchy properties (inheriting visibility and opacity from parent groups)
@@ -3432,29 +3688,12 @@ export class StudioEngine {
 
   public setActiveSelectedModel(modelId: string | null): void {
     this.activeSelectedModelId = modelId;
-
-    // Clean up previous selection highlight
-    if (this.modelSelectionHighlightHelper) {
-      this.helperRoot.remove(this.modelSelectionHighlightHelper);
-      this.modelSelectionHighlightHelper.geometry.dispose();
-      if (Array.isArray(this.modelSelectionHighlightHelper.material)) {
-        this.modelSelectionHighlightHelper.material.forEach((m) => m.dispose());
-      } else if (this.modelSelectionHighlightHelper.material) {
-        this.modelSelectionHighlightHelper.material.dispose();
-      }
-      this.modelSelectionHighlightHelper = null;
-    }
+    // The on-screen selection frame is the highlight; nothing is added to the scene.
+    this.notifySelectionTargetChanged();
 
     if (modelId) {
       const model = this.modelRoot.children.find((c) => c.uuid === modelId && c !== this.strokeRoot);
       if (model) {
-        const helper = new THREE.BoxHelper(model, 0x38bdf8);
-        (helper.material as THREE.LineBasicMaterial).depthTest = false;
-        (helper.material as THREE.LineBasicMaterial).transparent = true;
-        (helper.material as THREE.LineBasicMaterial).opacity = 0.85;
-        this.modelSelectionHighlightHelper = helper;
-        this.helperRoot.add(helper);
-
         const isDrawingPlane = model === this.drawingPlaneMesh || model.name === 'DrawingPlaneCanvas';
         const name = model.name || (isDrawingPlane ? 'Drawing Canvas' : '3D Model');
         this.dispatchSelectionEvent({
@@ -3762,8 +4001,27 @@ export class StudioEngine {
   /**
    * Applies an arbitrary 4x4 matrix transformation across target meshes, strokes, and descriptors
    */
-  public applyTransformMatrix(matrix: THREE.Matrix4, scope: TransformTargetScope = 'all'): void {
-    this.transformController.applyTransformMatrix(matrix, scope);
+  public applyTransformMatrix(
+    matrix: THREE.Matrix4,
+    scope: TransformTargetScope = 'all',
+    targets?: { layerId?: string; strokeIds?: string[] }
+  ): void {
+    this.transformController.applyTransformMatrix(matrix, scope, targets);
+  }
+
+  /** Moves the selection so it stays under the finger or cursor. */
+  public translateScreenExact(deltaScreenX: number, deltaScreenY: number, scope: TransformTargetScope): void {
+    this.transformController.translateScreenExact(deltaScreenX, deltaScreenY, scope);
+  }
+
+  /** Moves the selection with the pointer between two normalized screen positions. */
+  public dragSelection(fromNdcX: number, fromNdcY: number, toNdcX: number, toNdcY: number, scope: TransformTargetScope): void {
+    this.transformController.dragSelection(fromNdcX, fromNdcY, toNdcX, toNdcY, scope);
+  }
+
+  /** Spins the selection about its own center, around the line of sight. */
+  public rotateAroundViewAxis(deltaAngleRad: number, scope: TransformTargetScope): void {
+    this.transformController.rotateAroundViewAxis(deltaAngleRad, scope);
   }
 
   /**

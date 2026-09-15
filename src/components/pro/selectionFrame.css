@@ -1,0 +1,194 @@
+/* The one on-screen selection highlight. Cyan is the product's selection colour (DESIGN.md). */
+.selection-frame {
+  --selection-accent: #0891b2;
+  --selection-accent-strong: #0e7490;
+  --selection-handle-fill: #ffffff;
+  --selection-label-bg: #faf9f5;
+  --selection-label-ink: #292723;
+  --selection-label-muted: #5d5953;
+  --selection-label-line: rgb(35 28 20 / 14%);
+  position: absolute;
+  inset: 0;
+  z-index: 22;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.selection-frame[data-theme='dark'] {
+  --selection-accent: #22d3ee;
+  --selection-accent-strong: #67e8f9;
+  --selection-handle-fill: #0f1417;
+  --selection-label-bg: #131518;
+  --selection-label-ink: #f1efeb;
+  --selection-label-muted: #b4b1ac;
+  --selection-label-line: rgb(255 255 255 / 14%);
+}
+
+.selection-frame[hidden],
+.selection-frame-box[hidden],
+.selection-frame-label[hidden] {
+  display: none;
+}
+
+/* Outside the Select tool the frame only reports what the View controls move; no handles to catch strokes. */
+.selection-frame[data-handles='false'] .selection-frame-corner,
+.selection-frame[data-handles='false'] .selection-frame-turn,
+.selection-frame[data-handles='false'] .selection-frame-label span {
+  display: none;
+}
+
+.selection-frame-box {
+  position: absolute;
+  top: 0;
+  left: 0;
+  border: 2px solid var(--selection-accent);
+  border-radius: 6px;
+  /* A thin light keyline keeps the frame visible over dark lines and the white canvas alike. */
+  outline: 1px solid rgb(255 255 255 / 55%);
+  outline-offset: -3px;
+  animation: selection-frame-in 160ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes selection-frame-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* 44px touch targets around small visible squares. */
+.selection-frame-corner,
+.selection-frame-turn {
+  position: absolute;
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  pointer-events: auto;
+  touch-action: none;
+}
+
+.selection-frame-corner[data-corner='nw'] { left: -23px; top: -23px; cursor: nwse-resize; }
+.selection-frame-corner[data-corner='ne'] { right: -23px; top: -23px; cursor: nesw-resize; }
+.selection-frame-corner[data-corner='sw'] { left: -23px; bottom: -23px; cursor: nesw-resize; }
+.selection-frame-corner[data-corner='se'] { right: -23px; bottom: -23px; cursor: nwse-resize; }
+
+.selection-frame-corner > span {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--selection-handle-fill);
+  border: 2px solid var(--selection-accent);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 30%);
+  transition: transform 120ms ease-out, background-color 120ms ease-out;
+}
+
+.selection-frame-turn {
+  left: 50%;
+  top: -60px;
+  margin-left: -22px;
+  cursor: grab;
+}
+
+/* Stem joining the turn handle to the frame. */
+.selection-frame-turn::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 33px;
+  width: 2px;
+  height: 17px;
+  margin-left: -1px;
+  background: var(--selection-accent);
+}
+
+.selection-frame-turn > span {
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  display: grid;
+  place-items: center;
+  color: var(--selection-accent-strong);
+  background: var(--selection-handle-fill);
+  border: 2px solid var(--selection-accent);
+  box-shadow: 0 1px 3px rgb(0 0 0 / 30%);
+  transition: transform 120ms ease-out;
+}
+
+.selection-frame-corner:hover > span,
+.selection-frame-corner:active > span {
+  transform: scale(1.25);
+  background: var(--selection-accent);
+}
+
+.selection-frame-turn:hover > span,
+.selection-frame-turn:active > span {
+  transform: scale(1.12);
+}
+
+.selection-frame-turn:active {
+  cursor: grabbing;
+}
+
+.selection-frame-label {
+  position: absolute;
+  top: 0;
+  left: 0;
+  max-width: min(320px, calc(100% - 24px));
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 6px 10px 7px;
+  border-radius: 10px;
+  background: var(--selection-label-bg);
+  border: 1px solid var(--selection-label-line);
+  box-shadow: 0 4px 14px rgb(0 0 0 / 16%);
+  color: var(--selection-label-ink);
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.selection-frame-label strong {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.selection-frame-label strong::before {
+  content: '';
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: var(--selection-accent);
+}
+
+.selection-frame-label em {
+  font-style: normal;
+  font-weight: 500;
+  color: var(--selection-label-muted);
+}
+
+.selection-frame-label span {
+  color: var(--selection-label-muted);
+  font-size: 11px;
+}
+
+.selection-frame-label[data-empty='true'] span {
+  color: var(--selection-label-ink);
+  font-size: 12px;
+  font-weight: 600;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .selection-frame-box {
+    animation: none;
+  }
+  .selection-frame-corner > span,
+  .selection-frame-turn > span {
+    transition: none;
+  }
+}

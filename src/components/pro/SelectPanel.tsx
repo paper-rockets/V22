@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Plus, Minus, CircleDot } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { CircleDot } from 'lucide-react';
 import {
   IcPointer as MousePointer2,
   IcLasso as CircleDashed,
@@ -7,18 +7,12 @@ import {
   IcSnapGround as ArrowDownToLine,
   IcCopy as Copy,
   IcDelete as Trash2,
-  IcLock as Lock,
-  IcUnlock as Unlock,
   IcEye as Eye,
   IcEyeOff as EyeOff,
   IcCompass as Compass,
 } from './StudioIcons';
 import { StudioEngine } from '../../core/studioEngine';
-import {
-  ToolType,
-  BrushSettings,
-  TransformTargetScope,
-} from '../../types';
+import { ToolType, BrushSettings, TransformTargetScope, SelectionSummary } from '../../types';
 import { haptics } from '../../utils/haptics';
 
 interface SelectPanelProps {
@@ -36,101 +30,85 @@ interface SelectPanelProps {
   onSelectTargetScope: (scope: TransformTargetScope) => void;
   onGizmoReset?: () => void;
   theme?: 'light' | 'dark';
+  selectionMode?: 'pointer' | 'lasso';
+  onSelectSelectionMode?: (mode: 'pointer' | 'lasso') => void;
+  transformMode?: 'move' | 'rotate' | 'look' | 'scale';
+  onSelectTransformMode?: (mode: 'move' | 'rotate' | 'look' | 'scale') => void;
 }
+
+const SCOPES: { id: TransformTargetScope; label: string }[] = [
+  { id: 'active_layer', label: 'Current layer' },
+  { id: 'selected_strokes', label: 'Lines' },
+  { id: 'model', label: '3D models' },
+  { id: 'all', label: 'Everything' },
+];
+
+const SCOPE_HINTS: Partial<Record<TransformTargetScope, string>> = {
+  active_layer: 'Tap a line to pick its whole layer.',
+  selected_strokes: 'Tap a line, Shift-tap to add more, or lasso several.',
+  model: 'Tap a 3D model to pick it.',
+  all: 'Moves the canvas, lines and models together.',
+  guide: 'Moves the active 3D guide.',
+};
 
 export const SelectPanel: React.FC<SelectPanelProps> = ({
   engine,
   tool,
   setTool,
-  brushSettings,
-  setBrushSettings,
   isGizmoActive,
   onToggleGizmo,
-  isGizmoLocked,
-  onToggleLock,
   targetScope,
   onSelectTargetScope,
-  onGizmoReset,
   theme = 'dark',
+  selectionMode = 'pointer',
+  onSelectSelectionMode,
+  transformMode = 'move',
+  onSelectTransformMode,
 }) => {
-  const [selectionMode, setSelectionMode] = useState<'pointer' | 'lasso'>('pointer');
-  const [softSelection, setSoftSelection] = useState<boolean>(false);
-  const [showTransformDetails, setShowTransformDetails] = useState<boolean>(false);
-  const [isPhone, setIsPhone] = useState<boolean>(false);
-  const [showPrecisionModal, setShowPrecisionModal] = useState<boolean>(false);
-
-  React.useEffect(() => {
-    const check = () => setIsPhone(window.innerWidth < 640);
-    check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
-  }, []);
-
-  // Track relative transform values for display
-  const [transformValues, setTransformValues] = useState({
-    posX: 0,
-    posY: 0,
-    posZ: 0,
-    rotX: 0,
-    rotY: 0,
-    rotZ: 0,
-    scale: 1.0,
-  });
-
   const isLight = theme === 'light';
+  const isSelecting = tool === 'pointer' || tool === 'select';
+  const [summary, setSummary] = useState<SelectionSummary | null>(null);
+  const [hasGuide, setHasGuide] = useState(false);
 
-  const handlePointerSelect = () => {
-    haptics.trigger('light');
-    setSelectionMode('pointer');
-    setTool('pointer');
-  };
-
-  const handleLassoSelect = () => {
-    haptics.trigger('light');
-    setSelectionMode('lasso');
-    setTool('pointer');
-  };
-
-  const handleResetTransform = () => {
-    haptics.trigger('medium');
-    if (engine) {
-      engine.resetTransform(targetScope);
-      engine.snapToView('isometric');
-    }
-    onGizmoReset?.();
-    setTransformValues({
-      posX: 0,
-      posY: 0,
-      posZ: 0,
-      rotX: 0,
-      rotY: 0,
-      rotZ: 0,
-      scale: 1.0,
-    });
-  };
-
-  const handleNudgePos = (axis: 'posX' | 'posY' | 'posZ', delta: number) => {
-    haptics.trigger('light');
+  // Keep the "Selected" line in step with taps, lassos, undo and the controller.
+  useEffect(() => {
     if (!engine) return;
-    const ax = axis === 'posX' ? 'x' : axis === 'posY' ? 'y' : 'z';
-    engine.translateAxis3D(ax, delta, targetScope);
-    setTransformValues((prev) => ({ ...prev, [axis]: Math.round((prev[axis] + delta) * 100) / 100 }));
+    let lastRevision = -1;
+    const refresh = () => {
+      lastRevision = engine.getSelectionRevision();
+      setSummary(engine.getSelectionSummary(targetScope));
+      setHasGuide(Boolean(engine.getActiveGuide()));
+    };
+    refresh();
+    const poll = window.setInterval(() => {
+      if (engine.getSelectionRevision() !== lastRevision) refresh();
+    }, 300);
+    window.addEventListener('STUDIO_SELECTION_TARGET_CHANGED', refresh);
+    return () => {
+      window.clearInterval(poll);
+      window.removeEventListener('STUDIO_SELECTION_TARGET_CHANGED', refresh);
+    };
+  }, [engine, targetScope]);
+
+  const pickSelectionMode = (mode: 'pointer' | 'lasso') => {
+    haptics.trigger('light');
+    onSelectSelectionMode?.(mode);
+    setTool('select');
   };
 
-  const handleNudgeRot = (axis: 'rotX' | 'rotY' | 'rotZ', deltaDeg: number) => {
+  const pickTransformMode = (mode: 'move' | 'rotate' | 'scale') => {
     haptics.trigger('light');
-    if (!engine) return;
-    const ax = axis === 'rotX' ? 'x' : axis === 'rotY' ? 'y' : 'z';
-    engine.rotateAxis3D(ax, (deltaDeg * Math.PI) / 180, targetScope, isGizmoLocked);
-    setTransformValues((prev) => ({ ...prev, [axis]: (prev[axis] + deltaDeg + 360) % 360 }));
+    onSelectTransformMode?.(mode);
+    if (!isSelecting) setTool('select');
   };
 
-  const handleNudgeScale = (multiplier: number) => {
-    haptics.trigger('light');
-    if (!engine) return;
-    engine.scaleAxis('uniform', multiplier, targetScope, isGizmoLocked);
-    setTransformValues((prev) => ({ ...prev, scale: Math.max(0.05, Math.round(prev.scale * multiplier * 100) / 100) }));
-  };
+  const nothingToActOn = !summary || summary.isEmpty;
+  // Duplicate and Delete need one specific thing; "all models" is too broad to delete by accident.
+  const canEditContents =
+    !nothingToActOn &&
+    (targetScope === 'active_layer' ||
+      targetScope === 'selected_strokes' ||
+      (targetScope === 'model' && Boolean(engine?.getActiveSelectedModelId()) && !engine?.isCanvasSelected()));
 
   const cardClass = isLight
     ? 'p-2.5 rounded-xl bg-neutral-100/50 border border-black/5 space-y-1.5'
@@ -140,544 +118,217 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
     isLight ? 'text-neutral-500' : 'text-neutral-400'
   }`;
 
+  const hintClass = `text-[11px] leading-snug ${isLight ? 'text-neutral-600' : 'text-neutral-400'}`;
+
+  const segmentClass = (active: boolean) =>
+    `min-h-[44px] px-2 py-1 rounded-lg border flex items-center justify-center gap-1.5 font-semibold text-xs transition-colors duration-150 ease-out focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-cyan-500 ${
+      active
+        ? isLight
+          ? 'bg-neutral-900 border-neutral-900 text-white shadow-sm'
+          : 'bg-white border-white text-neutral-950 shadow-sm'
+        : isLight
+        ? 'bg-white border-black/10 text-neutral-700 hover:bg-neutral-200/50'
+        : 'bg-black/30 border-white/10 text-neutral-300 hover:bg-white/5'
+    }`;
+
+  const actionClass = (tone: 'neutral' | 'danger', disabled: boolean) =>
+    `min-h-[44px] p-1.5 rounded-lg border flex flex-col items-center justify-center gap-0.5 font-semibold text-[11px] transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-95 disabled:opacity-40 disabled:active:scale-100 disabled:cursor-not-allowed ${
+      tone === 'danger'
+        ? isLight
+          ? 'bg-red-50 border-red-200 enabled:hover:bg-red-100 text-red-700'
+          : 'bg-red-950/40 border-red-900/60 enabled:hover:bg-red-900/40 text-red-300'
+        : isLight
+        ? 'bg-white border-black/10 enabled:hover:bg-neutral-200/50 text-neutral-800'
+        : 'bg-black/30 border-white/10 enabled:hover:bg-white/10 text-white'
+    }`;
+
+  const scopes = hasGuide ? [...SCOPES, { id: 'guide' as const, label: '3D guide' }] : SCOPES;
+
   return (
     <div className="space-y-2 text-xs select-none">
-      {/* Choose an action, then narrow what can be selected. */}
+      {/* What is selected right now: the same words the on-screen label shows. */}
+      <div
+        role="status"
+        aria-live="polite"
+        className={`flex items-center gap-2 min-h-[44px] px-3 rounded-xl border ${
+          nothingToActOn
+            ? isLight
+              ? 'bg-white border-black/10 text-neutral-600'
+              : 'bg-black/30 border-white/10 text-neutral-400'
+            : isLight
+            ? 'bg-cyan-50 border-cyan-600/40 text-neutral-900'
+            : 'bg-cyan-950/40 border-cyan-400/40 text-neutral-50'
+        }`}
+      >
+        <span
+          className={`w-2 h-2 rounded-full shrink-0 ${
+            nothingToActOn ? (isLight ? 'bg-neutral-400' : 'bg-neutral-500') : isLight ? 'bg-cyan-600' : 'bg-cyan-400'
+          }`}
+        />
+        <span className="min-w-0 truncate">
+          {summary ? (
+            nothingToActOn ? (
+              summary.detail
+            ) : (
+              <>
+                <span className="font-semibold">Selected: {summary.label}</span>
+                {summary.scope === 'active_layer' || summary.scope === 'all' ? (
+                  <span className={isLight ? 'text-cyan-900/80' : 'text-cyan-100/70'}> · {summary.detail}</span>
+                ) : null}
+              </>
+            )
+          ) : (
+            'Nothing selected'
+          )}
+        </span>
+      </div>
+
       <div className={cardClass}>
         <div className={subHeadingClass}>How to select</div>
-        <div className="grid grid-cols-2 gap-1.5">
+        <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="How to select">
           <button
             type="button"
-            onClick={handlePointerSelect}
-            className={`min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center justify-center gap-1.5 font-semibold transition-colors duration-150 ease-out ${
-              (tool === 'pointer' || tool === 'select') && selectionMode === 'pointer'
-                ? isLight
-                  ? 'bg-neutral-900 border-neutral-900 text-white shadow-sm'
-                  : 'bg-white border-white text-neutral-950 shadow-sm'
-                : isLight
-                ? 'bg-white border-black/10 text-neutral-700 hover:bg-neutral-200/50'
-                : 'bg-black/30 border-white/10 text-neutral-300 hover:bg-white/5'
-            }`}
+            aria-pressed={isSelecting && selectionMode === 'pointer'}
+            onClick={() => pickSelectionMode('pointer')}
+            className={segmentClass(isSelecting && selectionMode === 'pointer')}
           >
             <MousePointer2 className="w-3.5 h-3.5" />
             <span>Tap</span>
           </button>
-
           <button
             type="button"
-            onClick={handleLassoSelect}
-            className={`min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center justify-center gap-1.5 font-semibold transition-colors duration-150 ease-out ${
-              (tool === 'pointer' || tool === 'select') && selectionMode === 'lasso'
-                ? isLight
-                  ? 'bg-neutral-900 border-neutral-900 text-white shadow-sm'
-                  : 'bg-white border-white text-neutral-950 shadow-sm'
-                : isLight
-                ? 'bg-white border-black/10 text-neutral-700 hover:bg-neutral-200/50'
-                : 'bg-black/30 border-white/10 text-neutral-300 hover:bg-white/5'
-            }`}
+            aria-pressed={isSelecting && selectionMode === 'lasso'}
+            onClick={() => pickSelectionMode('lasso')}
+            className={segmentClass(isSelecting && selectionMode === 'lasso')}
           >
             <CircleDashed className="w-3.5 h-3.5" />
             <span>Lasso</span>
           </button>
         </div>
+        <p className={hintClass}>
+          {selectionMode === 'lasso'
+            ? 'Draw a loop around lines. Drag inside the frame to move them.'
+            : 'Tap to pick. Drag something to pick it and move it at once.'}
+        </p>
       </div>
 
-      {/* 2. TARGET SCOPE */}
       <div className={cardClass}>
         <div className={subHeadingClass}>What to select</div>
-
-        <div className="grid grid-cols-2 gap-1.5">
-          {[
-            { id: 'all' as const, label: 'Everything' },
-            { id: 'active_layer' as const, label: 'Current Layer' },
-            { id: 'strokes' as const, label: 'Strokes' },
-            { id: 'model' as const, label: '3D Models' },
-          ].map((scope) => (
+        <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="What to select">
+          {scopes.map((scope) => (
             <button
               key={scope.id}
               type="button"
+              aria-pressed={targetScope === scope.id}
               onClick={() => {
                 haptics.trigger('light');
                 onSelectTargetScope(scope.id);
+                if (!isSelecting) setTool('select');
               }}
-              className={`min-h-[44px] px-2 py-1 rounded-lg border text-center font-medium transition-all text-xs ${
-                targetScope === scope.id
-                  ? isLight
-                    ? 'bg-neutral-900 border-neutral-900 text-white font-bold shadow-xs'
-                    : 'bg-white border-white text-neutral-950 font-bold shadow-xs'
-                  : isLight
-                  ? 'bg-white border-black/10 text-neutral-700 hover:bg-neutral-200/40'
-                  : 'bg-black/30 border-white/10 text-neutral-300 hover:bg-white/5'
-              }`}
+              className={segmentClass(targetScope === scope.id)}
             >
               {scope.label}
             </button>
           ))}
         </div>
+        <p className={hintClass}>{SCOPE_HINTS[targetScope]}</p>
       </div>
 
-      {/* 3. MOVE CONTROLS & ACTIONS */}
       <div className={cardClass}>
-        <div className={subHeadingClass}>Move, Turn & Resize</div>
+        <div className={subHeadingClass}>Dragging the selection</div>
+        <div className="grid grid-cols-3 gap-1.5" role="group" aria-label="What dragging the selection does">
+          {(
+            [
+              { id: 'move', label: 'Move', Icon: Compass },
+              { id: 'rotate', label: 'Turn', Icon: RotateCcw },
+              { id: 'scale', label: 'Resize', Icon: CircleDot },
+            ] as const
+          ).map(({ id, label, Icon }) => (
+            <button
+              key={id}
+              type="button"
+              aria-pressed={transformMode === id}
+              onClick={() => pickTransformMode(id)}
+              className={segmentClass(transformMode === id)}
+            >
+              <Icon className="w-3.5 h-3.5" />
+              <span>{label}</span>
+            </button>
+          ))}
+        </div>
+        <p className={hintClass}>
+          {transformMode === 'look'
+            ? 'The View controls are set to Orbit. Pick one to start editing.'
+            : 'Also: corner handles resize, the round handle turns. Two fingers pinch and twist.'}
+        </p>
 
-        {/* Direct Action Buttons: Move / Turn / Resize */}
+        <button
+          type="button"
+          aria-pressed={isGizmoActive}
+          onClick={() => {
+            haptics.trigger('light');
+            onToggleGizmo();
+          }}
+          className={`w-full min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center justify-between font-medium text-xs transition-colors ${
+            isLight
+              ? 'bg-white border-black/10 text-neutral-700 hover:bg-neutral-200/40'
+              : 'bg-black/30 border-white/10 text-neutral-300 hover:bg-white/5'
+          }`}
+        >
+          <span className="flex items-center gap-1.5">
+            <Compass className="w-3.5 h-3.5" />
+            View controls
+          </span>
+          <span className="flex items-center gap-1.5 text-[11px]">
+            {isGizmoActive ? 'Shown' : 'Hidden'}
+            {isGizmoActive ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5 opacity-60" />}
+          </span>
+        </button>
+      </div>
+
+      <div className={cardClass}>
         <div className="grid grid-cols-3 gap-1.5">
           <button
             type="button"
-            onClick={() => {
-              haptics.trigger('light');
-              if (!isGizmoActive) onToggleGizmo();
-            }}
-            className={`min-h-[44px] px-2 py-1.5 rounded-lg border font-semibold text-xs flex items-center justify-center gap-1 transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-95 ${
-              isLight
-                ? 'bg-white border-black/10 text-neutral-800 hover:bg-neutral-200/50'
-                : 'bg-black/30 border-white/10 text-neutral-200 hover:bg-white/10'
-            }`}
-            title="Move selected object in 3D"
-          >
-            <Compass className="w-3.5 h-3.5 text-sky-400" />
-            <span>Move</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              haptics.trigger('light');
-              if (!isGizmoActive) onToggleGizmo();
-            }}
-            className={`min-h-[44px] px-2 py-1.5 rounded-lg border font-semibold text-xs flex items-center justify-center gap-1 transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-95 ${
-              isLight
-                ? 'bg-white border-black/10 text-neutral-800 hover:bg-neutral-200/50'
-                : 'bg-black/30 border-white/10 text-neutral-200 hover:bg-white/10'
-            }`}
-            title="Turn and rotate selected object"
-          >
-            <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
-            <span>Turn</span>
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              haptics.trigger('light');
-              if (!isGizmoActive) onToggleGizmo();
-            }}
-            className={`min-h-[44px] px-2 py-1.5 rounded-lg border font-semibold text-xs flex items-center justify-center gap-1 transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-95 ${
-              isLight
-                ? 'bg-white border-black/10 text-neutral-800 hover:bg-neutral-200/50'
-                : 'bg-black/30 border-white/10 text-neutral-200 hover:bg-white/10'
-            }`}
-            title="Resize and scale selected object"
-          >
-            <CircleDot className="w-3.5 h-3.5 text-amber-400" />
-            <span>Resize</span>
-          </button>
-        </div>
-
-        <div className="space-y-1.5 pt-1">
-          {/* Show Move Controls Toggle */}
-          <button
-            type="button"
-            onClick={() => {
-              haptics.trigger('light');
-              onToggleGizmo();
-            }}
-            className={`w-full min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center justify-between font-medium text-xs transition-colors ${
-              isGizmoActive
-                ? isLight
-                  ? 'bg-neutral-900 border-neutral-900 text-white'
-                  : 'bg-white border-white text-neutral-950 font-bold'
-                : isLight
-                ? 'bg-white border-black/10 text-neutral-700 hover:bg-neutral-200/40'
-                : 'bg-black/30 border-white/10 text-neutral-300 hover:bg-white/5'
-            }`}
-          >
-            <div className="flex items-center gap-1.5">
-              <Compass className="w-3.5 h-3.5" />
-              <span>Show Move handles</span>
-            </div>
-            {isGizmoActive ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5 opacity-50" />}
-          </button>
-        </div>
-
-        {/* Action Buttons: Snap to ground, Clone, Delete */}
-        <div className="grid grid-cols-3 gap-1.5 pt-1.5 border-t border-black/5 dark:border-white/5">
-          <button
-            type="button"
+            disabled={nothingToActOn}
             onClick={() => {
               haptics.trigger('medium');
               engine?.snapActiveToGround(targetScope);
             }}
-            className={`h-11 min-h-[40px] p-1.5 rounded-lg border flex flex-col items-center justify-center gap-0.5 font-semibold text-[10px] transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-95 ${
-              isLight
-                ? 'bg-white border-black/10 hover:bg-neutral-200/50 text-neutral-800'
-                : 'bg-black/30 border-white/10 hover:bg-white/10 text-white'
-            }`}
-            title="Auto-snap model to ground plane"
+            className={actionClass('neutral', nothingToActOn)}
+            title="Set the selection down on the ground grid"
           >
             <ArrowDownToLine className="w-3.5 h-3.5" />
-            <span>To Ground</span>
+            <span>To ground</span>
           </button>
-
           <button
             type="button"
+            disabled={!canEditContents}
             onClick={() => {
               haptics.trigger('medium');
-              engine?.cloneModel();
+              engine?.cloneSelection(targetScope);
             }}
-            className={`h-11 min-h-[40px] p-1.5 rounded-lg border flex flex-col items-center justify-center gap-0.5 font-semibold text-[10px] transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-95 ${
-              isLight
-                ? 'bg-white border-black/10 hover:bg-neutral-200/50 text-neutral-800'
-                : 'bg-black/30 border-white/10 hover:bg-white/10 text-white'
-            }`}
-            title="Clone active model"
+            className={actionClass('neutral', !canEditContents)}
+            title="Duplicate the selection"
           >
             <Copy className="w-3.5 h-3.5" />
-            <span>Clone</span>
+            <span>Duplicate</span>
           </button>
-
           <button
             type="button"
+            disabled={!canEditContents}
             onClick={() => {
               haptics.trigger('medium');
-              engine?.deleteActiveSelection();
+              engine?.deleteSelection(targetScope);
             }}
-            className={`h-11 min-h-[40px] p-1.5 rounded-lg border flex flex-col items-center justify-center gap-0.5 font-semibold text-[10px] transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-95 ${
-              isLight
-                ? 'bg-red-50 border-red-200 hover:bg-red-100 text-red-700'
-                : 'bg-red-950/40 border-red-900/60 hover:bg-red-900/40 text-red-300'
-            }`}
-            title="Delete selected item (Del)"
+            className={actionClass('danger', !canEditContents)}
+            title="Delete the selection (Undo brings it back)"
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>Delete</span>
           </button>
         </div>
       </div>
-
-      {/* 4. ADVANCED SELECTION & TRANSFORM CONTROLS */}
-      <div className={cardClass}>
-        <button
-          type="button"
-          onClick={() => {
-            haptics.trigger('light');
-            setShowTransformDetails((prev) => !prev);
-          }}
-          className="w-full flex items-center justify-between min-h-[32px] py-0.5 text-left"
-        >
-          <div className={subHeadingClass}>Advanced</div>
-          <div className="flex items-center gap-1.5 opacity-70">
-            <span className="text-[10px]">
-              {showTransformDetails ? 'Hide' : 'Lock, falloff & coordinates'}
-            </span>
-            {showTransformDetails ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
-          </div>
-        </button>
-
-        {showTransformDetails && (
-          <div className="space-y-2 pt-1 border-t border-black/5 dark:border-white/5">
-            {/* Move nearby strokes (Soft Selection Falloff) */}
-            <button
-              type="button"
-              onClick={() => {
-                haptics.trigger('light');
-                setSoftSelection((prev) => !prev);
-              }}
-              className={`w-full min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center justify-between font-medium text-xs transition-colors ${
-                softSelection
-                  ? isLight
-                    ? 'bg-neutral-900 border-neutral-900 text-white'
-                    : 'bg-white border-white text-neutral-950 font-bold'
-                  : isLight
-                  ? 'bg-white border-black/10 text-neutral-700 hover:bg-neutral-200/40'
-                  : 'bg-black/30 border-white/10 text-neutral-300 hover:bg-white/5'
-              }`}
-            >
-              <div className="flex items-center gap-1.5">
-                <CircleDot className="w-3.5 h-3.5" />
-                <span>Move nearby strokes</span>
-              </div>
-              <span className="text-[10px] font-mono opacity-80">{softSelection ? 'On' : 'Off'}</span>
-            </button>
-
-            {/* Lock Selection Toggle */}
-            <button
-              type="button"
-              onClick={() => {
-                haptics.trigger('light');
-                onToggleLock();
-              }}
-              className={`w-full min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center justify-between font-medium text-xs transition-colors ${
-                isGizmoLocked
-                  ? isLight
-                    ? 'bg-neutral-900 border-neutral-900 text-white'
-                    : 'bg-white border-white text-neutral-950 font-bold'
-                  : isLight
-                  ? 'bg-white border-black/10 text-neutral-700 hover:bg-neutral-200/40'
-                  : 'bg-black/30 border-white/10 text-neutral-300 hover:bg-white/5'
-              }`}
-            >
-              <div className="flex items-center gap-1.5">
-                {isGizmoLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-                <span>Lock Proportions & Movement</span>
-              </div>
-              <span className="text-[10px] font-mono opacity-80">{isGizmoLocked ? 'Locked' : 'Free'}</span>
-            </button>
-
-            {/* Reset Transform */}
-            <button
-              type="button"
-              onClick={handleResetTransform}
-              className={`w-full min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center gap-1.5 font-medium text-xs transition-colors ${
-                isLight
-                  ? 'bg-white border-black/10 text-neutral-700 hover:bg-neutral-200/40'
-                  : 'bg-black/30 border-white/10 text-neutral-300 hover:bg-white/5'
-              }`}
-              title="Reset position, rotation, and scale"
-            >
-              <RotateCcw className="w-3.5 h-3.5" />
-              <span>Reset position & turn</span>
-            </button>
-
-            {/* Target Guides Scope (Preserved in Advanced) */}
-            <button
-              type="button"
-              onClick={() => {
-                haptics.trigger('light');
-                onSelectTargetScope('guide');
-              }}
-              className={`w-full min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center justify-between font-medium text-xs transition-colors ${
-                targetScope === 'guide'
-                  ? isLight
-                    ? 'bg-neutral-900 border-neutral-900 text-white font-bold'
-                    : 'bg-white border-white text-neutral-950 font-bold'
-                  : isLight
-                  ? 'bg-white border-black/10 text-neutral-700 hover:bg-neutral-200/40'
-                  : 'bg-black/30 border-white/10 text-neutral-300 hover:bg-white/5'
-              }`}
-            >
-              <span>Target 3D Guides & Wires</span>
-              <span className="text-[10px] opacity-70">{targetScope === 'guide' ? 'Active' : 'Off'}</span>
-            </button>
-
-            {/* Precise X/Y/Z Controls */}
-            {isPhone ? (
-              <div>
-                <button
-                  type="button"
-                  onClick={() => setShowPrecisionModal(true)}
-                  className={`w-full min-h-[44px] px-3 py-2 rounded-xl border flex items-center justify-between text-xs font-semibold transition-colors duration-150 ease-out ${
-                    isLight
-                      ? 'bg-white border-black/10 hover:bg-neutral-200/50 text-neutral-800'
-                      : 'bg-black/30 border-white/10 hover:bg-white/10 text-white'
-                  }`}
-                >
-                  <span>Precise X/Y/Z coordinates</span>
-                  <ChevronRight className="w-4 h-4 opacity-60" />
-                </button>
-              </div>
-            ) : (
-              <>
-                {/* Position Row with Direct Stepper */}
-                <div className="space-y-1">
-                  <div className="flex justify-between items-center text-[10px] font-medium">
-                    <span className={isLight ? 'text-neutral-700' : 'text-neutral-300'}>Position (m)</span>
-                    <span className="text-[9px] opacity-60">±0.1m nudge</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {[
-                      { axis: 'posX' as const, label: 'X', val: transformValues.posX },
-                      { axis: 'posY' as const, label: 'Y', val: transformValues.posY },
-                      { axis: 'posZ' as const, label: 'Z', val: transformValues.posZ },
-                    ].map(({ axis, label, val }) => (
-                      <div
-                        key={axis}
-                        className={`h-8 min-h-[32px] px-1 rounded-lg border flex items-center justify-between font-mono text-xs ${
-                          isLight ? 'bg-white border-black/10 text-neutral-900' : 'bg-black/30 border-white/10 text-white'
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => handleNudgePos(axis, -0.1)}
-                          className="w-5 h-6 flex items-center justify-center opacity-60 hover:opacity-100 active:scale-90"
-                          title={`Decrease ${label}`}
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="text-[10px] font-bold font-mono">{label}: {val.toFixed(2)}</span>
-                        <button
-                          type="button"
-                          onClick={() => handleNudgePos(axis, 0.1)}
-                          className="w-5 h-6 flex items-center justify-center opacity-60 hover:opacity-100 active:scale-90"
-                          title={`Increase ${label}`}
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Rotation Row with Direct 15° Stepper */}
-                <div className="space-y-1 pt-1">
-                  <div className="flex justify-between items-center text-[10px] font-medium">
-                    <span className={isLight ? 'text-neutral-700' : 'text-neutral-300'}>Rotation (°)</span>
-                    <span className="text-[9px] opacity-60">±15° nudge</span>
-                  </div>
-                  <div className="grid grid-cols-3 gap-1.5">
-                    {[
-                      { axis: 'rotX' as const, label: 'X', val: transformValues.rotX },
-                      { axis: 'rotY' as const, label: 'Y', val: transformValues.rotY },
-                      { axis: 'rotZ' as const, label: 'Z', val: transformValues.rotZ },
-                    ].map(({ axis, label, val }) => (
-                      <div
-                        key={axis}
-                        className={`h-8 min-h-[32px] px-1 rounded-lg border flex items-center justify-between font-mono text-xs ${
-                          isLight ? 'bg-white border-black/10 text-neutral-900' : 'bg-black/30 border-white/10 text-white'
-                        }`}
-                      >
-                        <button
-                          type="button"
-                          onClick={() => handleNudgeRot(axis, -15)}
-                          className="w-5 h-6 flex items-center justify-center opacity-60 hover:opacity-100 active:scale-90"
-                          title={`Rotate -15° on ${label}`}
-                        >
-                          <Minus className="w-3 h-3" />
-                        </button>
-                        <span className="text-[10px] font-bold font-mono">{label}: {Math.round(val)}°</span>
-                        <button
-                          type="button"
-                          onClick={() => handleNudgeRot(axis, 15)}
-                          className="w-5 h-6 flex items-center justify-center opacity-60 hover:opacity-100 active:scale-90"
-                          title={`Rotate +15° on ${label}`}
-                        >
-                          <Plus className="w-3 h-3" />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </>
-            )}
-
-            {/* Scale Row */}
-            <div className="space-y-1 pt-1">
-              <div className="flex justify-between items-center text-[10px] font-medium">
-                <span className={isLight ? 'text-neutral-700' : 'text-neutral-300'}>Uniform Scale</span>
-                <span className="text-[9px] opacity-60">Scale factor</span>
-              </div>
-              <div
-                className={`w-full h-8 min-h-[32px] px-2 rounded-lg border flex items-center justify-between font-mono text-xs ${
-                  isLight ? 'bg-white border-black/10 text-neutral-900' : 'bg-black/30 border-white/10 text-white'
-                }`}
-              >
-                <button
-                  type="button"
-                  onClick={() => handleNudgeScale(0.9)}
-                  className="px-2 h-6 flex items-center justify-center opacity-70 hover:opacity-100 active:scale-90 font-bold"
-                  title="Scale down (0.9x)"
-                >
-                  <Minus className="w-3.5 h-3.5 mr-1" /> Smaller
-                </button>
-                <span className="font-bold text-xs">{transformValues.scale.toFixed(2)}×</span>
-                <button
-                  type="button"
-                  onClick={() => handleNudgeScale(1.1)}
-                  className="px-2 h-6 flex items-center justify-center opacity-70 hover:opacity-100 active:scale-90 font-bold"
-                  title="Scale up (1.1x)"
-                >
-                  Larger <Plus className="w-3.5 h-3.5 ml-1" />
-                </button>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-      {/* Dedicated Precision Sheet for Phone */}
-      {showPrecisionModal && (
-        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-3 animate-in fade-in duration-150">
-          <div
-            className={`w-full max-w-sm rounded-2xl p-4 shadow-2xl border space-y-3 ${
-              isLight ? 'bg-white text-neutral-900 border-black/10' : 'bg-[#181a1f] text-white border-white/15'
-            }`}
-          >
-            <div className="flex items-center justify-between border-b pb-2 border-black/10 dark:border-white/10">
-              <span className="font-bold text-sm">Precise Transforms</span>
-              <button
-                type="button"
-                onClick={() => setShowPrecisionModal(false)}
-                className="text-xs font-bold px-2 py-1 rounded-md bg-neutral-200 dark:bg-neutral-800"
-              >
-                Done
-              </button>
-            </div>
-
-            {/* Position */}
-            <div className="space-y-1">
-              <div className="flex justify-between items-center text-xs font-medium opacity-75">
-                <span>Position (meters)</span>
-              </div>
-              <div className="grid grid-cols-3 gap-1.5">
-                {[
-                  { axis: 'posX' as const, label: 'X', val: transformValues.posX },
-                  { axis: 'posY' as const, label: 'Y', val: transformValues.posY },
-                  { axis: 'posZ' as const, label: 'Z', val: transformValues.posZ },
-                ].map(({ axis, label, val }) => (
-                  <div
-                    key={axis}
-                    className={`h-10 px-1.5 rounded-lg border flex items-center justify-between font-mono text-xs ${
-                      isLight ? 'bg-neutral-100 border-black/10' : 'bg-black/30 border-white/10'
-                    }`}
-                  >
-                    <button type="button" onClick={() => handleNudgePos(axis, -0.1)} className="p-1 opacity-70 hover:opacity-100">
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                    <span className="font-bold">{label}: {val.toFixed(2)}</span>
-                    <button type="button" onClick={() => handleNudgePos(axis, 0.1)} className="p-1 opacity-70 hover:opacity-100">
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Rotation */}
-            <div className="space-y-1">
-              <div className="flex justify-between items-center text-xs font-medium opacity-75">
-                <span>Rotation (degrees)</span>
-              </div>
-              <div className="grid grid-cols-3 gap-1.5">
-                {[
-                  { axis: 'rotX' as const, label: 'X', val: transformValues.rotX },
-                  { axis: 'rotY' as const, label: 'Y', val: transformValues.rotY },
-                  { axis: 'rotZ' as const, label: 'Z', val: transformValues.rotZ },
-                ].map(({ axis, label, val }) => (
-                  <div
-                    key={axis}
-                    className={`h-10 px-1.5 rounded-lg border flex items-center justify-between font-mono text-xs ${
-                      isLight ? 'bg-neutral-100 border-black/10' : 'bg-black/30 border-white/10'
-                    }`}
-                  >
-                    <button type="button" onClick={() => handleNudgeRot(axis, -15)} className="p-1 opacity-70 hover:opacity-100">
-                      <Minus className="w-3.5 h-3.5" />
-                    </button>
-                    <span className="font-bold">{label}: {Math.round(val)}°</span>
-                    <button type="button" onClick={() => handleNudgeRot(axis, 15)} className="p-1 opacity-70 hover:opacity-100">
-                      <Plus className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={() => setShowPrecisionModal(false)}
-              className="w-full min-h-[44px] rounded-xl font-bold bg-sky-600 text-white flex items-center justify-center transition-transform active:scale-98 mt-2"
-            >
-              Apply & Close
-            </button>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
