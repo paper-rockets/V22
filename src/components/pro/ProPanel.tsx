@@ -1,10 +1,14 @@
-import React, { useRef } from 'react';
+import React, { useRef, useState, useEffect } from 'react';
 import { ProMode, closeSheet, useOpenSheet } from '../studio/panelStore';
 import { useDismissibleSurface } from '../../hooks/useDismissibleSurface';
 import { StudioCloseButton } from '../common/StudioCloseButton';
 import { haptics } from '../../utils/haptics';
+import {
+  readStudioDockPreferences,
+  STUDIO_DOCK_EVENT,
+  StudioDockPreferences,
+} from '../studio/studioDockPreferences';
 import { SelectPanel } from './SelectPanel';
-import { DrawPanel } from './DrawPanel';
 import { CreatePanel } from './CreatePanel';
 import { DeformPanel } from './DeformPanel';
 import { LayerPanel } from '../LayerPanel';
@@ -117,11 +121,21 @@ export const ProPanel: React.FC<ProPanelProps> = ({
 }) => {
   const openSheet = useOpenSheet();
   const light = theme === 'light';
+  const [dockPreferences, setDockPreferences] = useState<StudioDockPreferences>(readStudioDockPreferences);
+
+  useEffect(() => {
+    const handleDockChange = (event: Event) => {
+      const customEvent = event as CustomEvent<StudioDockPreferences>;
+      if (customEvent.detail) setDockPreferences(customEvent.detail);
+      else setDockPreferences(readStudioDockPreferences());
+    };
+    window.addEventListener(STUDIO_DOCK_EVENT, handleDockChange);
+    return () => window.removeEventListener(STUDIO_DOCK_EVENT, handleDockChange);
+  }, []);
 
   // Only render if a ProMode is active
   const isProMode =
     openSheet === 'select' ||
-    openSheet === 'draw' ||
     openSheet === 'create' ||
     openSheet === 'deform' ||
     openSheet === 'layers';
@@ -154,8 +168,9 @@ export const ProPanel: React.FC<ProPanelProps> = ({
         ref={panelRef}
         role="region"
         aria-label={`${title} Panel`}
-      data-theme={theme}
-      className={`paperrocket-pro-panel paperrocket-context-panel fixed z-40 select-none flex flex-col border shadow-2xl animate-in fade-in duration-150 overflow-hidden ${
+        data-theme={theme}
+        data-dock-position={dockPreferences.position}
+        className={`paperrocket-pro-panel paperrocket-context-panel fixed z-40 select-none flex flex-col border shadow-2xl animate-in fade-in duration-150 overflow-hidden ${
         light
           ? 'bg-[#f7f4ee]/98 border-black/15 text-neutral-800 shadow-[0_20px_50px_rgba(35,28,20,0.14)]'
           : 'bg-[#14161a]/98 border-white/15 text-neutral-200 shadow-[0_24px_70px_rgba(0,0,0,0.6)]'
@@ -197,18 +212,6 @@ export const ProPanel: React.FC<ProPanelProps> = ({
             targetScope={targetScope}
             onSelectTargetScope={onSelectTargetScope}
             onGizmoReset={onGizmoReset}
-            theme={theme}
-          />
-        )}
-        {mode === 'draw' && brushSettings && (
-          <DrawPanel
-            engine={engine}
-            brushSettings={brushSettings}
-            setBrushSettings={setBrushSettings}
-            onOpenColorStudio={() => {
-              closeSheet();
-              onOpenColorStudio?.();
-            }}
             theme={theme}
           />
         )}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, lazy, Suspense, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useRef, lazy, Suspense, useMemo } from 'react';
 import * as THREE from 'three';
 import {
   ToolType,
@@ -29,10 +29,11 @@ import { JoystickNavigator, type NavigatorLayout } from './components/TransformN
 import { FpsCounter } from './components/FpsCounter';
 import { DeferredPanel } from './components/DeferredPanel';
 import { publishCameraPose, publishFps } from './core/telemetryStore';
-import { useHasOnboarded } from './core/onboardingStore';
+import { useHasOnboarded, setHasOnboarded, getHasOnboarded } from './core/onboardingStore';
+import { FirstStrokeHint } from './components/studio/FirstStrokeHint';
 import { ProShell } from './components/pro/ProShell';
 import { GuideControlBar } from './components/studio/GuideControlBar';
-import { useOpenSheet, openSheetId, closeSheet, toggleSheet } from './components/studio/panelStore';
+import { useOpenSheet, useStudioShelfOpen, openSheetId, closeSheet, toggleSheet } from './components/studio/panelStore';
 import { StudioTopStrip } from './components/studio/StudioTopStrip';
 import { StudioSettingsSheet } from './components/studio/StudioSettingsSheet';
 import { WorkLossDecisionSheet } from './components/WorkLossDecisionSheet';
@@ -63,6 +64,8 @@ import { useAppAutoSave } from './hooks/useAppAutoSave';
 import { haptics } from './utils/haptics';
 import { setGlobalSoundEnabled } from './utils/audio';
 import { PlatformBridge } from './core/platformBridge';
+
+import { DebugTestPanel } from '@debug-panel';
 import {
   LiquifySettings,
   CustomMirrorConfig,
@@ -79,7 +82,8 @@ import {
 } from './types';
 
 const DEFAULT_BRUSH_SETTINGS: BrushSettings = {
-  size: 0.035,
+  // With the default 1.5× ribbon width this reads as 10 in the brush-size UI.
+  size: 0.01,
   opacity: 1.0,
   color: '#000000',
   solidColor: '#000000',
@@ -111,15 +115,22 @@ const DEFAULT_BRUSH_SETTINGS: BrushSettings = {
   straightLineMode: false,
   magneticEndpointSnapping: true,
   adaptableCorners: true,
-  // Predictive Stroke is on out of the box: smoothing every stroke is the point
-  // of it, and a cleaner line is what most people want without going looking
-  // for a setting. Replacing strokes with shapes stays off until asked for.
-  shapeSnapping: true,
+  // Live glide is the default. Release-time refitting is deliberately opt-in:
+  // artists should never see a finished stroke change shape after lifting a pen.
+  shapeSnapping: false,
   shapeSnapTolerance: undefined,
   predictiveLevel: 3,
   shapeRecognition: false,
   angleSnapping: true,
   steadyStrokeLevel: 0,
+};
+
+type CanvasFormat = 'portrait' | 'square' | 'landscape';
+
+const CANVAS_FORMATS: Record<CanvasFormat, { width: number; height: number }> = {
+  portrait: { width: 2.7, height: 3.6 },
+  square: { width: 3.2, height: 3.2 },
+  landscape: { width: 3.6, height: 2.7 },
 };
 
 const MATERIAL_LABELS: Partial<Record<BrushSettings['materialType'], string>> = {
@@ -209,6 +220,7 @@ export function App() {
   }, [theme, engine]);
 
   const openSheet = useOpenSheet();
+  const studioShelfOpen = useStudioShelfOpen();
   const hasOnboarded = useHasOnboarded();
   const [showPerformanceStats, setShowPerformanceStats] = useState<boolean>(false);
   const [showStudioNavigator, setShowStudioNavigator] = useState<boolean>(() => {
@@ -245,6 +257,26 @@ export function App() {
   // Model & Sky Environment State
   const [activeModelName, setActiveModelName] = useState<string>('Drawing Canvas');
   const [modelMetadata, setModelMetadata] = useState<ModelMetadata | null>(null);
+
+  // Safe Debug/Test Mode state (Gated by native build authorization)
+  const [isDebugPanelOpen, setIsDebugPanelOpen] = useState(false);
+  const [debugAuthorized, setDebugAuthorized] = useState(false);
+  const debugPointerTelemetryRef = useRef({
+    lastType: 'none',
+    lastPressure: 0,
+    eventCount: 0,
+    maxPressure: 0,
+  });
+
+  useEffect(() => {
+    if (typeof __IS_DEBUG_BUILD__ !== 'undefined' && __IS_DEBUG_BUILD__) {
+      import('@debug-bridge').then((mod) => {
+        mod.authorize().then((auth) => {
+          setDebugAuthorized(auth);
+        });
+      });
+    }
+  }, []);
   const [lightingPreset, setLightingPreset] = useState<LightingPreset>('clay_neutral');
   const [gizmoMode, setGizmoMode] = useState<GizmoMode>(() => {
     try {
@@ -477,6 +509,8 @@ export function App() {
   });
   const [isARViewerOpen, setIsARViewerOpen] = useState<boolean>(false);
   const [showPlane, setShowPlane] = useState<boolean>(true);
+  const [canvasFormat, setCanvasFormat] = useState<CanvasFormat>('portrait');
+  const [canvasOpacity, setCanvasOpacity] = useState(1);
 
   // Phase 4 Stage Assets & Reference Clipboard States
   const [isClipboardOpen, setIsClipboardOpen] = useState<boolean>(false);
@@ -511,6 +545,14 @@ export function App() {
   const [isColorStudioOpen, setIsColorStudioOpen] = useState<boolean>(() => {
     try {
       return localStorage.getItem('remix3d.colorStudioPinned') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  const [colorStudioAllowsWorkspaceInteraction, setColorStudioAllowsWorkspaceInteraction] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('remix3d.colorStudioPinned') === 'true' ||
+        localStorage.getItem('remix3d.colorStudioMini') === 'true';
     } catch {
       return false;
     }
@@ -555,6 +597,320 @@ export function App() {
   });
 
   const activeLayer = layers.find((l) => l.id === activeLayerId) || layers[0];
+
+  useEffect(() => {
+    if (typeof __IS_DEBUG_BUILD__ !== 'undefined' && __IS_DEBUG_BUILD__ && debugAuthorized && engine) {
+      (window as any).__V22_TEST_API__ = {
+        getStrokeCount: () => {
+          try {
+            return engine.getStrokeCount?.() ?? 0;
+          } catch {
+            return 0;
+          }
+        },
+        getCameraPose: () => {
+          const cam = engine.getCamera();
+          if (!cam) return null;
+          return {
+            x: Number(cam.position.x.toFixed(3)),
+            y: Number(cam.position.y.toFixed(3)),
+            z: Number(cam.position.z.toFixed(3)),
+          };
+        },
+        snapView: async (view: 'isometric' | 'front' | 'right' | 'top') => {
+          if (view === 'isometric') {
+            engine.resetCamera(true);
+            engine.snapToView('isometric', true);
+          } else {
+            engine.snapToView(view, true);
+          }
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          const cam = engine.getCamera();
+          if (!cam) return null;
+          const perfect = engine.getPerfectView?.();
+          return {
+            pose: {
+              x: Number(cam.position.x.toFixed(3)),
+              y: Number(cam.position.y.toFixed(3)),
+              z: Number(cam.position.z.toFixed(3)),
+            },
+            perfectView: perfect?.view ?? null,
+          };
+        },
+        resetView: async () => {
+          engine.resetCamera(true);
+          await new Promise((resolve) => setTimeout(resolve, 50));
+          const cam = engine.getCamera();
+          if (!cam) return null;
+          const perfect = engine.getPerfectView?.();
+          return {
+            pose: {
+              x: Number(cam.position.x.toFixed(3)),
+              y: Number(cam.position.y.toFixed(3)),
+              z: Number(cam.position.z.toFixed(3)),
+            },
+            perfectView: perfect?.view ?? null,
+          };
+        },
+        addTestStroke: () => {
+          try {
+            return engine.addDebugTestStroke?.(brushSettings, activeLayerId || undefined) ?? -1;
+          } catch (e) {
+            console.error('addTestStroke error:', e);
+          }
+          return -1;
+        },
+        eraseTestStroke: () => {
+          try {
+            return engine.eraseDebugTestStroke?.() === true;
+          } catch (e) {
+            console.error('eraseTestStroke error:', e);
+            return false;
+          }
+        },
+        testShaderEffects: async (requestedEffects?: string[]) => {
+          const effects = requestedEffects?.length ? requestedEffects : [
+            'fire', 'ocean_wave', 'anime_cel', 'galaxy', 'lava', 'jelly', 'hologram', 'electric_arc',
+          ];
+          const errors: Array<{ effect: string; error: string }> = [];
+          const rendered: string[] = [];
+          for (const effect of effects) {
+            try {
+              engine.addDebugTestStroke?.({ ...brushSettings, shaderEffect: effect as any, animatedEffect: effect as any }, activeLayerId || undefined);
+              const renderer = engine.getRenderer?.();
+              if (renderer) {
+                renderer.compile(engine.getScene(), engine.getCamera());
+                if (renderer.getContext().isContextLost()) throw new Error('WebGL context lost');
+              }
+              rendered.push(effect);
+            } catch (error: any) {
+              errors.push({ effect, error: String(error?.message || error) });
+            }
+          }
+          const strokeCount = engine.getStrokeCount?.() ?? 0;
+          engine.clearAllStrokes();
+          return { requested: effects, rendered, errors, strokeCount, contextLost: engine.getRenderer?.()?.getContext().isContextLost() === true };
+        },
+        testModels: async (requestedModels?: string[]) => {
+          const fixtures = [
+            { id: 'debug_box_fixture', variant: 'box' as const },
+            { id: 'debug_sphere_fixture', variant: 'sphere' as const },
+          ];
+          const requested = requestedModels?.length ? new Set(requestedModels) : null;
+          const modelFixtures = requested ? fixtures.filter((fixture) => requested.has(fixture.id)) : fixtures;
+          const results: Array<{ id: string; name?: string; meshCount?: number; vertexCount?: number; ok: boolean; error?: string }> = [];
+          for (const fixture of modelFixtures) {
+            try {
+              const metadata = engine.setDebugModelFixture?.(fixture.variant);
+              if (!metadata) throw new Error('Debug model fixture unavailable');
+              results.push({ id: fixture.id, name: metadata.name, meshCount: metadata.meshCount, vertexCount: metadata.vertexCount, ok: metadata.meshCount > 0 });
+            } catch (error: any) {
+              results.push({ id: fixture.id, ok: false, error: String(error?.message || error) });
+            }
+          }
+          // Return the assertion before resetting the scene. A model teardown
+          // can trigger renderer/resource disposal on older WebViews; doing
+          // that work on the next turn keeps the bridge response bounded.
+          const response = { results, allOk: results.every((result) => result.ok) };
+          setTimeout(() => {
+            try { engine.clearModel(true, false); } catch (_) { /* debug cleanup only */ }
+          }, 0);
+          return response;
+        },
+        testDrawErase: () => {
+          const before = engine.getStrokeCount?.() ?? 0;
+          const afterDraw = engine.addDebugTestStroke?.(brushSettings, activeLayerId || undefined) ?? before;
+          const erased = engine.eraseDebugTestStroke?.() === true;
+          const afterErase = engine.getStrokeCount?.() ?? afterDraw;
+          return { before, afterDraw, erased, afterErase, drawIncreased: afterDraw > before, eraseDecreased: erased && afterErase < afterDraw };
+        },
+        openModal: (modal: string) => {
+          if (modal === 'more') return false;
+          else if (modal === 'settings') setIsSettingsOpen(true);
+          else if (modal === 'export') setIsExportOpen(true);
+          else if (modal === 'illumination') setIsIlluminationOpen(true);
+          else if (modal === 'sessions') setIsSessionModalOpen(true);
+          else if (modal === 'color') setIsColorStudioOpen(true);
+          return true;
+        },
+        closeModal: () => {
+          setIsSettingsOpen(false);
+          setIsExportOpen(false);
+          setIsIlluminationOpen(false);
+          setIsSessionModalOpen(false);
+          setIsColorStudioOpen(false);
+          return true;
+        },
+        inspectOpenModal: () => {
+          const dialog = document.querySelector('[role="dialog"]') as HTMLElement | null;
+          if (!dialog) return { found: false };
+          const titleEl = dialog.querySelector('h1, h2, h3, [id*="title"]') as HTMLElement | null;
+          const titleText = titleEl ? (titleEl.textContent || '').trim() : '';
+          const closeBtn = dialog.querySelector('button[aria-label*="Close"], button[aria-label*="close"], button:has(svg.lucide-x)') as HTMLElement | null;
+          let closeBtnWidth = 0;
+          let closeBtnHeight = 0;
+          if (closeBtn) {
+            const rect = closeBtn.getBoundingClientRect();
+            closeBtnWidth = Math.round(rect.width);
+            closeBtnHeight = Math.round(rect.height);
+          }
+          const scrollable = dialog.scrollHeight >= dialog.clientHeight || dialog.querySelector('.overflow-y-auto, [class*="scroll"]') !== null;
+          const backdrop = document.querySelector('.fixed.inset-0, [aria-hidden="true"].bg-black') !== null;
+          return {
+            found: true,
+            title: titleText,
+            closeBtnWidth,
+            closeBtnHeight,
+            closeBtnValid: closeBtnWidth >= 44 && closeBtnHeight >= 44,
+            isScrollable: scrollable,
+            hasBackdrop: backdrop,
+          };
+        },
+        getAutoSaveStatus: () => autoSaveStatus,
+        saveTestProject: async () => {
+          await triggerAutoSave('debug_test');
+          return { status: autoSaveStatus };
+        },
+        setOfflineSimulation: async (enabled: boolean) => {
+          const state = (window as any).__V22_TEST_SIMULATION_STATE__;
+          if (!state) throw new Error('Debug simulation state unavailable');
+          state.simulateOffline = Boolean(enabled);
+          return {
+            enabled: state.simulateOffline,
+            onlineState: state.simulateOffline ? 'offline' : (navigator.onLine ? 'online' : 'offline'),
+          };
+        },
+        getPointerTelemetry: () => ({ ...debugPointerTelemetryRef.current }),
+        resetPointerTelemetry: () => {
+          debugPointerTelemetryRef.current = {
+            lastType: 'none',
+            lastPressure: 0,
+            eventCount: 0,
+            maxPressure: 0,
+          };
+          return true;
+        },
+        exportGlbData: async () => {
+          let debugShaderStrokeAdded = false;
+          try {
+            // Add one deterministic animated-FX stroke so this assertion
+            // proves ShaderMaterial colors were converted to portable COLOR_0
+            // data, rather than merely finding a normal PBR material.
+            const before = engine.getStrokeCount?.() ?? 0;
+            engine.addDebugTestStroke?.({
+              ...brushSettings,
+              materialType: 'animated_fx',
+              shaderEffect: 'fire',
+              animatedEffect: 'fire',
+            }, activeLayerId || undefined);
+            debugShaderStrokeAdded = (engine.getStrokeCount?.() ?? before) > before;
+            const glb = await engine.exportGLB?.();
+            if (!glb) return { success: false, reason: 'No GLB returned' };
+            const bytes = new Uint8Array(await glb.arrayBuffer());
+            const magic = bytes.slice(0, 4);
+            const magicStr = String.fromCharCode(...magic);
+            let bakedColorMaterials = 0;
+            try {
+              const jsonLength = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength).getUint32(12, true);
+              const jsonText = new TextDecoder().decode(bytes.slice(20, 20 + jsonLength)).trim();
+              const document = JSON.parse(jsonText);
+              bakedColorMaterials = (document.materials || []).filter((material: any) =>
+                Array.isArray(material?.pbrMetallicRoughness?.baseColorFactor)
+              ).length;
+              const bakedVertexColorPrimitives = (document.meshes || []).flatMap((mesh: any) => mesh.primitives || [])
+                .filter((primitive: any) => primitive?.attributes?.COLOR_0 !== undefined).length;
+              return {
+                success: true,
+                byteLength: bytes.byteLength,
+                magic: magicStr,
+                isValidGlb: magicStr === 'glTF',
+                bakedColorMaterials,
+                bakedVertexColorPrimitives,
+                hasBakedColors: bakedColorMaterials > 0 && bakedVertexColorPrimitives > 0,
+              };
+            } catch (_) {
+              bakedColorMaterials = 0;
+            }
+            return {
+              success: true,
+              byteLength: bytes.byteLength,
+              magic: magicStr,
+              isValidGlb: magicStr === 'glTF',
+              bakedColorMaterials,
+              bakedVertexColorPrimitives: 0,
+              hasBakedColors: bakedColorMaterials > 0,
+            };
+          } catch (err: any) {
+            return { success: false, reason: err?.message };
+          } finally {
+            if (debugShaderStrokeAdded) {
+              try { engine.eraseDebugTestStroke?.(); } catch (_) { /* debug cleanup only */ }
+            }
+          }
+        },
+        exportPngData: () => {
+          try {
+            const canvas = engine.getRenderer?.()?.domElement;
+            if (!canvas) return { success: false, reason: 'No canvas' };
+            const dataUrl = canvas.toDataURL('image/png');
+            return {
+              success: true,
+              dataUrlLength: dataUrl.length,
+              isValidPng: dataUrl.startsWith('data:image/png;base64,'),
+            };
+          } catch (err: any) {
+            return { success: false, reason: err?.message };
+          }
+        },
+        getSystemInfo: async () => {
+          const simulatedOffline = Boolean((window as any).__V22_TEST_SIMULATION_STATE__?.simulateOffline);
+          return {
+            onLine: navigator.onLine,
+            simulatedOffline,
+            onlineState: simulatedOffline ? 'offline' : (navigator.onLine ? 'online' : 'offline'),
+            viewportWidth: window.innerWidth,
+            viewportHeight: window.innerHeight,
+            orientation: window.innerWidth > window.innerHeight ? 'landscape' : 'portrait',
+          };
+        },
+      };
+
+      const handleDebugPointer = (event: PointerEvent) => {
+        const pressure = Number.isFinite(event.pressure) ? event.pressure : 0;
+        const telemetry = debugPointerTelemetryRef.current;
+        telemetry.lastType = event.pointerType || 'unknown';
+        telemetry.lastPressure = Number(pressure.toFixed(3));
+        telemetry.eventCount += 1;
+        telemetry.maxPressure = Math.max(telemetry.maxPressure, pressure);
+      };
+      window.addEventListener('pointerdown', handleDebugPointer, { passive: true });
+      window.addEventListener('pointermove', handleDebugPointer, { passive: true });
+
+      const interval = setInterval(() => {
+        let strokeCount = 0;
+        try {
+          strokeCount = engine.getStrokeCount?.() || 0;
+        } catch (_) {}
+        const cam = engine.getCamera();
+        const pose = cam ? `${cam.position.x.toFixed(2)},${cam.position.y.toFixed(2)},${cam.position.z.toFixed(2)}` : 'none';
+        import('@debug-bridge').then((mod) => {
+          mod.emitTelemetry({
+            strokeCount,
+            cameraPose: pose,
+            autoSaveStatus,
+            activeTool: tool,
+          });
+        });
+      }, 1000);
+      return () => {
+        clearInterval(interval);
+        window.removeEventListener('pointerdown', handleDebugPointer);
+        window.removeEventListener('pointermove', handleDebugPointer);
+        delete (window as any).__V22_TEST_API__;
+        delete (window as any).__V22_TEST_RESULTS__;
+      };
+    }
+  }, [debugAuthorized, engine, autoSaveStatus, tool, activeLayerId, triggerAutoSave]);
 
   useEffect(() => {
     if (!engine) return;
@@ -608,6 +964,9 @@ export function App() {
     inst.setTheme(theme);
     inst.setGrid(showGrid);
     inst.setupDefaultDrawingPlane();
+    const canvasDimensions = CANVAS_FORMATS[canvasFormat];
+    inst.setDrawingCanvasSize(canvasDimensions.width, canvasDimensions.height);
+    inst.setDrawingCanvasOpacity(canvasOpacity);
     inst.toggleDrawingPlane(true);
     inst.setPostProcessSettings(DEFAULT_POST_SETTINGS);
     setGpuInfo(inst.getGPUInfo());
@@ -636,6 +995,9 @@ export function App() {
     inst.onHistoryChange = (u, r) => {
       setCanUndo(u);
       setCanRedo(r);
+      if (u && !getHasOnboarded()) {
+        setHasOnboarded(true);
+      }
     };
     inst.onMetadataUpdate = (meta) => {
       setModelMetadata(meta);
@@ -686,7 +1048,7 @@ export function App() {
         setSnappedShapeNotice((cur) => (cur?.includes(label) ? null : cur));
       }, 2400);
     };
-  }, [triggerAutoSave, activeModelId]);
+  }, [triggerAutoSave, activeModelId, theme, showGrid, canvasFormat, canvasOpacity]);
 
   // Transform Navigator Gizmo Handlers
   const [isGizmoLocked, setIsGizmoLocked] = useState<boolean>(false);
@@ -895,6 +1257,7 @@ export function App() {
           case 'colorStudio': setIsColorStudioOpen(true); break;
           case 'renderSettings': setIsRenderSettingsOpen(true); break;
           case 'export': setIsExportOpen(true); break;
+          case 'deform':
           case 'curveDecimate': setIsDecimateOpen(true); break;
           case 'bentGuide': setIsBentGuideOpen(true); break;
           case 'scaffolding': setIsScaffoldingOpen(true); break;
@@ -971,6 +1334,18 @@ export function App() {
       action,
     });
   }, []);
+
+  const handleClearCanvas = useCallback(() => {
+    handleBeforeDestructiveAction(
+      'Clear canvas?',
+      'This removes every stroke from all layers. The canvas surface and your layer structure stay in place.',
+      'Clear Canvas',
+      () => {
+        engine?.clearAllStrokes();
+        triggerAutoSave('canvas_cleared');
+      }
+    );
+  }, [engine, handleBeforeDestructiveAction, triggerAutoSave]);
 
   const handleWorkLossSave = useCallback(async () => {
     if (!pendingWorkLoss) return;
@@ -1053,6 +1428,19 @@ export function App() {
       setShowPlane((prev) => !prev);
     }
   };
+
+  const handleCanvasFormatChange = useCallback((format: CanvasFormat) => {
+    setCanvasFormat(format);
+    const dimensions = CANVAS_FORMATS[format];
+    engine?.setDrawingCanvasSize(dimensions.width, dimensions.height);
+  }, [engine]);
+
+  const handleCanvasTransparencyChange = useCallback((transparency: number) => {
+    const nextTransparency = Math.min(100, Math.max(0, transparency));
+    const opacity = 1 - nextTransparency / 100;
+    setCanvasOpacity(opacity);
+    engine?.setDrawingCanvasOpacity(opacity);
+  }, [engine]);
 
   // Cycle lighting presets
   const handleCycleLighting = () => {
@@ -1181,9 +1569,8 @@ export function App() {
     };
   }, [engine]);
 
-  const isAnyModalActive =
+  const isNonColorModalActive =
     isIlluminationOpen ||
-    isColorStudioOpen ||
     isModelImporterOpen ||
     isModelsOpen ||
     isSessionModalOpen ||
@@ -1193,7 +1580,15 @@ export function App() {
     isDecimateOpen ||
     isSettingsOpen ||
     isARViewerOpen ||
-    isClipboardOpen;
+    isClipboardOpen ||
+    isScaffoldingOpen ||
+    isRenderSettingsOpen ||
+    isModelDisplayOpen ||
+    isLiquifyOpen;
+
+  // A color editor may block drawing without removing the workspace tools.
+  const isAnyModalActive = isNonColorModalActive ||
+    (isColorStudioOpen && !colorStudioAllowsWorkspaceInteraction);
 
   return (
     <DeviceSimulatorFrame>
@@ -1252,23 +1647,33 @@ export function App() {
       {/* Top Strip (Studio Workspace Surface) */}
       <StudioTopStrip
         projectName={activeModelName}
-        onOpenModelLibrary={() => setIsModelsOpen(true)}
+        autoSaveStatus={autoSaveStatus}
+        lastSavedTime={lastSavedTime}
+        onRetrySave={triggerAutoSave}
         onUndo={handleUndo}
         onRedo={handleRedo}
         canUndo={canUndo}
         canRedo={canRedo}
         theme={theme}
         onOpenIllumination={() => setIsIlluminationOpen(true)}
-        onToggleModelDisplay={() => setIsModelDisplayOpen((prev) => !prev)}
-        onOpenScaffolding={() => setIsScaffoldingOpen(true)}
-        onQuickSave={handleQuickSave}
         onOpenSessions={() => setIsSessionModalOpen(true)}
-        isGizmoActive={gizmoMode !== 'Hidden' && activeController !== 'hidden' && showStudioNavigator}
-        onToggleGizmo={handleToggleGizmo}
-        showPlane={showPlane}
-        onTogglePlane={handleTogglePlane}
-        onToggleTheme={handleToggleTheme}
       />
+
+      {/* Developer & Test Panel (Exclusively rendered when native debug is authorized) */}
+      {typeof __IS_DEBUG_BUILD__ !== 'undefined' && __IS_DEBUG_BUILD__ && debugAuthorized && DebugTestPanel && (
+        <Suspense fallback={null}>
+          <DebugTestPanel
+            open={isDebugPanelOpen}
+            onClose={() => setIsDebugPanelOpen(false)}
+            engine={engine}
+            theme={theme}
+            onToggleTheme={handleToggleTheme}
+            lastAutoSaveTime={lastSavedTime}
+            lastAutoSaveResult={autoSaveStatus}
+            currentTool={tool}
+          />
+        </Suspense>
+      )}
 
       {/* Omnipresent Safety & Recovery Anchor: "Lost? Tap to return to artwork" */}
       <CameraRecoveryPill engine={engine} theme={theme} />
@@ -1286,7 +1691,11 @@ export function App() {
       </DeferredPanel>
 
       {/* Studio Workspace Shell */}
+      {(() => {
+        return null;
+      })()}
       <ProShell
+        isModalActive={Boolean(isNonColorModalActive || openSheet === 'settings')}
         theme={theme}
             engine={engine}
             tool={tool}
@@ -1372,6 +1781,14 @@ export function App() {
             isIlluminationOpen={isIlluminationOpen}
           />
 
+      {/* First-Stroke Teaching Hint (Non-modal, non-blocking) */}
+      <FirstStrokeHint
+        brushSettings={brushSettings}
+        activeGuide={activeGuide}
+        theme={theme}
+        hidden={Boolean(isAnyModalActive || openSheet !== null)}
+      />
+
       {/* FPS & Input Lag Diagnostics Counter */}
       {showPerformanceStats && (
         <FpsCounter
@@ -1393,12 +1810,13 @@ export function App() {
 
       {/* 3D Navigation Controller: Option 3 Sphere Navigator */}
       {gizmoMode !== 'Hidden' && activeController !== 'hidden' && showStudioNavigator &&
-        !isModelsOpen && !isExportOpen &&
-        !isIlluminationOpen && !isColorStudioOpen && !isARViewerOpen && !isClipboardOpen && (
+        !isAnyModalActive && !isColorStudioOpen && openSheet === null && !studioShelfOpen && (
           navigatorStyle === 'sphere' ? (
             <Option3SphereNavigator
               engine={engine}
               theme={theme}
+              targetScope={targetScope}
+              onSelectTargetScope={handleSelectTargetScope}
               layers={layers}
               activeLayerId={activeLayerId}
               onSelectLayer={handleSelectLayer}
@@ -1408,31 +1826,42 @@ export function App() {
               navigatorLayout={navigatorStyle}
               onNavigatorLayoutChange={handleNavigatorStyleChange}
               onClose={() => handleControllerChange('hidden')}
+              navigatorSensitivity={navigatorSensitivity}
+              onSensitivityChange={setNavigatorSensitivity}
+              projectionMode={projectionMode}
+              onToggleProjection={handleToggleProjection}
             />
           ) : (
             <JoystickNavigator
               engine={engine}
               theme={theme}
               layout={navigatorStyle}
-              onLayoutChange={handleNavigatorStyleChange}
+              targetScope={targetScope}
+              onSelectTargetScope={handleSelectTargetScope}
+              layers={layers}
+              activeLayerId={activeLayerId}
+              onSelectLayer={handleSelectLayer}
+              navigatorSensitivity={navigatorSensitivity}
+              onSensitivityChange={setNavigatorSensitivity}
+              projectionMode={projectionMode}
+              onToggleProjection={handleToggleProjection}
               onClose={() => handleControllerChange('hidden')}
             />
           )
       )}
 
-      {/* 3D Navigator Floating Restore Pill when Gizmo is Closed / Hidden */}
+      {/* 3D Navigator Floating Restore Pill when View controls are Closed / Hidden */}
       {(gizmoMode === 'Hidden' || activeController === 'hidden' || !showStudioNavigator) &&
-        !isModelsOpen && !isExportOpen &&
-        !isIlluminationOpen && !isColorStudioOpen && !isARViewerOpen && !isClipboardOpen && (
+        !isAnyModalActive && !isColorStudioOpen && openSheet === null && !studioShelfOpen && (
           <button
             type="button"
             onClick={() => handleToggleNavigator(true)}
-            className="fixed bottom-[max(20px,env(safe-area-inset-bottom))] right-[max(20px,env(safe-area-inset-right))] z-40 flex items-center gap-2 rounded-full border border-black/10 bg-white/90 px-3.5 py-2 text-xs font-semibold text-neutral-800 shadow-xl backdrop-blur-md transition-all hover:scale-105 hover:bg-white active:scale-95 dark:border-white/15 dark:bg-[#1a1d24]/90 dark:text-neutral-100 dark:hover:bg-[#222630]"
-            aria-label="Reopen 3D Gizmo Navigator"
-            title="Reopen 3D Gizmo Navigator"
+            className="fixed bottom-[max(20px,env(safe-area-inset-bottom))] right-[max(20px,env(safe-area-inset-right))] z-40 flex min-h-[44px] items-center gap-2 rounded-full border border-black/10 bg-white/90 px-3.5 py-2 text-xs font-semibold text-neutral-800 shadow-xl backdrop-blur-md transition-all hover:scale-105 hover:bg-white active:scale-95 dark:border-white/15 dark:bg-[#1a1d24]/90 dark:text-neutral-100 dark:hover:bg-[#222630]"
+            aria-label="Reopen View controls"
+            title="Reopen View controls"
           >
             <Compass className="h-4 w-4 text-sky-500" strokeWidth={2.2} />
-            <span>Gizmo</span>
+            <span>View controls</span>
           </button>
       )}
 
@@ -1543,6 +1972,7 @@ export function App() {
         setIsARViewerOpen={setIsARViewerOpen}
         isColorStudioOpen={isColorStudioOpen}
         setIsColorStudioOpen={setIsColorStudioOpen}
+        onColorStudioInteractionModeChange={setColorStudioAllowsWorkspaceInteraction}
         brushSettings={brushSettings}
         setBrushSettings={setBrushSettings}
         setTool={setTool}
@@ -1570,6 +2000,11 @@ export function App() {
         onToggleGrid={handleToggleGrid}
         showPlane={showPlane}
         onTogglePlane={handleTogglePlane}
+        canvasFormat={canvasFormat}
+        onCanvasFormatChange={handleCanvasFormatChange}
+        canvasTransparency={Math.round((1 - canvasOpacity) * 100)}
+        onCanvasTransparencyChange={handleCanvasTransparencyChange}
+        onClearCanvas={handleClearCanvas}
         modelDisplayMode={modelDisplayMode}
         onSetModelDisplayMode={(mode) => {
           setModelDisplayMode(mode);

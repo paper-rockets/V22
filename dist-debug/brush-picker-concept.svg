@@ -1,0 +1,152 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="420" height="900" viewBox="0 0 420 900" role="img" aria-labelledby="title desc">
+  <title id="title">Brush picker interface concept</title>
+  <desc id="desc">A mobile brush panel organized into Shape, Placement, Style, and Erase controls.</desc>
+  <defs>
+    <filter id="panelShadow" x="-20%" y="-20%" width="140%" height="160%">
+      <feDropShadow dx="0" dy="10" stdDeviation="18" flood-color="#253238" flood-opacity=".13"/>
+    </filter>
+    <filter id="softShadow" x="-30%" y="-30%" width="160%" height="180%">
+      <feDropShadow dx="0" dy="3" stdDeviation="5" flood-color="#20333a" flood-opacity=".12"/>
+    </filter>
+    <linearGradient id="tube" x1="0" y1="0" x2="1" y2="1">
+      <stop stop-color="#97edf5"/>
+      <stop offset=".45" stop-color="#18a6bc"/>
+      <stop offset="1" stop-color="#0b5668"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="0" y1="0" x2="1" y2="0">
+      <stop stop-color="#21b9ca" stop-opacity=".15"/>
+      <stop offset=".5" stop-color="#d9fdff"/>
+      <stop offset="1" stop-color="#21b9ca" stop-opacity=".15"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="420" height="900" fill="#d8d2c7"/>
+  <path d="M0 130H420M0 170H420M0 210H420" stroke="#eeeae3" opacity=".7"/>
+  <path d="M70 90V270M140 90V270M210 90V270M280 90V270M350 90V270" stroke="#eeeae3" opacity=".38"/>
+
+  <g filter="url(#panelShadow)">
+    <path d="M18 34Q18 18 34 18H386Q402 18 402 34V866Q402 882 386 882H34Q18 882 18 866Z" fill="#f7f4ee"/>
+  </g>
+
+  <g font-family="Inter, ui-sans-serif, system-ui, sans-serif" fill="#172126">
+    <text x="40" y="62" font-size="23" font-weight="700" letter-spacing="-.5">Brush</text>
+    <text x="40" y="84" font-size="13" fill="#627078">Build the stroke you want.</text>
+    <g transform="translate(342 43)">
+      <circle cx="16" cy="16" r="16" fill="#ebe8e1"/>
+      <path d="M11 11l10 10m0-10L11 21" fill="none" stroke="#334148" stroke-width="1.8" stroke-linecap="round"/>
+    </g>
+
+    <text x="40" y="126" font-size="14" font-weight="700">Shape</text>
+    <text x="358" y="126" text-anchor="end" font-size="12" fill="#6c767b">Stroke form</text>
+
+    <!-- Selected Ribbon -->
+    <g transform="translate(40 141)" filter="url(#softShadow)">
+      <rect width="163" height="84" rx="14" fill="#e4f7f8" stroke="#148da0" stroke-width="1.5"/>
+      <rect x="12" y="12" width="52" height="52" rx="12" fill="#fff"/>
+      <path d="M22 47C29 30 40 47 54 25" fill="none" stroke="#172126" stroke-width="7" stroke-linecap="round" opacity=".13"/>
+      <path d="M22 47C29 30 40 47 54 25" fill="none" stroke="#172126" stroke-width="2.2" stroke-linecap="round"/>
+      <circle cx="146" cy="17" r="10" fill="#148da0"/>
+      <path d="M142 17l3 3 5-6" fill="none" stroke="#fff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="76" y="35" font-size="14" font-weight="700">Ribbon</text>
+      <text x="76" y="55" font-size="12" fill="#52636b">Flat stroke</text>
+    </g>
+
+    <!-- Tube -->
+    <g transform="translate(217 141)">
+      <rect width="163" height="84" rx="14" fill="#eeece7"/>
+      <rect x="12" y="12" width="52" height="52" rx="12" fill="#faf9f6"/>
+      <path d="M22 47C29 30 40 47 54 25" fill="none" stroke="#c2c7c6" stroke-width="8" stroke-linecap="round"/>
+      <path d="M22 47C29 30 40 47 54 25" fill="none" stroke="url(#tube)" stroke-width="5" stroke-linecap="round"/>
+      <text x="76" y="35" font-size="14" font-weight="650">Tube</text>
+      <text x="76" y="55" font-size="12" fill="#52636b">Round stroke</text>
+    </g>
+
+    <text x="40" y="264" font-size="14" font-weight="700">Placement</text>
+    <text x="358" y="264" text-anchor="end" font-size="12" fill="#6c767b">Where it draws</text>
+    <g transform="translate(40 279)">
+      <rect width="340" height="54" rx="14" fill="#ebe8e1"/>
+      <rect x="4" y="4" width="166" height="46" rx="11" fill="#fff" filter="url(#softShadow)"/>
+      <g transform="translate(18 14)">
+        <path d="M4 16c5-11 12-11 18 0" fill="none" stroke="#148da0" stroke-width="2" stroke-linecap="round"/>
+        <path d="M3 21h20" stroke="#879499" stroke-width="1.4" stroke-dasharray="2 3"/>
+      </g>
+      <text x="53" y="33" font-size="13" font-weight="700">Surface</text>
+      <g transform="translate(190 13)">
+        <path d="M4 20c3-13 10-17 20-15" fill="none" stroke="#52636b" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="4" cy="20" r="2" fill="#52636b"/><circle cx="24" cy="5" r="2" fill="#52636b"/>
+      </g>
+      <text x="226" y="33" font-size="13" font-weight="600">Free space</text>
+    </g>
+
+    <text x="40" y="374" font-size="14" font-weight="700">Style</text>
+    <text x="358" y="374" text-anchor="end" font-size="12" fill="#6c767b">How it looks</text>
+
+    <!-- Style rows -->
+    <g transform="translate(40 389)">
+      <g>
+        <rect width="104" height="76" rx="14" fill="#e4f7f8" stroke="#148da0" stroke-width="1.5"/>
+        <path d="M24 30h25" stroke="#172126" stroke-width="4" stroke-linecap="round"/>
+        <text x="14" y="59" font-size="12.5" font-weight="700">Solid</text>
+      </g>
+      <g transform="translate(118)">
+        <rect width="104" height="76" rx="14" fill="#eeece7"/>
+        <path d="M24 30h25" stroke="#2ebfd0" stroke-width="12" opacity=".18" stroke-linecap="round"/>
+        <path d="M24 30h25" stroke="#168fa2" stroke-width="3" stroke-linecap="round"/>
+        <text x="14" y="59" font-size="12.5" font-weight="650">Glow</text>
+      </g>
+      <g transform="translate(236)">
+        <rect width="104" height="76" rx="14" fill="#eeece7"/>
+        <g fill="#334148"><circle cx="25" cy="22" r="1.8"/><circle cx="34" cy="27" r="1.4"/><circle cx="45" cy="20" r="2"/><circle cx="53" cy="29" r="1.3"/><circle cx="28" cy="35" r="1.1"/><circle cx="43" cy="36" r="1.6"/></g>
+        <text x="14" y="59" font-size="12.5" font-weight="650">Spray</text>
+      </g>
+    </g>
+
+    <g transform="translate(40 477)">
+      <g>
+        <rect width="104" height="76" rx="14" fill="#eeece7"/>
+        <g fill="#334148"><circle cx="25" cy="24" r="2"/><circle cx="35" cy="24" r="2"/><circle cx="45" cy="24" r="2"/><circle cx="30" cy="34" r="2"/><circle cx="40" cy="34" r="2"/><circle cx="50" cy="34" r="2"/></g>
+        <text x="14" y="59" font-size="12.5" font-weight="650">Halftone</text>
+      </g>
+      <g transform="translate(118)">
+        <rect width="104" height="76" rx="14" fill="#eeece7"/>
+        <path d="M22 38l20-20m-12 23l20-20m-12 23l20-20" stroke="#334148" stroke-width="1.5" stroke-linecap="round"/>
+        <text x="14" y="59" font-size="12.5" font-weight="650">Hatch</text>
+      </g>
+      <g transform="translate(236)">
+        <rect width="104" height="76" rx="14" fill="#eeece7"/>
+        <path d="M22 38l20-20m-12 23l20-20m-12 23l20-20M22 22l20 20m-12-23l20 20m-12-23l20 20" stroke="#334148" stroke-width="1.25" stroke-linecap="round"/>
+        <text x="14" y="59" font-size="12.5" font-weight="650">Crosshatch</text>
+      </g>
+    </g>
+
+    <g transform="translate(40 577)">
+      <text y="0" font-size="14" font-weight="700">Stroke</text>
+      <text x="340" y="0" text-anchor="end" font-size="12" fill="#6c767b">26 px · 82%</text>
+      <rect y="18" width="340" height="116" rx="14" fill="#eeece7"/>
+      <text x="16" y="48" font-size="12" fill="#52636b">Size</text>
+      <rect x="62" y="41" width="246" height="6" rx="3" fill="#cbc9c4"/>
+      <rect x="62" y="41" width="112" height="6" rx="3" fill="#148da0"/>
+      <circle cx="174" cy="44" r="10" fill="#172126"/>
+      <text x="16" y="96" font-size="12" fill="#52636b">Opacity</text>
+      <rect x="62" y="89" width="246" height="6" rx="3" fill="#cbc9c4"/>
+      <rect x="62" y="89" width="201" height="6" rx="3" fill="#148da0"/>
+      <circle cx="263" cy="92" r="10" fill="#172126"/>
+    </g>
+
+    <g transform="translate(40 735)">
+      <rect width="340" height="58" rx="14" fill="#ebe8e1"/>
+      <g transform="translate(16 13)">
+        <path d="M7 22l15-15 7 7-15 15H7v-7Z" fill="none" stroke="#334148" stroke-width="1.8" stroke-linejoin="round"/>
+        <path d="M18 11l7 7" stroke="#334148" stroke-width="1.8"/>
+      </g>
+      <text x="62" y="26" font-size="13" font-weight="700">Erase &amp; mask</text>
+      <text x="62" y="43" font-size="11.5" fill="#627078">Eraser and Cutout Mask</text>
+      <path d="M315 24l7 6-7 6" fill="none" stroke="#52636b" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+    </g>
+
+    <g transform="translate(40 815)">
+      <rect width="340" height="46" rx="14" fill="#172126"/>
+      <text x="170" y="29" text-anchor="middle" font-size="13.5" font-weight="700" fill="#fff">Done</text>
+    </g>
+  </g>
+</svg>

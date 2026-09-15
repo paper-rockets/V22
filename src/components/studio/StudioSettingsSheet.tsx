@@ -25,6 +25,8 @@ import {
   PanelLeft,
   EyeOff,
   SunMedium,
+  Trash2,
+  Droplets,
 } from 'lucide-react';
 import { StudioSheet } from './StudioSheet';
 import { closeSheet } from './panelStore';
@@ -62,6 +64,11 @@ export interface StudioSettingsSheetProps {
   onToggleGrid?: () => void;
   showPlane?: boolean;
   onTogglePlane?: () => void;
+  canvasFormat?: 'portrait' | 'square' | 'landscape';
+  onCanvasFormatChange?: (format: 'portrait' | 'square' | 'landscape') => void;
+  canvasTransparency?: number;
+  onCanvasTransparencyChange?: (transparency: number) => void;
+  onClearCanvas?: () => void;
   modelDisplayMode: 'texture' | 'clay';
   onSetModelDisplayMode: (mode: 'texture' | 'clay') => void;
   onOpenIllumination?: () => void;
@@ -158,6 +165,11 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
   onToggleGrid,
   showPlane = false,
   onTogglePlane,
+  canvasFormat = 'portrait',
+  onCanvasFormatChange,
+  canvasTransparency = 0,
+  onCanvasTransparencyChange,
+  onClearCanvas,
   modelDisplayMode,
   onSetModelDisplayMode,
   onOpenIllumination,
@@ -289,125 +301,7 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
         </Row>
       )}
 
-      {onNavigatorStyleChange && (
-        <Row icon={Compass} label="Navigator Tool" hint="Active 3D navigation interface" isLight={isLight}>
-          <div className="grid grid-cols-2 gap-1 w-44">
-            <button
-              type="button"
-              onClick={() => {
-                haptics.trigger('light');
-                onNavigatorStyleChange('sphere');
-              }}
-              className={pill(navigatorStyle === 'sphere')}
-              title="Sphere: axis gimbal navigator"
-            >
-              Sphere
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                haptics.trigger('light');
-                onNavigatorStyleChange('disc');
-              }}
-              className={pill(navigatorStyle === 'disc')}
-            >
-              Disc
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                haptics.trigger('light');
-                onNavigatorStyleChange('petal');
-              }}
-              className={pill(navigatorStyle === 'petal')}
-              title="Petal: direct view navigator"
-            >
-              Petal
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                haptics.trigger('light');
-                onNavigatorStyleChange('collar');
-              }}
-              className={pill(navigatorStyle === 'collar')}
-              title="Collar: orbit ring navigator"
-            >
-              Collar
-            </button>
-          </div>
-        </Row>
-      )}
 
-      {onSensitivityChange && (
-        <Row icon={Compass} label="Navigator Sensitivity" hint={`Speed and responsiveness (${navigatorSensitivity.toFixed(2)}x)`} isLight={isLight}>
-          <div className="flex flex-col gap-1.5 w-40">
-            <div className="flex items-center gap-1">
-              {[0.25, 0.5, 1.0, 2.0].map((s) => (
-                <button
-                  key={s}
-                  type="button"
-                  onClick={() => {
-                    haptics.trigger('light');
-                    onSensitivityChange(s);
-                  }}
-                  className={`flex-1 min-h-[44px] py-1 text-xs font-mono font-bold rounded-lg border transition-all ${
-                    Math.abs(navigatorSensitivity - s) < 0.05
-                      ? isLight
-                        ? 'bg-neutral-900 border-neutral-900 text-white'
-                        : 'bg-white border-white text-zinc-950'
-                      : isLight
-                      ? 'bg-neutral-100 border-neutral-300 text-neutral-700 hover:bg-neutral-200'
-                      : 'bg-neutral-800 border-neutral-700 text-neutral-300 hover:bg-neutral-700'
-                  }`}
-                >
-                  {s}x
-                </button>
-              ))}
-            </div>
-            <input
-              type="range"
-              min="0.1"
-              max="2.0"
-              step="0.05"
-              value={navigatorSensitivity}
-              onChange={(e) => onSensitivityChange(parseFloat(e.target.value))}
-              className={`w-full h-1.5 rounded cursor-pointer ${isLight ? 'accent-neutral-900 bg-neutral-200' : 'accent-white bg-neutral-800'}`}
-            />
-          </div>
-        </Row>
-      )}
-
-      {onToggleProjection && (
-        <Row icon={Box} label="Camera Projection" hint="3D perspective depth vs isometric flat view" isLight={isLight}>
-          <div className="flex gap-1 w-40">
-            <button
-              type="button"
-              onClick={() => {
-                if (projectionMode !== 'perspective') {
-                  haptics.trigger('light');
-                  onToggleProjection();
-                }
-              }}
-              className={pill(projectionMode === 'perspective')}
-            >
-              Perspective
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                if (projectionMode !== 'orthographic') {
-                  haptics.trigger('light');
-                  onToggleProjection();
-                }
-              }}
-              className={pill(projectionMode === 'orthographic')}
-            >
-              Flat
-            </button>
-          </div>
-        </Row>
-      )}
 
       <Row icon={Hand} label="Touch Input Drawing" hint="Enable touch drawing when stylus is unavailable" isLight={isLight}>
         <Toggle on={fingerDraw} onChange={onToggleFingerDraw} label="Touch Input Drawing" isLight={isLight} />
@@ -451,18 +345,78 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
         </Row>
       )}
 
-      <Row icon={Volume2} label="Tactile Sound" hint="Auditory clicks and vibration feedback" isLight={isLight}>
+            <Row icon={Volume2} label="Tactile Sound" hint="Auditory clicks and vibration feedback" isLight={isLight}>
         <Toggle on={effectiveSound} onChange={handleToggleSoundFeedback} label="Tactile Sound" isLight={isLight} />
       </Row>
 
-      {onToggleNavigator && (
-        <Row icon={Compass} label="Spatial Navigator" hint="Corner rotation and positioning controller" isLight={isLight}>
-          <Toggle on={showNavigator} onChange={onToggleNavigator} label="Spatial Navigator" isLight={isLight} />
+      {/* 2. SCENE */}
+      <SectionHeader title="Scene" isLight={isLight} />
+
+      {onCanvasFormatChange && (
+        <Row icon={Box} label="Canvas size" hint="Resize the drawing surface without clearing artwork" isLight={isLight}>
+          <div className="grid w-40 grid-cols-3 gap-1" role="group" aria-label="Canvas size">
+            {([
+              ['portrait', 'Portrait'],
+              ['square', 'Square'],
+              ['landscape', 'Wide'],
+            ] as const).map(([format, label]) => (
+              <button
+                key={format}
+                type="button"
+                onClick={() => {
+                  haptics.trigger('light');
+                  onCanvasFormatChange(format);
+                }}
+                className={`min-h-[40px] rounded-lg px-1 text-[10px] font-bold transition-colors ${
+                  canvasFormat === format
+                    ? isLight ? 'bg-neutral-900 text-white' : 'bg-white text-zinc-950'
+                    : isLight ? 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200' : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
+                }`}
+                aria-pressed={canvasFormat === format}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
         </Row>
       )}
 
-      {/* 2. SCENE */}
-      <SectionHeader title="Scene" isLight={isLight} />
+      {onCanvasTransparencyChange && (
+        <Row icon={Droplets} label="Canvas transparency" hint="Let the 3D scene show through the drawing surface" isLight={isLight}>
+          <div className="w-40">
+            <div className="mb-1 flex justify-between text-[10px] font-semibold tabular-nums opacity-65">
+              <span>Opaque</span>
+              <span>{Math.round(canvasTransparency)}%</span>
+            </div>
+            <input
+              type="range"
+              min="0"
+              max="100"
+              step="5"
+              value={canvasTransparency}
+              onChange={(event) => onCanvasTransparencyChange(Number(event.target.value))}
+              onPointerUp={() => haptics.trigger('light')}
+              className="h-8 w-full cursor-pointer accent-sky-500"
+              aria-label="Canvas transparency"
+            />
+          </div>
+        </Row>
+      )}
+
+      {onClearCanvas && (
+        <Row icon={Trash2} label="Clear canvas" hint="Remove every stroke, while keeping the canvas and layers" isLight={isLight}>
+          <button
+            type="button"
+            onClick={() => {
+              closeSheet();
+              onClearCanvas();
+            }}
+            className="min-h-[44px] rounded-lg border border-red-500/35 px-3 text-xs font-bold text-red-600 transition-colors hover:bg-red-500/10 dark:text-red-300"
+          >
+            Clear canvas
+          </button>
+        </Row>
+      )}
 
       {onToggleGrid && (
         <Row icon={Grid} label="Ground Grid" hint="Display reference 3D ground plane grid" isLight={isLight}>
@@ -525,7 +479,7 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
           <SectionHeader title="Share & Export" isLight={isLight} />
 
           {onOpenSessions && (
-            <Row icon={FolderArchive} label="Project Sessions" hint="Save and switch between editable sessions with undo history" isLight={isLight}>
+            <Row icon={FolderArchive} label="Projects" hint="Open, save, or restore" isLight={isLight}>
               <button type="button" onClick={onOpenSessions} className={actionBtn}>
                 <FolderArchive className="w-4 h-4" />
                 <span>Manage Sessions</span>

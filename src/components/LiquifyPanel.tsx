@@ -91,7 +91,7 @@ export const LiquifyPanel: React.FC<LiquifyPanelProps> = ({
       className={
         inline
           ? `pr-surface w-full select-none rounded-xl border p-3.5 space-y-3 font-sans ${isLight ? 'bg-white border-black/10' : 'bg-[#18191d] border-white/10'}`
-          : `pr-surface paperrocket-context-panel fixed left-[76px] sm:left-[88px] top-1/2 -translate-y-1/2 z-50 w-[300px] max-w-[calc(100vw-6rem)] max-h-[72vh] overflow-y-auto select-none shadow-2xl rounded-2xl border p-3.5 space-y-3 font-sans animate-in fade-in slide-in-from-left-2 duration-150 ${isLight ? 'bg-white border-black/10 shadow-black/10' : 'bg-[#18191d] border-neutral-800 shadow-black/50'}`
+          : `pr-surface paperrocket-context-panel fixed left-[76px] sm:left-[88px] top-1/2 -translate-y-1/2 z-50 w-[var(--studio-menu-wide)] max-w-[min(var(--studio-menu-wide),calc(100vw-6rem))] max-h-[72vh] overflow-y-auto select-none shadow-2xl rounded-2xl border p-3.5 space-y-3 font-sans animate-in fade-in slide-in-from-left-2 duration-150 ${isLight ? 'bg-white border-black/10 shadow-black/10' : 'bg-[#18191d] border-neutral-800 shadow-black/50'}`
       }
     >
       {/* Header */}

@@ -1,0 +1,108 @@
+{
+  "timestamp": "2026-09-14T16:33:05.698Z",
+  "device": {
+    "serial": "192.168.0.33:34205",
+    "manufacturer": "samsung",
+    "model": "SM-P610",
+    "androidVersion": "13",
+    "resolution": "Physical size: 1200x2000",
+    "initialRotation": "1"
+  },
+  "buildVariants": {
+    "debugApk": {
+      "path": "android\\app\\build\\outputs\\apk\\debug\\app-debug.apk",
+      "sha256": "bdfbfdcf5052de49036439893f99100649027a4df7ad1ddeaa8e03b56e805d80"
+    },
+    "benchmarkApk": {
+      "path": "android\\app\\build\\outputs\\apk\\benchmark\\app-benchmark.apk",
+      "sha256": "51610f9685a089dfd1f6b8f4ff2d37d47b8cd5da278bd7d92cb67bd937690752"
+    }
+  },
+  "tests": [
+    {
+      "name": "A. Installation and Launch",
+      "status": "PASS",
+      "details": "App launched cleanly from stopped state and acquired window focus"
+    },
+    {
+      "name": "B. Primary Tool Navigation & Back Key",
+      "status": "PASS",
+      "details": "Android Back key closed topmost surface and restored active workspace"
+    },
+    {
+      "name": "C. Safe Deterministic Drawing",
+      "status": "PASS",
+      "details": "Drawing strokes executed cleanly with no uncaught exceptions"
+    },
+    {
+      "name": "D. View Controls & Navigator",
+      "status": "PASS",
+      "details": "Navigator gestures registered without crash or modal masking"
+    },
+    {
+      "name": "E. Modal Containment",
+      "status": "PASS",
+      "details": "Top menu opens and dismisses cleanly via Android Back key"
+    },
+    {
+      "name": "F. Orientation Adaptation",
+      "status": "PASS",
+      "details": "App transitioned between portrait and landscape without ANR or crash"
+    },
+    {
+      "name": "G. Lifecycle and Recovery",
+      "status": "PASS",
+      "details": "Application successfully survived backgrounding and restored active workspace"
+    },
+    {
+      "name": "H. Export & Storage Isolation",
+      "status": "PASS",
+      "details": "Verified debug storage namespace is completely isolated: total 77\r"
+    },
+    {
+      "name": "I. Offline Application Behavior",
+      "status": "PASS",
+      "details": "Capacitor local assets served from APK cache; zero server dependency for drawing"
+    },
+    {
+      "name": "J. Accessibility",
+      "status": "PASS",
+      "details": "Accessibility tree renders WebView surface cleanly. WebView detected: true"
+    },
+    {
+      "name": "K. Stylus Diagnostics",
+      "status": "PASS",
+      "details": "Hardware input scanner verified. S-Pen / Stylus hardware detected: true"
+    }
+  ],
+  "performance": {
+    "startup": {
+      "iterations": [
+        819,
+        852,
+        1849
+      ],
+      "medianMs": 852,
+      "p90Ms": 1849
+    },
+    "rendering": {
+      "totalFrames": 95,
+      "jankyFrames": 6,
+      "jankyPercent": "6.32%"
+    }
+  },
+  "cleanup": {
+    "orientationRestored": true,
+    "originalRotation": "1",
+    "stoppedPackages": [
+      "com.paperrockets.v22.debug",
+      "com.paperrockets.v22.benchmark"
+    ],
+    "productionDataUntouched": true
+  },
+  "totals": {
+    "pass": 11,
+    "fail": 0,
+    "infra": 0
+  }
+}

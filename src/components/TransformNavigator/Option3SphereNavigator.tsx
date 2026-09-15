@@ -3,6 +3,8 @@ import * as THREE from 'three';
 import { StudioEngine } from '../../core/studioEngine';
 import { TransformTargetScope } from '../../types';
 import { haptics } from '../../utils/haptics';
+import { ChevronDown, SlidersHorizontal } from 'lucide-react';
+import { NavigatorSettings } from './NavigatorSettings';
 import './navigatorStyles.css';
 
 export interface Option3SphereNavigatorProps {
@@ -22,6 +24,10 @@ export interface Option3SphereNavigatorProps {
   onSelectModel?: (id: string) => void;
   navigatorLayout?: 'sphere' | 'disc' | 'petal' | 'collar';
   onNavigatorLayoutChange?: (layout: 'sphere' | 'disc' | 'petal' | 'collar') => void;
+  navigatorSensitivity?: number;
+  onSensitivityChange?: (sens: number) => void;
+  projectionMode?: 'perspective' | 'orthographic';
+  onToggleProjection?: () => void;
 }
 
 interface TargetItem {
@@ -66,6 +72,8 @@ const STORE = 'nv.layout.v1';
 export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
   engine,
   theme = 'dark',
+  targetScope = 'all',
+  onSelectTargetScope,
   layers = [],
   activeLayerId,
   onSelectLayer,
@@ -74,9 +82,15 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
   onSelectModel,
   navigatorLayout = 'sphere',
   onNavigatorLayoutChange,
-}) => {
+  onClose,
+  navigatorSensitivity = 1.0,
+  onSensitivityChange,
+  projectionMode = 'perspective',
+  onToggleProjection,
+}: Option3SphereNavigatorProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const [isListOpen, setIsListOpen] = useState<boolean>(false);
+  const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const [targetsList, setTargetsList] = useState<TargetItem[]>([]);
   const [currentIdx, setCurrentIdx] = useState<number>(0);
   const [mode, setModeState] = useState<'move' | 'rotate' | 'look'>('look');
@@ -108,6 +122,9 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
 
   const objRef = useRef({ pos: new THREE.Vector3(), quat: new THREE.Quaternion() });
   const dispRef = useRef({ pos: new THREE.Vector3(), quat: new THREE.Quaternion() });
+  const committedPoseRef = useRef({ pos: new THREE.Vector3(), quat: new THREE.Quaternion() });
+  const scopeRef = useRef(targetScope);
+  scopeRef.current = targetScope;
   const targetObjRef = useRef<THREE.Object3D | null>(null);
   const targetsRef = useRef<TargetItem[]>([]);
   const currentRef = useRef<number>(0);
@@ -226,11 +243,12 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
   }, []);
 
   const safeBox = useCallback(() => {
+    const viewport = window.visualViewport;
     return {
-      left: 0,
-      top: 0,
-      right: window.innerWidth,
-      bottom: window.innerHeight
+      left: (viewport?.offsetLeft ?? 0) + 12,
+      top: Math.max(56, (viewport?.offsetTop ?? 0) + 12),
+      right: (viewport?.offsetLeft ?? 0) + (viewport?.width ?? window.innerWidth) - 12,
+      bottom: (viewport?.offsetTop ?? 0) + (viewport?.height ?? window.innerHeight) - 12,
     };
   }, []);
 
@@ -242,9 +260,9 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
     if (nv.dataset.menu !== 'open') return;
 
     const s = safeBox();
-    menu.style.maxHeight = Math.min(480, Math.max(160, s.bottom - s.top)) + 'px';
+    menu.style.maxHeight = Math.max(100, s.bottom - s.top) + 'px';
     const r = dock.getBoundingClientRect();
-    const w = menu.offsetWidth || 198;
+    const w = menu.offsetWidth || 260;
     const h = menu.offsetHeight || 380;
     const gap = 8;
 
@@ -280,7 +298,6 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
       localStorage.setItem(STORE, JSON.stringify({
         ax: +anchorRef.current.ax.toFixed(4),
         ay: +anchorRef.current.ay.toFixed(4),
-        mode: gzRef.current.mode,
         rotStep: gzRef.current.rotStep,
         moveStep: gzRef.current.moveStep
       }));
@@ -291,23 +308,24 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
     const dock = dockRef.current;
     if (!dock) return;
     const dw = dock.offsetWidth || 160;
-    const dh = dock.offsetHeight || 160;
-    const isPortraitOrMobile = window.innerWidth < 840 || window.innerHeight > window.innerWidth;
-    const bottomClearance = isPortraitOrMobile ? 90 : 0;
-    const minLeft = 0;
-    const maxLeft = Math.max(0, window.innerWidth - dw);
-    const minTop = 0;
-    const maxTop = Math.max(0, window.innerHeight - dh - bottomClearance);
+    const dh = (dock.offsetHeight && dock.offsetHeight > 100) ? dock.offsetHeight : (gzRef.current.size || 160);
+    const rightMargin = 28;
+    const bottomClearance = 12;
+    const topClearance = 52;
+    const minLeft = 16;
+    const maxLeft = Math.max(minLeft, window.innerWidth - dw - rightMargin);
+    const minTop = topClearance;
+    const maxTop = Math.max(minTop, window.innerHeight - dh - bottomClearance);
     const left = Math.max(minLeft, Math.min(maxLeft, x));
     const top = Math.max(minTop, Math.min(maxTop, y));
     dock.style.left = Math.round(left) + 'px';
     dock.style.top = Math.round(top) + 'px';
     if (remember) {
-      const denomW = Math.max(1, window.innerWidth - dw);
-      const denomH = Math.max(1, window.innerHeight - dh - bottomClearance);
+      const denomW = Math.max(1, maxLeft - minLeft);
+      const denomH = Math.max(1, maxTop - minTop);
       anchorRef.current = {
-        ax: Math.max(0, Math.min(1, left / denomW)),
-        ay: Math.max(0, Math.min(1, top / denomH)),
+        ax: Math.max(0, Math.min(1, (left - minLeft) / denomW)),
+        ay: Math.max(0, Math.min(1, (top - minTop) / denomH)),
       };
       saveLayout();
     }
@@ -317,12 +335,15 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
   const placeFromAnchor = useCallback(() => {
     const dock = dockRef.current;
     const dw = dock ? dock.offsetWidth : 160;
-    const dh = dock ? dock.offsetHeight : 160;
-    const isPortraitOrMobile = window.innerWidth < 840 || window.innerHeight > window.innerWidth;
-    const bottomClearance = isPortraitOrMobile ? 90 : 0;
-    const denomW = Math.max(1, window.innerWidth - dw);
-    const denomH = Math.max(1, window.innerHeight - dh - bottomClearance);
-    place(anchorRef.current.ax * denomW, anchorRef.current.ay * denomH);
+    const dh = (dock && dock.offsetHeight > 100) ? dock.offsetHeight : (gzRef.current.size || 160);
+    const rightMargin = 28;
+    const bottomClearance = 12;
+    const topClearance = 52;
+    const minLeft = 16;
+    const maxLeft = Math.max(minLeft, window.innerWidth - dw - rightMargin);
+    const minTop = topClearance;
+    const maxTop = Math.max(minTop, window.innerHeight - dh - bottomClearance);
+    place(minLeft + anchorRef.current.ax * (maxLeft - minLeft), minTop + anchorRef.current.ay * (maxTop - minTop));
   }, [place]);
 
   const setMenu = useCallback((open: boolean) => {
@@ -338,6 +359,18 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
       setIsListOpen(false);
     }
   }, [positionMenu]);
+
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    const frame = requestAnimationFrame(positionMenu);
+    window.addEventListener('resize', positionMenu);
+    window.visualViewport?.addEventListener('resize', positionMenu);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('resize', positionMenu);
+      window.visualViewport?.removeEventListener('resize', positionMenu);
+    };
+  }, [isMenuOpen, showAdvanced, isListOpen, positionMenu]);
 
   // Outline for active target (only show during active Transform Move/Rotate, never in Look mode)
   const markSelection = useCallback(() => {
@@ -367,13 +400,37 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
     targetObj.updateWorldMatrix(true, false);
     targetObj.getWorldPosition(objRef.current.pos);
     targetObj.getWorldQuaternion(objRef.current.quat);
+    if (scopeRef.current === 'active_layer' && engine) {
+      objRef.current.pos.copy(engine.getSelectionCenter('active_layer'));
+      objRef.current.quat.identity();
+    }
     dispRef.current.pos.copy(objRef.current.pos);
     dispRef.current.quat.copy(objRef.current.quat);
-  }, []);
+    committedPoseRef.current.pos.copy(objRef.current.pos);
+    committedPoseRef.current.quat.copy(objRef.current.quat);
+  }, [engine]);
+
+  useEffect(() => { syncFromTarget(); }, [targetScope, activeLayerId, syncFromTarget]);
 
   const commit = useCallback(() => {
     const targetObj = targetObjRef.current;
     if (!targetObj) return;
+    if (engine) {
+      const previous = committedPoseRef.current;
+      if (previous.pos.distanceToSquared(dispRef.current.pos) < 1e-14 &&
+          1 - Math.abs(previous.quat.dot(dispRef.current.quat)) < 1e-14) return;
+      const deltaRotation = dispRef.current.quat.clone().multiply(previous.quat.clone().invert());
+      const matrix = new THREE.Matrix4()
+        .compose(dispRef.current.pos, deltaRotation, new THREE.Vector3(1, 1, 1))
+        .multiply(new THREE.Matrix4().makeTranslation(-previous.pos.x, -previous.pos.y, -previous.pos.z));
+      // Use the engine's scope-aware path so layer gestures touch only that
+      // layer's meshes and keep stroke descriptors/export coordinates in sync.
+      engine.applyTransformMatrix(matrix, scopeRef.current);
+      previous.pos.copy(dispRef.current.pos);
+      previous.quat.copy(dispRef.current.quat);
+      markSelection();
+      return;
+    }
     const p = targetObj.parent;
     if (p) {
       p.updateWorldMatrix(true, false);
@@ -442,7 +499,10 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
     gctx.setTransform(dpr, 0, 0, dpr, 0, -size * CROP * dpr);
     gzc.style.clipPath = 'circle(' + Math.round(size * 0.47) + 'px at 50% 50%)';
     (gzc.style as any).webkitClipPath = gzc.style.clipPath;
-    if (dock) dock.style.width = size + 'px';
+    if (dock) {
+      dock.style.width = size + 'px';
+      dock.style.height = h + 'px';
+    }
   };
 
   const axisDir = (a: AxisDef) => {
@@ -1111,11 +1171,16 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
     if (!quiet) {
       say('target · <b>' + targets[i].name + '</b>', true);
     }
-    if (targets[i].id) {
-      onSelectLayer?.(targets[i].id);
-      onSelectModel?.(targets[i].id);
+    if (!quiet) {
+      if (targets[i].note === 'drawing layer') {
+        onSelectLayer?.(targets[i].id);
+        onSelectTargetScope?.('active_layer');
+      } else if (targets[i].note === '3D model') {
+        onSelectModel?.(targets[i].id);
+        onSelectTargetScope?.('model');
+      }
     }
-  }, [syncFromTarget, jumpDisplay, markSelection, applyObject, say, onSelectLayer, onSelectModel, setMenu]);
+  }, [syncFromTarget, jumpDisplay, markSelection, applyObject, say, onSelectLayer, onSelectModel, onSelectTargetScope, setMenu]);
 
   const setTargets = useCallback((list: TargetItem[]) => {
     const formatted = list.map(t => {
@@ -1254,24 +1319,6 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
     drawGizmo();
   }, [drawGizmo]);
 
-  // Dock menu toggle via the tab button
-  useEffect(() => {
-    const tab = tabRef.current;
-    if (!tab) return;
-
-    const onTabClick = (e: MouseEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
-      setMenu(nvRef.current?.dataset.menu !== 'open');
-    };
-
-    tab.addEventListener('click', onTabClick);
-
-    return () => {
-      tab.removeEventListener('click', onTabClick);
-    };
-  }, [setMenu]);
-
   // Gizmo pointer events
   useEffect(() => {
     const gzc = canvasRef.current;
@@ -1308,7 +1355,7 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
           };
         }
         nvRef.current?.classList.add('nv-repositioning', 'nv-grabbing');
-        say('Reposition gizmo', true);
+        say('Reposition navigator', true);
       }, 400);
 
       const pt = gzPoint(e);
@@ -1378,7 +1425,11 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
         say('orbit', true);
         return;
       }
-      if (!drag.committed) { pushHistory(); drag.committed = true; }
+      if (!drag.committed) {
+        pushHistory();
+        engine?.beginTransform(scopeRef.current);
+        drag.committed = true;
+      }
 
       if (act.type === 'hub') {
         if (gzRef.current.mode === 'move') {
@@ -1459,6 +1510,10 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
 
       const drag = dragRef.current;
       if (!drag) return;
+      if (drag.committed) {
+        jumpDisplay();
+        engine?.endTransform();
+      }
       if (!drag.moved && drag.hit) {
         faceDirection(drag.hit.dir, drag.hit.sign > 0 ? drag.hit.a.lbl : drag.hit.a.back);
       } else if (!drag.moved && gzRef.current.active && gzRef.current.active.type === 'hub') {
@@ -1540,13 +1595,13 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
     let animId: number;
     let lastFrame = 0;
 
-    // Load the user's saved position, mode, and step settings.
+    // Restore placement and increments, but always begin in Orbit. A persisted
+    // transform mode made a fresh navigator feel unsafe and unpredictable.
     try {
       const v = JSON.parse(localStorage.getItem(STORE) || 'null');
       if (v) {
         if (typeof v.ax === 'number') anchorRef.current.ax = Math.max(0, Math.min(1, v.ax));
         if (typeof v.ay === 'number') anchorRef.current.ay = Math.max(0, Math.min(1, v.ay));
-        if (v.mode) { gzRef.current.mode = v.mode; setModeState(v.mode); }
         if (typeof v.rotStep === 'number') { gzRef.current.rotStep = v.rotStep; setRotStep(v.rotStep); }
         if (typeof v.moveStep === 'number') { gzRef.current.moveStep = v.moveStep; setMoveStep(v.moveStep); }
       }
@@ -1626,198 +1681,191 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
       data-mode={mode}
     >
       <div className="nv-dock" id="nv-dock" ref={dockRef}>
-
         <canvas className="nv-canvas" id="nv-canvas" ref={canvasRef}></canvas>
-        <button
-          className="nv-tab"
-          id="nv-tab"
-          ref={tabRef}
-          aria-expanded={isMenuOpen}
-          title="Menu · hold gizmo to move"
-        >
-          ⋯
-        </button>
-        <button
-          type="button"
-          className="nv-mode-badge"
-          onClick={(e) => {
-            e.stopPropagation();
-            haptics.trigger('light');
-            stopTour();
-            const nextMode = mode === 'look' ? 'move' : mode === 'move' ? 'rotate' : 'look';
-            setMode(nextMode);
-          }}
-          title={`Active Mode: ${mode.toUpperCase()} (tap to switch)`}
-          aria-label={`Current transform mode: ${mode}. Tap to switch mode.`}
-        >
-          {mode === 'look' ? 'Orbit' : mode === 'move' ? 'Move' : 'Rotate'}
-        </button>
+
+        {/* One discreet rail; presets and targeting live in the shared menu. */}
+        <div className="nv-control-rail">
+          <button type="button" className="nv-mode-badge"
+            onClick={(event) => { event.stopPropagation(); setMenu(!isMenuOpen); }}
+            aria-label="Choose navigator mode and target" aria-expanded={isMenuOpen}>
+            {mode === 'look' ? 'Orbit' : mode === 'move' ? 'Move' : 'Rotate'}
+            <ChevronDown size={11} />
+          </button>
+          <button type="button" className="nv-view-btn nv-view-btn--more"
+            ref={tabRef} id="nv-tab" data-testid="nav-more" aria-expanded={isMenuOpen}
+            onClick={(event) => { event.stopPropagation(); haptics.trigger('light'); setMenu(!isMenuOpen); }}
+            aria-label="View controls menu" title="Target, layer and navigator settings">
+            <SlidersHorizontal size={13} />
+          </button>
+        </div>
         <div className="nv-label" id="nv-label" ref={labelRef}></div>
       </div>
 
-      <div className="nv-menu" id="nv-menu" ref={menuRef}>
-        {onNavigatorLayoutChange && (
-          <>
-            <div className="nv-sec" style={{ marginTop: '1px' }}>Navigation layout</div>
-            <div className="nv-layouts" role="group" aria-label="Navigation layout">
-              {[
-                { id: 'sphere', label: 'Sphere' },
-                { id: 'disc', label: 'Disc' },
-                { id: 'petal', label: 'Petal' },
-                { id: 'collar', label: 'Collar' },
-              ].map((option) => (
+      <div className="nv-menu navigator-settings-surface" data-theme={theme} id="nv-menu" ref={menuRef}>
+        <NavigatorSettings
+          theme={theme} targetScope={targetScope} onSelectTargetScope={onSelectTargetScope}
+          layers={layers} activeLayerId={activeLayerId} onSelectLayer={onSelectLayer}
+          layout={navigatorLayout}
+          sensitivity={navigatorSensitivity} onSensitivityChange={onSensitivityChange}
+          projectionMode={projectionMode} onToggleProjection={onToggleProjection}
+          transformMode={mode} onTransformModeChange={(next) => { stopTour(); setMode(next); }}
+          onSelectView={(view) => engine?.snapToView(view === 'side' ? 'right' : view === 'angle' ? 'isometric' : view)}
+          onResetView={() => { engine?.resetCamera(); engine?.snapToView('isometric'); }}
+          onHide={onClose} onDismiss={() => setMenu(false)}
+        />
+
+        {/* 5. Collapsible Advanced Section */}
+        <div style={{ marginTop: '8px', borderTop: '1px solid var(--nv-line)', paddingTop: '6px' }}>
+          <button
+            type="button"
+            onClick={() => setShowAdvanced((prev) => !prev)}
+            className="nv-act nv-wide"
+            style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '6px 8px', fontSize: '11px', fontWeight: 600 }}
+          >
+            <span>Advanced settings</span>
+            <span>{showAdvanced ? '▴' : '▾'}</span>
+          </button>
+        </div>
+
+        {showAdvanced && (
+          <div style={{ marginTop: '6px' }}>
+            <div className="nv-sec" style={{ marginTop: '1px' }}>Target item</div>
+            <button
+              className="nv-pick"
+              id="nv-pick"
+              aria-expanded={isListOpen}
+              onClick={() => {
+                setIsListOpen(prev => !prev);
+                requestAnimationFrame(() => positionMenu());
+              }}
+            >
+              <b id="nv-pick-name">{currentTarget?.name || 'Canvas'}</b><span>▾</span>
+            </button>
+
+            <div id="nv-list" className={isListOpen ? 'nv-on' : ''} role="listbox">
+              {targetsList.map((t, idx) => (
                 <button
-                  key={option.id}
-                  type="button"
-                  className="nv-layout"
-                  aria-pressed={navigatorLayout === option.id}
+                  key={t.id + '_' + idx}
+                  className="nv-opt"
+                  role="option"
+                  aria-selected={currentIdx === idx}
                   onClick={() => {
-                    haptics.trigger('light');
-                    onNavigatorLayoutChange(option.id as 'sphere' | 'disc' | 'petal' | 'collar');
-                    setMenu(false);
+                    selectTarget(idx);
+                    if (gzRef.current.mode === 'look') {
+                      setMode('move');
+                    }
+                    setIsListOpen(false);
                   }}
                 >
-                  {option.label}
+                  <span className="nv-swatch"></span>
+                  <span>{t.name}{t.note ? <em> {t.note}</em> : null}</span>
                 </button>
               ))}
             </div>
-          </>
+
+            <div className="nv-sec">Transform</div>
+            <div className="nv-num" id="nv-num" ref={numRef}></div>
+
+            <div className="nv-sec">Tool</div>
+            <div className="nv-modes">
+              <button
+                className="nv-mode"
+                id="nv-look"
+                aria-pressed={mode === 'look'}
+                onClick={() => { stopTour(); setMode('look'); }}
+              >
+                Orbit
+              </button>
+              <button
+                className="nv-mode"
+                id="nv-move"
+                aria-pressed={mode === 'move'}
+                onClick={() => { stopTour(); setMode('move'); }}
+              >
+                Move
+              </button>
+              <button
+                className="nv-mode"
+                id="nv-turn"
+                aria-pressed={mode === 'rotate'}
+                onClick={() => { stopTour(); setMode('rotate'); }}
+              >
+                Rotate
+              </button>
+            </div>
+
+            <div className="nv-sec">Rotate snap</div>
+            <div className="nv-chips" id="nv-rot-steps">
+              {ROT_STEPS.map(o => (
+                <button
+                  key={o.v}
+                  className="nv-chip"
+                  aria-pressed={rotStep === o.v}
+                  onClick={() => {
+                    gzRef.current.rotStep = o.v;
+                    setRotStep(o.v);
+                    saveLayout();
+                    say(o.lbl === 'Free' ? 'snap off' : 'snap ' + o.lbl, true);
+                  }}
+                >
+                  {o.lbl}
+                </button>
+              ))}
+            </div>
+
+            <div className="nv-sec">Move snap</div>
+            <div className="nv-chips" id="nv-move-steps">
+              {MOVE_STEPS.map(o => (
+                <button
+                  key={o.v}
+                  className="nv-chip"
+                  aria-pressed={moveStep === o.v}
+                  onClick={() => {
+                    gzRef.current.moveStep = o.v;
+                    setMoveStep(o.v);
+                    saveLayout();
+                    say(o.lbl === 'Free' ? 'snap off' : 'snap ' + o.lbl, true);
+                  }}
+                >
+                  {o.lbl}
+                </button>
+              ))}
+            </div>
+
+            <div className="nv-sec">Align</div>
+            <div className="nv-acts">
+              <button className="nv-act" id="nv-flat" onClick={() => setOrient(0, 0, 'aligned flat')}>
+                Flat
+              </button>
+              <button className="nv-act" id="nv-wall" onClick={() => setOrient(90, 0, 'upright')}>
+                Upright
+              </button>
+              <button className="nv-act" id="nv-lean" onClick={() => setOrient(45, 0, '45°')}>
+                45°
+              </button>
+              <button className="nv-act" id="nv-face" onClick={lookAtIt}>
+                Frame
+              </button>
+              <button className="nv-act" id="nv-undo" disabled={historyLen === 0} onClick={() => { stopTour(); undo(); }}>
+                Undo
+              </button>
+              <button className="nv-act" id="nv-reset" onClick={resetTarget}>
+                Reset
+              </button>
+            </div>
+
+            <button
+              className="nv-act nv-wide"
+              id="nv-tour"
+              onClick={() => { isTourRunning ? stopTour() : startTour(); }}
+            >
+              {isTourRunning ? 'Stop walkthrough' : 'Walkthrough'}
+            </button>
+          </div>
         )}
-        <div className="nv-sec" style={{ marginTop: '1px' }}>Target item</div>
-        <button
-          className="nv-pick"
-          id="nv-pick"
-          aria-expanded={isListOpen}
-          onClick={() => {
-            setIsListOpen(prev => !prev);
-            requestAnimationFrame(() => positionMenu());
-          }}
-        >
-          <b id="nv-pick-name">{currentTarget?.name || 'Canvas'}</b><span>▾</span>
-        </button>
-
-        <div id="nv-list" className={isListOpen ? 'nv-on' : ''} role="listbox">
-          {targetsList.map((t, idx) => (
-            <button
-              key={t.id + '_' + idx}
-              className="nv-opt"
-              role="option"
-              aria-selected={currentIdx === idx}
-              onClick={() => {
-                selectTarget(idx);
-                if (gzRef.current.mode === 'look') {
-                  setMode('move');
-                }
-                setIsListOpen(false);
-              }}
-            >
-              <span className="nv-swatch"></span>
-              <span>{t.name}{t.note ? <em> {t.note}</em> : null}</span>
-            </button>
-          ))}
-        </div>
-
-        <div className="nv-sec">Transform</div>
-        <div className="nv-num" id="nv-num" ref={numRef}></div>
-
-        <div className="nv-sec">Tool</div>
-        <div className="nv-modes">
-          <button
-            className="nv-mode"
-            id="nv-look"
-            aria-pressed={mode === 'look'}
-            onClick={() => { stopTour(); setMode('look'); }}
-          >
-            Orbit
-          </button>
-          <button
-            className="nv-mode"
-            id="nv-move"
-            aria-pressed={mode === 'move'}
-            onClick={() => { stopTour(); setMode('move'); }}
-          >
-            Move
-          </button>
-          <button
-            className="nv-mode"
-            id="nv-turn"
-            aria-pressed={mode === 'rotate'}
-            onClick={() => { stopTour(); setMode('rotate'); }}
-          >
-            Rotate
-          </button>
-        </div>
-
-        <div className="nv-sec">Rotate snap</div>
-        <div className="nv-chips" id="nv-rot-steps">
-          {ROT_STEPS.map(o => (
-            <button
-              key={o.v}
-              className="nv-chip"
-              aria-pressed={rotStep === o.v}
-              onClick={() => {
-                gzRef.current.rotStep = o.v;
-                setRotStep(o.v);
-                saveLayout();
-                say(o.lbl === 'Free' ? 'snap off' : 'snap ' + o.lbl, true);
-              }}
-            >
-              {o.lbl}
-            </button>
-          ))}
-        </div>
-
-        <div className="nv-sec">Move snap</div>
-        <div className="nv-chips" id="nv-move-steps">
-          {MOVE_STEPS.map(o => (
-            <button
-              key={o.v}
-              className="nv-chip"
-              aria-pressed={moveStep === o.v}
-              onClick={() => {
-                gzRef.current.moveStep = o.v;
-                setMoveStep(o.v);
-                saveLayout();
-                say(o.lbl === 'Free' ? 'snap off' : 'snap ' + o.lbl, true);
-              }}
-            >
-              {o.lbl}
-            </button>
-          ))}
-        </div>
-
-        <div className="nv-sec">Align</div>
-        <div className="nv-acts">
-          <button className="nv-act" id="nv-flat" onClick={() => setOrient(0, 0, 'aligned flat')}>
-            Flat
-          </button>
-          <button className="nv-act" id="nv-wall" onClick={() => setOrient(90, 0, 'upright')}>
-            Upright
-          </button>
-          <button className="nv-act" id="nv-lean" onClick={() => setOrient(45, 0, '45°')}>
-            45°
-          </button>
-          <button className="nv-act" id="nv-face" onClick={lookAtIt}>
-            Frame
-          </button>
-          <button className="nv-act" id="nv-undo" disabled={historyLen === 0} onClick={() => { stopTour(); undo(); }}>
-            Undo
-          </button>
-          <button className="nv-act" id="nv-reset" onClick={resetTarget}>
-            Reset
-          </button>
-        </div>
-
-        <button
-          className="nv-act nv-wide"
-          id="nv-tour"
-          onClick={() => { isTourRunning ? stopTour() : startTour(); }}
-        >
-          {isTourRunning ? 'Stop walkthrough' : 'Walkthrough'}
-        </button>
 
         <div className="nv-sec" style={{ textAlign: 'center', margin: '6px 0 0' }}>
-          navigator · pro
+          view controls · pro
         </div>
       </div>
     </div>

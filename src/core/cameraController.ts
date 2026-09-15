@@ -153,7 +153,7 @@ export class CameraController {
     this.markDirty();
   }
 
-  public resetView(modelDimensions?: THREE.Vector3, isDrawingCanvas: boolean = false): void {
+  public resetView(modelDimensions?: THREE.Vector3, isDrawingCanvas: boolean = false, instant: boolean = false): void {
     if (isDrawingCanvas) {
       this.targetSpherical.radius = 7.85;
       this.targetSpherical.phi = 1.5303;
@@ -171,11 +171,16 @@ export class CameraController {
       this.targetSpherical.theta = -0.0249;
       this.targetPosition.set(-0.08, 0.42, 0);
     }
+    if (instant) {
+      this.cameraSpherical.copy(this.targetSpherical);
+      this.cameraTarget.copy(this.targetPosition);
+      this.updateCameraPosition();
+    }
     this.markDirty();
   }
 
-  public resetCamera(): void {
-    this.resetView();
+  public resetCamera(instant: boolean = false): void {
+    this.resetView(undefined, false, instant);
   }
 
   public setTargetPosition(x: number, y: number, z: number): void {
@@ -224,7 +229,7 @@ export class CameraController {
     return nextMode;
   }
 
-  public snapToView(view: PerfectViewType): void {
+  public snapToView(view: PerfectViewType, instant: boolean = false): void {
     const radius = Math.max(this.targetSpherical.radius, 2.0);
     switch (view) {
       case 'front':
@@ -248,6 +253,11 @@ export class CameraController {
       case 'isometric':
         this.targetSpherical.set(radius, Math.PI / 2.3, Math.PI / 4);
         break;
+    }
+    if (instant) {
+      this.cameraSpherical.copy(this.targetSpherical);
+      this.cameraTarget.copy(this.targetPosition);
+      this.updateCameraPosition();
     }
     this.markDirty();
   }

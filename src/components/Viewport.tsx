@@ -390,6 +390,20 @@ export const Viewport: React.FC<ViewportProps> = ({
   // Reused output for coordinate conversion: this runs on every pointer sample.
   const normalizedScratch = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
+  const getSafeNormalizedPoint = (clientX: number, clientY: number, rect: DOMRect) => {
+    if (!Number.isFinite(clientX) || !Number.isFinite(clientY) || rect.width <= 0 || rect.height <= 0) {
+      return null;
+    }
+    const x = ((clientX - rect.left) / rect.width) * 2 - 1;
+    const y = -(((clientY - rect.top) / rect.height) * 2 - 1);
+    // Android WebView can briefly emit stale coalesced coordinates while its
+    // visual viewport is changing. Do not feed those outliers into a 3D stroke.
+    if (!Number.isFinite(x) || !Number.isFinite(y) || Math.abs(x) > 1.02 || Math.abs(y) > 1.02) {
+      return null;
+    }
+    return { x: Math.max(-1, Math.min(1, x)), y: Math.max(-1, Math.min(1, y)) };
+  };
+
   // Convert client pointer coordinate to normalized device coordinates (-1 to 1).
   // The returned object is reused - read x/y immediately, do not retain it.
   const getNormalizedCoords = (e: React.PointerEvent<HTMLDivElement> | PointerEvent) => {
@@ -400,8 +414,13 @@ export const Viewport: React.FC<ViewportProps> = ({
       out.y = 0;
       return out;
     }
-    out.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
-    out.y = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+    // Pointer capture may keep a stroke alive after a finger leaves the canvas.
+    // Clamp that final sample to the edge instead of letting a stale mobile
+    // coordinate create an enormous world-space segment.
+    const rawX = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+    const rawY = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+    out.x = Number.isFinite(rawX) ? Math.max(-1, Math.min(1, rawX)) : lastNormalizedPos.current.x;
+    out.y = Number.isFinite(rawY) ? Math.max(-1, Math.min(1, rawY)) : lastNormalizedPos.current.y;
     return out;
   };
 
@@ -858,13 +877,15 @@ export const Viewport: React.FC<ViewportProps> = ({
               const batch: Array<{ x: number; y: number; pressure: number }> = [];
               for (let i = 0; i < cEvents.length; i++) {
                 const ev = cEvents[i];
-                const cx = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
-                const cy = -(((ev.clientY - rect.top) / rect.height) * 2 - 1);
+                const point = getSafeNormalizedPoint(ev.clientX, ev.clientY, rect);
+                if (!point) continue;
                 const pressure = ev.pressure > 0 ? ev.pressure : fallbackPressure;
-                batch.push({ x: cx, y: cy, pressure });
+                batch.push({ ...point, pressure });
               }
-              engine.addStrokePointsBatch(batch, brushSettings, tool, symmetry);
-              consumedCoalesced = true;
+              if (batch.length > 0) {
+                engine.addStrokePointsBatch(batch, brushSettings, tool, symmetry);
+                consumedCoalesced = true;
+              }
             }
           }
 
@@ -963,12 +984,14 @@ export const Viewport: React.FC<ViewportProps> = ({
               const batch: Array<{ x: number; y: number; pressure: number }> = [];
               for (let i = 0; i < cEvents.length; i++) {
                 const ev = cEvents[i];
-                const cx = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
-                const cy = -(((ev.clientY - rect.top) / rect.height) * 2 - 1);
-                batch.push({ x: cx, y: cy, pressure: 1.0 });
+                const point = getSafeNormalizedPoint(ev.clientX, ev.clientY, rect);
+                if (!point) continue;
+                batch.push({ ...point, pressure: 1.0 });
               }
-              engine.addStrokePointsBatch(batch, brushSettings, tool, symmetry);
-              consumedCoalesced = true;
+              if (batch.length > 0) {
+                engine.addStrokePointsBatch(batch, brushSettings, tool, symmetry);
+                consumedCoalesced = true;
+              }
             }
           }
 
@@ -1036,12 +1059,14 @@ export const Viewport: React.FC<ViewportProps> = ({
               const batch: Array<{ x: number; y: number; pressure: number }> = [];
               for (let i = 0; i < cEvents.length; i++) {
                 const ev = cEvents[i];
-                const cx = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
-                const cy = -(((ev.clientY - rect.top) / rect.height) * 2 - 1);
-                batch.push({ x: cx, y: cy, pressure: 1.0 });
+                const point = getSafeNormalizedPoint(ev.clientX, ev.clientY, rect);
+                if (!point) continue;
+                batch.push({ ...point, pressure: 1.0 });
               }
-              engine.addStrokePointsBatch(batch, brushSettings, tool, symmetry);
-              consumedCoalesced = true;
+              if (batch.length > 0) {
+                engine.addStrokePointsBatch(batch, brushSettings, tool, symmetry);
+                consumedCoalesced = true;
+              }
             }
           }
 
@@ -1220,6 +1245,9 @@ export const Viewport: React.FC<ViewportProps> = ({
   return (
     <div
       ref={containerRef}
+      role="region"
+      aria-label="3D Drawing Workspace"
+      tabIndex={0}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -1430,7 +1458,7 @@ export const Viewport: React.FC<ViewportProps> = ({
             setIsPanMode(!isPanMode);
             showNavPod(3000);
           }}
-          className={`shrink-0 min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center rounded-xl border transition-all ${
+          className={`shrink-0 min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center rounded-xl border transition-colors duration-150 ease-out ${
             isPanMode
               ? 'bg-neutral-900 dark:bg-white border-neutral-900 dark:border-white text-white dark:text-zinc-950'
               : 'border-transparent text-neutral-400 hover:bg-neutral-800 hover:text-white'

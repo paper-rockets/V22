@@ -16,6 +16,8 @@
     "dev:https": "node scripts/mobile-server.mjs --https",
     "start": "node scripts/server-local.mjs",
     "build": "vite build",
+    "build:debug": "vite build --mode debug",
+    "build:firebase": "node scripts/build-firebase-artifacts.mjs",
     "preview": "vite preview --host=0.0.0.0",
     "clean": "node -e \"const fs=require('fs'); fs.rmSync('dist',{recursive:true,force:true}); try{fs.unlinkSync('server.js')}catch(e){}\"",
     "lint": "tsc --noEmit",
@@ -23,6 +25,9 @@
     "dev:remote": "node scripts/remote-server.mjs"
   },
   "dependencies": {
+    "@capacitor/android": "^8.5.2",
+    "@capacitor/cli": "^8.5.2",
+    "@capacitor/core": "^8.5.2",
     "iconoir-react": "^7.12.1",
     "jszip": "^3.10.1",
     "lucide-react": "^0.546.0",

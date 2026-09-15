@@ -54,7 +54,24 @@ export default defineConfig(({ mode }) => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+        // Keep the debug panel out of release/benchmark web assets entirely.
+        '@debug-panel': path.resolve(
+          __dirname,
+          mode === 'debug'
+            ? 'src/components/debug/DebugTestPanel.tsx'
+            : 'src/components/debug/DebugTestPanel.release.tsx'
+        ),
+        // Keep the native debug bridge out of release/benchmark bundles too.
+        '@debug-bridge': path.resolve(
+          __dirname,
+          mode === 'debug'
+            ? 'src/core/debugBridge.debug.ts'
+            : 'src/core/debugBridge.release.ts'
+        ),
       },
+    },
+    define: {
+      __IS_DEBUG_BUILD__: JSON.stringify(mode === 'debug'),
     },
     build: {
       // esbuild minification keeps builds fast; the parse win on mobile comes from

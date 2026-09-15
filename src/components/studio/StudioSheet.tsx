@@ -17,9 +17,18 @@ interface StudioSheetProps {
   theme?: 'light' | 'dark';
   /** Lists of settings need more room than a row of swatches. */
   tall?: boolean;
+  /** Small, focused controls should not inherit the full settings-sheet width. */
+  compact?: boolean;
 }
 
-export const StudioSheet: React.FC<StudioSheetProps> = ({ id, title, children, theme = 'dark', tall = false }) => {
+export const StudioSheet: React.FC<StudioSheetProps> = ({
+  id,
+  title,
+  children,
+  theme = 'dark',
+  tall = false,
+  compact = false,
+}) => {
   const open = useOpenSheet() === id;
   const sheetRef = useRef<HTMLDivElement>(null);
 
@@ -70,21 +79,22 @@ export const StudioSheet: React.FC<StudioSheetProps> = ({ id, title, children, t
       aria-label={title}
       data-sheet-id={id}
       data-theme={theme}
-      className={`pr-surface paperrocket-studio-sheet fixed left-0 right-0 bottom-0 sm:left-auto sm:right-5 sm:bottom-5 z-50 w-full sm:w-[380px] sm:max-w-[400px] rounded-t-3xl sm:rounded-2xl border-t border-x sm:border shadow-2xl font-sans
+      data-menu-width={compact ? 'compact' : 'wide'}
+      className={`pr-surface paperrocket-studio-sheet fixed left-0 right-0 bottom-0 sm:left-auto sm:right-5 sm:bottom-5 z-50 w-full ${compact ? 'sm:w-[var(--studio-menu-compact)] sm:max-w-[var(--studio-menu-compact)]' : 'sm:w-[var(--studio-menu-wide)] sm:max-w-[var(--studio-menu-wide)]'} rounded-t-3xl sm:rounded-2xl border-t border-x sm:border shadow-2xl font-sans
         motion-safe:animate-in motion-safe:fade-in motion-safe:slide-in-from-bottom-8 motion-safe:duration-250 motion-safe:ease-out
         ${isLight ? 'bg-white border-neutral-200 text-neutral-800' : 'bg-[#18191d] border-zinc-800 text-zinc-100'}`}
       style={{
-        maxHeight: tall ? '70vh' : '38vh',
-        paddingBottom: 'max(env(safe-area-inset-bottom), 14px)',
+        maxHeight: tall ? 'min(78dvh, calc(100dvh - 56px))' : '38vh',
+        paddingBottom: 'max(env(safe-area-inset-bottom), 16px)',
         transitionTimingFunction: 'cubic-bezier(0.16, 1, 0.3, 1)',
       }}
     >
-      <div className="paperrocket-sheet-header px-5 pt-3.5 pb-1 flex items-center justify-between min-h-[44px]">
+      <div className={`paperrocket-sheet-header ${compact ? 'px-4' : 'px-5'} pt-3.5 pb-1 flex items-center justify-between min-h-[44px]`}>
         <h2 className="text-sm font-extrabold tracking-tight">{title}</h2>
         <StudioCloseButton onClick={closeSheet} ariaLabel={`Close ${title}`} theme={theme} />
       </div>
 
-      <div className="paperrocket-sheet-body px-5 pb-3 overflow-y-auto studio-scroll" style={{ maxHeight: tall ? 'calc(70vh - 68px)' : 'calc(38vh - 68px)' }}>
+      <div className={`paperrocket-sheet-body ${compact ? 'px-3' : 'px-5'} pb-6 overflow-y-auto studio-scroll`} style={{ maxHeight: tall ? 'calc(min(78dvh, calc(100dvh - 56px)) - 56px)' : 'calc(38vh - 68px)', paddingBottom: 'max(env(safe-area-inset-bottom), 24px)' }}>
         {children}
       </div>
     </div>

@@ -483,15 +483,11 @@ export function smoothRun(points: THREE.Vector3[], window: number): THREE.Vector
       out.push(sum.divideScalar(half * 2 + 1));
       continue;
     }
-    // At the two ends there is nothing on one side, so average what there is.
-    // Leaving the end samples untouched pins the fitted curve to two of the
-    // noisiest points in the run -- and since the curve must pass through both,
-    // that noise survives everything downstream.
-    const dir = i === 0 ? 1 : -1;
-    const reach = Math.min(window, n - 1);
-    const sum = new THREE.Vector3();
-    for (let k = 0; k <= reach; k++) sum.add(points[i + dir * k]);
-    out.push(sum.divideScalar(reach + 1));
+    // Preserve the endpoints. A one-sided average moves an endpoint inward;
+    // the next centred sample can then sit behind it along the path, producing
+    // a small doubled-back hook. Fixed endpoints also keep adjacent fitted
+    // runs joined at exactly the same corner.
+    out.push(points[i].clone());
   }
   return out;
 }

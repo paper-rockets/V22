@@ -33,17 +33,31 @@ import {
 import { normalizeHexColor } from '../core/materialCache';
 import { ALL_MATERIAL_PRESETS, createMatCap } from '../presets/materialPresets';
 import { BrushSettings } from '../types';
+import { haptics } from '../utils/haptics';
 import { MenuSegmentedToggle, getMenuSurfaceClasses } from './ui/MenuPrimitives';
 
 interface ColorStudioModalProps {
   isOpen: boolean;
   onClose: () => void;
+  /** True while this panel intentionally leaves the canvas and its chrome usable. */
+  onInteractionModeChange?: (allowsWorkspaceInteraction: boolean) => void;
   currentColor: string;
   onChangeColor: (hex: string) => void;
   onApplyBrushSettings?: (settings: Partial<BrushSettings>) => void;
   onApplyToModel?: (material: THREE.Material) => void;
   onSampleFromScreen?: () => void;
   theme?: 'light' | 'dark';
+  activeLookName?: string;
+  currentMatcapUrl?: string;
+  materialType?: string;
+}
+
+export interface RecentStudioItem {
+  type: 'color' | 'shader';
+  hex?: string;
+  presetId?: string;
+  name?: string;
+  url?: string;
 }
 
 type TabType = 'wheel' | 'oklch' | 'harmonies' | 'shaders';
@@ -108,14 +122,23 @@ void main() {
 export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
   isOpen,
   onClose,
+  onInteractionModeChange,
   currentColor,
   onChangeColor,
   onApplyBrushSettings,
   onApplyToModel,
   onSampleFromScreen,
   theme = 'dark',
+  brushSettings,
+  activeLookName: propActiveLookName,
+  currentMatcapUrl: propCurrentMatcapUrl,
+  materialType: propMaterialType,
 }) => {
   const isLight = theme === 'light';
+  const effectiveActiveLookName = propActiveLookName ?? brushSettings?.activeLookName;
+  const effectiveMaterialType = propMaterialType ?? brushSettings?.materialType;
+  const effectivePreviewUrl = propCurrentMatcapUrl ?? brushSettings?.previewUrl ?? brushSettings?.matcapUrl;
+
   const [activeTab, setActiveTab] = useState<TabType>('wheel');
   const [isPinned, setIsPinned] = useState(() => {
     try {
@@ -131,6 +154,14 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
       return false;
     }
   });
+  // A pinned studio is explicitly a companion panel ("Keep open while drawing").
+  // A collapsed studio is also non-blocking. Everything else is a real modal and
+  // must catch canvas input behind it.
+  const allowsWorkspaceInteraction = isPinned || isMiniMode;
+
+  useEffect(() => {
+    onInteractionModeChange?.(allowsWorkspaceInteraction);
+  }, [allowsWorkspaceInteraction, onInteractionModeChange]);
   const toggleMiniMode = () => {
     setIsMiniMode((prev) => {
       const next = !prev;
@@ -154,6 +185,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
   const wheelCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const draggingWheel = useRef(false);
   const draggingSquare = useRef(false);
+  const hsvRef = useRef(hsv);
 
   const allShaders = useMemo(() => {
     const quickIds = new Set<string>();
@@ -176,30 +208,112 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
 
     return ordered;
   }, []);
-  const [selectedPresetId, setSelectedPresetId] = useState(() => allShaders[0]?.id ?? '');
+
+  const [selectedPresetId, setSelectedPresetId] = useState<string>(() => {
+    if (effectiveActiveLookName && effectiveActiveLookName !== 'Flat Paint' && effectiveMaterialType !== 'shadeless') {
+      const match = allShaders.find((s) => s.name === effectiveActiveLookName || s.id === effectiveActiveLookName);
+      if (match) return match.id;
+    }
+    return '';
+  });
+  const [appliedNotice, setAppliedNotice] = useState<string | null>(null);
+  const noticeTimeoutRef = useRef<number | null>(null);
+  const isApplyingPresetRef = useRef(false);
+
+  useEffect(() => {
+    if (effectiveActiveLookName && effectiveActiveLookName !== 'Flat Paint' && effectiveMaterialType !== 'shadeless') {
+      const match = allShaders.find((s) => s.name === effectiveActiveLookName || s.id === effectiveActiveLookName);
+      if (match) setSelectedPresetId(match.id);
+    } else if (effectiveMaterialType === 'shadeless' || !effectiveActiveLookName || effectiveActiveLookName === 'Flat Paint') {
+      setSelectedPresetId('');
+    }
+  }, [effectiveActiveLookName, effectiveMaterialType, allShaders]);
+
+  useEffect(() => {
+    return () => {
+      if (noticeTimeoutRef.current) window.clearTimeout(noticeTimeoutRef.current);
+    };
+  }, []);
   const [shaderRoughness, setShaderRoughness] = useState<number>(0.5);
   const [shaderMetalness, setShaderMetalness] = useState<number>(0.1);
   const [shaderRimPower, setShaderRimPower] = useState<number>(0.8);
   const lastSolidColorRef = useRef(normalizeHexColor(currentColor, '#38bdf8'));
-  const [recentColors, setRecentColors] = useState<string[]>(() => {
-    const active = normalizeHexColor(currentColor, '#38bdf8').toLowerCase();
+
+  const [recentItems, setRecentItems] = useState<RecentStudioItem[]>(() => {
+    const activeHex = normalizeHexColor(currentColor, '#38bdf8').toLowerCase();
+    const fallback: RecentStudioItem[] = [{ type: 'color', hex: activeHex }];
     try {
       const stored = JSON.parse(localStorage.getItem(LAST_USED_COLORS_STORAGE_KEY) || '[]');
       if (Array.isArray(stored)) {
-        const valid = stored
-          .filter((color): color is string => typeof color === 'string' && /^#[0-9a-fA-F]{6}$/.test(color))
-          .map((color) => color.toLowerCase());
-        return Array.from(new Set([active, ...valid])).slice(0, 6);
+        const parsed: RecentStudioItem[] = [];
+        for (const item of stored) {
+          if (typeof item === 'string' && /^#[0-9a-fA-F]{6}$/.test(item)) {
+            parsed.push({ type: 'color', hex: item.toLowerCase() });
+          } else if (item && typeof item === 'object') {
+            if (item.type === 'shader' && (item.presetId || item.name)) {
+              parsed.push({
+                type: 'shader',
+                presetId: item.presetId,
+                name: item.name,
+                url: item.url,
+                hex: item.hex,
+              });
+            } else if (item.type === 'color' && typeof item.hex === 'string' && /^#[0-9a-fA-F]{6}$/.test(item.hex)) {
+              parsed.push({ type: 'color', hex: item.hex.toLowerCase() });
+            }
+          }
+        }
+        if (parsed.length > 0) {
+          return parsed.slice(0, 6);
+        }
       }
     } catch {}
-    return [active];
+    return fallback;
   });
+
+  const rememberShader = useCallback((preset: any) => {
+    if (!preset) return;
+    const representativeColor =
+      preset.color ||
+      PRESET_REPRESENTATIVE_COLORS[preset.name] ||
+      (preset.category === 'Bright Colors' ? '#00f7ff' : undefined) ||
+      '#00f7ff';
+    const previewUrl = preset.url || (typeof preset.generate === 'function' ? createMatCap(preset.generate) : undefined);
+    const label = QUICK_SHADER_LABEL_MAP[preset.name] ?? preset.name;
+
+    const newItem: RecentStudioItem = {
+      type: 'shader',
+      presetId: preset.id,
+      name: label,
+      url: previewUrl,
+      hex: representativeColor,
+    };
+
+    setRecentItems((previous) => {
+      const filtered = previous.filter(
+        (it) => !(it.type === 'shader' && (it.presetId === preset.id || it.name === label))
+      );
+      const next = [newItem, ...filtered].slice(0, 6);
+      try {
+        localStorage.setItem(LAST_USED_COLORS_STORAGE_KEY, JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
 
   const rememberColor = useCallback((hex: string) => {
     if (!/^#[0-9a-fA-F]{6}$/.test(hex)) return;
     const normalized = hex.toLowerCase();
-    setRecentColors((previous) => {
-      const next = [normalized, ...previous.filter((color) => color.toLowerCase() !== normalized)].slice(0, 6);
+    const newItem: RecentStudioItem = {
+      type: 'color',
+      hex: normalized,
+    };
+
+    setRecentItems((previous) => {
+      const filtered = previous.filter(
+        (it) => !(it.type === 'color' && it.hex?.toLowerCase() === normalized)
+      );
+      const next = [newItem, ...filtered].slice(0, 6);
       try {
         localStorage.setItem(LAST_USED_COLORS_STORAGE_KEY, JSON.stringify(next));
       } catch {}
@@ -231,19 +345,33 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
   };
 
   useEffect(() => {
+    // The gesture's unrounded HSV is authoritative until the pointer lifts.
+    // Feeding our RGB preview back into it can shift the handle or lose hue
+    // while crossing grayscale/black.
+    if (draggingWheel.current || draggingSquare.current) return;
     const validHex = normalizeHexColor(currentColor, '#38bdf8');
     const rgb = hexToRgb(validHex);
-    setHsv(rgbToHsv(rgb.r, rgb.g, rgb.b));
+    const nextHsv = rgbToHsv(rgb.r, rgb.g, rgb.b);
+    if (nextHsv.s === 0) nextHsv.h = hsvRef.current.h;
+    setHsv(nextHsv);
     const rawOklch = hexToOklch(validHex);
     setOklch({ L: rawOklch.L, C: rawOklch.C, h: Math.round((rawOklch.h * 180) / Math.PI) });
-    const historyTimer = window.setTimeout(() => rememberColor(validHex), 300);
-    return () => window.clearTimeout(historyTimer);
-  }, [currentColor, rememberColor]);
+    hsvRef.current = nextHsv;
+  }, [currentColor]);
+
+  const prevIsOpenRef = useRef(isOpen);
+  useEffect(() => {
+    if (!prevIsOpenRef.current && isOpen) {
+      setActiveTab('wheel');
+    }
+    prevIsOpenRef.current = isOpen;
+  }, [isOpen]);
 
   useEffect(() => {
     if (!isOpen) return;
-    setActiveTab('wheel');
-    const onKeyDown = (event: KeyboardEvent) => event.key === 'Escape' && onClose();
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isOpen, onClose]);
@@ -260,7 +388,8 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
     return () => window.removeEventListener('remix3d:close-color-studio', closeColorStudio);
   }, [onClose]);
 
-  const applyColor = useCallback((hex: string) => {
+  const applyColor = useCallback((hex: string, commitToHistory = true) => {
+    setSelectedPresetId('');
     lastSolidColorRef.current = hex;
     onChangeColor(hex);
     onApplyBrushSettings?.({
@@ -274,12 +403,16 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
       previewUrl: undefined,
       activeLookName: 'Flat Paint',
     });
-  }, [onApplyBrushSettings, onChangeColor]);
+    if (commitToHistory) rememberColor(hex);
+  }, [onApplyBrushSettings, onChangeColor, rememberColor]);
 
-  const applyHsv = (next: { h: number; s: number; v: number }) => {
+  const applyHsv = (next: { h: number; s: number; v: number }, commitToHistory = false) => {
+    hsvRef.current = next;
+    // Paint the handle before notifying the heavier workspace/brush state.
+    renderWheel();
     setHsv(next);
     const rgb = hsvToRgb(next.h, next.s, next.v);
-    applyColor(rgbToHex(rgb.r, rgb.g, rgb.b));
+    applyColor(rgbToHex(rgb.r, rgb.g, rgb.b), commitToHistory);
   };
 
   const radius = WHEEL_SIZE / 2;
@@ -289,15 +422,28 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
     const canvas = wheelCanvasRef.current;
     const ctx = canvas?.getContext('2d');
     if (!canvas || !ctx) return;
+    const hsv = hsvRef.current;
     const dpr = window.devicePixelRatio || 1;
     canvas.width = WHEEL_SIZE * dpr;
     canvas.height = WHEEL_SIZE * dpr;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, WHEEL_SIZE, WHEEL_SIZE);
     const center = WHEEL_SIZE / 2;
-    for (let i = 0; i < 360; i += 1) {
-      const angle1 = ((i - 0.5) * Math.PI) / 180;
-      const angle2 = ((i + 0.5) * Math.PI) / 180;
+    if (typeof ctx.createConicGradient === 'function') {
+      // One continuous ring avoids antialiased seams between 360 wedges.
+      const ringGradient = ctx.createConicGradient(0, center, center);
+      for (let i = 0; i <= 360; i += 60) {
+        const rgb = hsvToRgb(i % 360, 1, 1);
+        ringGradient.addColorStop(i / 360, `rgb(${rgb.r}, ${rgb.g}, ${rgb.b})`);
+      }
+      ctx.beginPath();
+      ctx.arc(center, center, (radius + innerRadius) / 2, 0, Math.PI * 2);
+      ctx.lineWidth = radius - innerRadius - 4;
+      ctx.strokeStyle = ringGradient;
+      ctx.stroke();
+    } else for (let i = 0; i < 360; i += 1) {
+      const angle1 = ((i - 0.7) * Math.PI) / 180;
+      const angle2 = ((i + 0.7) * Math.PI) / 180;
       ctx.beginPath();
       ctx.arc(center, center, radius - 2, angle1, angle2);
       ctx.arc(center, center, innerRadius + 2, angle2, angle1, true);
@@ -339,11 +485,11 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
     ctx.lineWidth = 2;
     ctx.strokeStyle = '#08090b';
     ctx.stroke();
-  }, [hsv, innerRadius, isLight, radius, squareSize]);
+  }, [innerRadius, isLight, radius, squareSize]);
 
   useEffect(() => {
-    if (isOpen && activeTab === 'wheel') renderWheel();
-  }, [activeTab, isOpen, renderWheel]);
+    if (isOpen && !isMiniMode && activeTab === 'wheel') renderWheel();
+  }, [activeTab, isOpen, isMiniMode, hsv, renderWheel]);
 
   const pointerPosition = (event: React.PointerEvent<HTMLCanvasElement>) => {
     const rect = event.currentTarget.getBoundingClientRect();
@@ -355,10 +501,10 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
   const updateHue = (x: number, y: number) => {
     let angle = (Math.atan2(y, x) * 180) / Math.PI;
     if (angle < 0) angle += 360;
-    applyHsv({ ...hsv, h: angle });
+    applyHsv({ ...hsvRef.current, h: angle });
   };
   const updateSatVal = (x: number, y: number) => applyHsv({
-    ...hsv,
+    ...hsvRef.current,
     s: Math.max(0, Math.min(1, (x + squareSize / 2) / squareSize)),
     v: Math.max(0, Math.min(1, 1 - (y + squareSize / 2) / squareSize)),
   });
@@ -381,6 +527,11 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
     if (draggingSquare.current) updateSatVal(x, y);
   };
   const handleWheelPointerUp = (event: React.PointerEvent<HTMLCanvasElement>) => {
+    if (draggingWheel.current || draggingSquare.current) {
+      const { h, s, v } = hsvRef.current;
+      const rgb = hsvToRgb(h, s, v);
+      rememberColor(rgbToHex(rgb.r, rgb.g, rgb.b));
+    }
     draggingWheel.current = false;
     draggingSquare.current = false;
     if (event.currentTarget.hasPointerCapture(event.pointerId)) event.currentTarget.releasePointerCapture(event.pointerId);
@@ -389,7 +540,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
   const handleOklchChange = (channel: 'L' | 'C' | 'h', value: number) => {
     const next = { ...oklch, [channel]: value };
     setOklch(next);
-    applyColor(oklchToHex({ L: next.L, C: next.C, h: (next.h * Math.PI) / 180 }));
+    applyColor(oklchToHex({ L: next.L, C: next.C, h: (next.h * Math.PI) / 180 }), false);
   };
 
   const harmonies = useMemo(() => generateHarmonies(normalizeHexColor(currentColor, '#38bdf8')), [currentColor]);
@@ -402,7 +553,20 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
   const posterizedColor = useMemo(() => posterizeOKLCH(currentColor, posterizeSteps), [currentColor, posterizeSteps]);
   const applyPreset = (preset: any) => {
     if (!preset) return;
+    try {
+      haptics.trigger('medium');
+    } catch {}
+    isApplyingPresetRef.current = true;
     setSelectedPresetId(preset.id);
+    rememberShader(preset);
+    window.setTimeout(() => {
+      isApplyingPresetRef.current = false;
+    }, 500);
+    const label = QUICK_SHADER_LABEL_MAP[preset.name] ?? preset.name;
+    const targetName = shaderTarget === 'brush' ? 'Brush' : 'Model';
+    setAppliedNotice(`Applied ${label} to ${targetName}`);
+    if (noticeTimeoutRef.current) window.clearTimeout(noticeTimeoutRef.current);
+    noticeTimeoutRef.current = window.setTimeout(() => setAppliedNotice(null), 2500);
 
     const representativeColor =
       preset.color ||
@@ -545,6 +709,27 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
     }
   };
 
+  const handleSelectRecent = useCallback(
+    (item: RecentStudioItem) => {
+      if (item.type === 'shader') {
+        const preset = allShaders.find((p) => p.id === item.presetId || p.name === item.name);
+        if (preset) {
+          applyPreset(preset);
+        } else if (item.hex) {
+          applyColor(item.hex);
+        }
+      } else if (item.hex) {
+        applyColor(item.hex);
+      }
+    },
+    [allShaders, applyColor, applyPreset]
+  );
+
+  const activeShaderPreset = useMemo(() => {
+    if (!selectedPresetId) return null;
+    return allShaders.find((preset) => preset.id === selectedPresetId) ?? null;
+  }, [allShaders, selectedPresetId]);
+
   if (!isOpen) return null;
 
   const tabs: Array<{ id: TabType; label: string; icon: React.ComponentType<{ className?: string }> }> = [
@@ -579,9 +764,17 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
         aria-label="Edit base color"
       >
         <span
-          className={`h-10 w-10 shrink-0 rounded-lg border ${isLight ? 'border-black/15' : 'border-white/20'}`}
+          className={`h-10 w-10 shrink-0 rounded-full border overflow-hidden shadow-xs flex items-center justify-center ${isLight ? 'border-black/15' : 'border-white/20'}`}
           style={{ backgroundColor: currentColor }}
-        />
+        >
+          {activeShaderPreset?.url || effectivePreviewUrl ? (
+            <img
+              src={activeShaderPreset?.url || effectivePreviewUrl}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          ) : null}
+        </span>
         <span className="min-w-0 flex-1">
           <span className="block text-[11px] font-semibold">Base color</span>
           <span className="block font-mono text-[10px] font-bold opacity-65">{currentColor.toUpperCase()}</span>
@@ -595,22 +788,50 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
   return createPortal(
     <div
       data-pinned={isPinned ? 'true' : 'false'}
-      className="paperrocket-modal-overlay paperrocket-color-studio-overlay--side fixed inset-0 z-50 flex items-center justify-start p-2.5 sm:p-4 animate-in fade-in duration-150 pointer-events-none"
+      className={`paperrocket-modal-overlay paperrocket-color-studio-overlay--side fixed inset-0 z-50 flex items-center justify-start p-2.5 sm:p-4 animate-in fade-in duration-150 ${
+        allowsWorkspaceInteraction ? 'pointer-events-none' : 'pointer-events-auto'
+      }`}
     >
       <section
         id="mody-color-studio-modal"
         data-theme={theme}
+        role={allowsWorkspaceInteraction ? 'region' : 'dialog'}
+        aria-modal={allowsWorkspaceInteraction ? undefined : true}
         aria-label="Color studio"
         onClick={(event) => event.stopPropagation()}
-        className={`paperrocket-color-studio pointer-events-auto relative flex w-[min(310px,calc(100vw-20px))] sm:max-w-[344px] flex-col overflow-hidden rounded-[18px] border select-none ${shell}`}
-        style={{ maxHeight: isMiniMode ? 'auto' : 'min(62dvh, 560px)' }}
+        className={`paperrocket-color-studio pointer-events-auto relative flex w-full sm:w-[min(var(--studio-menu-wide),calc(100vw-20px))] sm:max-w-[var(--studio-menu-wide)] flex-col overflow-hidden rounded-t-3xl sm:rounded-[18px] border select-none ${shell}`}
+        style={{ maxHeight: isMiniMode ? 'auto' : 'min(76dvh, 560px)' }}
       >
-        <header className={`flex min-h-14 items-center justify-between border-b px-3 ${divider}`}>
-          <div className="flex min-w-0 items-center gap-2.5">
-            <span className={`h-9 w-9 shrink-0 rounded-lg border ${isLight ? 'border-black/20' : 'border-white/20'}`} style={{ backgroundColor: currentColor }} />
+        <header className={`shrink-0 flex min-h-12 sm:min-h-14 items-center justify-between border-b px-3 ${divider}`}>
+          <div className="flex min-w-0 flex-1 items-center gap-2.5">
+            <span
+              className={`h-9 w-9 shrink-0 rounded-full border overflow-hidden shadow-xs flex items-center justify-center ${
+                isLight ? 'border-black/20' : 'border-white/20'
+              }`}
+              style={{ backgroundColor: currentColor }}
+            >
+              {activeShaderPreset?.url || effectivePreviewUrl ? (
+                <img
+                  src={activeShaderPreset?.url || effectivePreviewUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              ) : null}
+            </span>
             {!isMiniMode && (
-              <div className="min-w-0">
-                <h2 className="truncate text-sm font-semibold">{activeTitle}</h2>
+              <div className="min-w-0 flex-1 pr-1">
+                <div className="flex items-center gap-1.5">
+                  <h2 className="truncate text-xs sm:text-sm font-semibold leading-tight">
+                    {activeShaderPreset
+                      ? (QUICK_SHADER_LABEL_MAP[activeShaderPreset.name] ?? activeShaderPreset.name)
+                      : activeTitle}
+                  </h2>
+                  {effectiveActiveLookName && effectiveActiveLookName !== 'Flat Paint' && !activeShaderPreset && (
+                    <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-sky-500/15 text-sky-600 dark:text-sky-400 truncate max-w-[100px]">
+                      {effectiveActiveLookName}
+                    </span>
+                  )}
+                </div>
                 <input
                   aria-label="Hex color"
                   value={currentColor.toUpperCase()}
@@ -619,16 +840,16 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
                     if (/^#[0-9a-fA-F]{6}$/.test(next)) applyColor(next);
                     else onChangeColor(next);
                   }}
-                  className={`mt-0.5 w-24 border-0 bg-transparent p-0 font-mono text-[11px] font-bold outline-none ${isLight ? 'text-neutral-800' : 'text-neutral-200'}`}
+                  className={`mt-0.5 block w-20 border-0 bg-transparent p-0 font-mono text-[10px] sm:text-[11px] font-bold leading-tight outline-none ${isLight ? 'text-neutral-800' : 'text-neutral-200'}`}
                 />
               </div>
             )}
           </div>
-          <div className="flex items-center gap-0.5">
+          <div className="flex items-center gap-0.5 shrink-0">
             <button
               type="button"
               onClick={toggleMiniMode}
-              className={`grid h-11 w-11 place-items-center rounded-xl ${
+              className={`grid h-8.5 w-8.5 place-items-center rounded-lg transition-colors ${
                 isMiniMode
                   ? isLight ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-950'
                   : ghostButton
@@ -642,7 +863,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
             <button
               type="button"
               onClick={togglePinned}
-              className={`grid h-11 w-11 place-items-center rounded-xl ${
+              className={`grid h-8.5 w-8.5 place-items-center rounded-lg transition-colors ${
                 isPinned
                   ? isLight ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-950'
                   : ghostButton
@@ -653,11 +874,39 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
             >
               <Pin className="h-4 w-4" />
             </button>
-            {onSampleFromScreen && <button type="button" onClick={onSampleFromScreen} className={`grid h-11 w-11 place-items-center rounded-xl ${ghostButton}`} aria-label="Sample color"><Pipette className="h-4 w-4" /></button>}
-            <button type="button" onClick={() => { navigator.clipboard.writeText(currentColor); setCopiedHex(true); window.setTimeout(() => setCopiedHex(false), 1200); }} className={`grid h-11 w-11 place-items-center rounded-xl ${ghostButton}`} aria-label="Copy hex">
+            {onSampleFromScreen && (
+              <button
+                type="button"
+                onClick={onSampleFromScreen}
+                className={`grid h-8.5 w-8.5 place-items-center rounded-lg transition-colors ${ghostButton}`}
+                aria-label="Sample color"
+                title="Sample color"
+              >
+                <Pipette className="h-4 w-4" />
+              </button>
+            )}
+            <button
+              type="button"
+              onClick={() => {
+                navigator.clipboard.writeText(currentColor);
+                setCopiedHex(true);
+                window.setTimeout(() => setCopiedHex(false), 1200);
+              }}
+              className={`grid h-8.5 w-8.5 place-items-center rounded-lg transition-colors ${ghostButton}`}
+              aria-label="Copy hex"
+              title="Copy hex code"
+            >
               {copiedHex ? <Check className="h-4 w-4 text-neutral-900 dark:text-white" /> : <Copy className="h-4 w-4" />}
             </button>
-            <button type="button" onClick={onClose} className={`grid h-11 w-11 place-items-center rounded-xl ${ghostButton}`} aria-label="Close color studio"><X className="h-4 w-4" /></button>
+            <button
+              type="button"
+              onClick={onClose}
+              className={`grid h-8.5 w-8.5 place-items-center rounded-lg transition-colors ${ghostButton}`}
+              aria-label="Close color studio"
+              title="Close"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
         </header>
 
@@ -667,21 +916,36 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
               Recent
             </span>
             <div className="flex items-center gap-1.5">
-              {recentColors.map((color) => (
-                <button
-                  key={color}
-                  type="button"
-                  onClick={() => applyColor(color)}
-                  aria-label={`Use ${color}`}
-                  title={color}
-                  className={`h-7 w-7 shrink-0 rounded-lg border transition-transform active:scale-95 ${
-                    color.toLowerCase() === currentColor.toLowerCase()
-                      ? 'ring-2 ring-sky-500 scale-105 border-transparent'
-                      : isLight ? 'border-black/20' : 'border-white/20'
-                  }`}
-                  style={{ backgroundColor: color }}
-                />
-              ))}
+              {recentItems.map((item, index) => {
+                const isShader = item.type === 'shader';
+                const isSelected = isShader
+                  ? selectedPresetId === item.presetId
+                  : !selectedPresetId && item.hex?.toLowerCase() === currentColor.toLowerCase();
+                return (
+                  <button
+                    key={isShader ? `mini-shader-${item.presetId}-${index}` : `mini-color-${item.hex}-${index}`}
+                    type="button"
+                    onClick={() => handleSelectRecent(item)}
+                    aria-label={isShader ? `Use shader ${item.name}` : `Use color ${item.hex}`}
+                    title={isShader ? `Shader: ${item.name}` : item.hex}
+                    className={`h-7 w-7 shrink-0 rounded-full border overflow-hidden shadow-xs transition-transform active:scale-95 flex items-center justify-center relative ${
+                      isSelected
+                        ? 'ring-2 ring-sky-500 scale-105 border-transparent'
+                        : isLight ? 'border-black/20' : 'border-white/20'
+                    }`}
+                    style={{ backgroundColor: isShader ? item.hex || '#38bdf8' : item.hex }}
+                  >
+                    {isShader && item.url ? (
+                      <img
+                        src={item.url}
+                        alt={item.name || 'Shader'}
+                        className="h-full w-full object-cover pointer-events-none"
+                        loading="lazy"
+                      />
+                    ) : null}
+                  </button>
+                );
+              })}
             </div>
           </div>
         ) : (
@@ -694,13 +958,72 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
               {slider('Lightness', `${Math.round(hsv.v * 100)}%`, <input type="range" min="0" max="100" value={Math.round(hsv.v * 100)} onChange={(event) => applyHsv({ ...hsv, v: Number(event.target.value) / 100 })} className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`} />)}
               <div>
                 <div className={`mb-1.5 text-[10px] font-bold uppercase tracking-[.14em] ${isLight ? 'text-neutral-600' : 'text-neutral-400'}`}>Last used</div>
-                <div className="grid grid-cols-6 gap-1.5">{recentColors.map((color) => <button key={color} type="button" onClick={() => applyColor(color)} aria-label={`Use ${color}`} className={`aspect-square min-h-0 w-full rounded-lg border ${color.toLowerCase() === currentColor.toLowerCase() ? 'border-neutral-900 ring-2 ring-neutral-900/35 dark:border-white dark:ring-white/35' : isLight ? 'border-black/15' : 'border-white/15'}`} style={{ backgroundColor: color }} />)}</div>
+                <div className="grid grid-cols-6 gap-2">
+                  {recentItems.map((item, index) => {
+                    const isShader = item.type === 'shader';
+                    const isSelected = isShader
+                      ? selectedPresetId === item.presetId
+                      : !selectedPresetId && item.hex?.toLowerCase() === currentColor.toLowerCase();
+
+                    return (
+                      <button
+                        key={isShader ? `recent-shader-${item.presetId}-${index}` : `recent-color-${item.hex}-${index}`}
+                        type="button"
+                        onClick={() => handleSelectRecent(item)}
+                        aria-label={isShader ? `Use shader ${item.name}` : `Use color ${item.hex}`}
+                        title={isShader ? `Shader: ${item.name}` : item.hex}
+                        className={`relative aspect-square min-h-0 w-full rounded-full border overflow-hidden shadow-xs transition-transform active:scale-95 flex items-center justify-center ${
+                          isSelected
+                            ? isLight
+                              ? 'border-neutral-900 ring-2 ring-neutral-900/35 scale-105'
+                              : 'border-white ring-2 ring-white/35 scale-105'
+                            : isLight
+                            ? 'border-black/15 hover:scale-105'
+                            : 'border-white/15 hover:scale-105'
+                        }`}
+                        style={{ backgroundColor: isShader ? item.hex || '#38bdf8' : item.hex }}
+                      >
+                        {isShader && item.url ? (
+                          <img
+                            src={item.url}
+                            alt={item.name || 'Shader'}
+                            className="h-full w-full object-cover pointer-events-none"
+                            loading="lazy"
+                          />
+                        ) : null}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
               <button type="button" onClick={() => setShowPalettes((shown) => !shown)} className={`flex h-10 w-full items-center justify-between border-t text-xs font-semibold ${divider} ${ghostButton}`}><span className="flex items-center gap-2"><Layers className="h-4 w-4" /> Palettes</span><ChevronDown className={`h-4 w-4 ${showPalettes ? 'rotate-180' : ''}`} /></button>
             </div>
             {showPalettes && <div className="space-y-2 pb-1">
               <select value={paletteName} onChange={(event) => setPaletteName(event.target.value as keyof typeof CURATED_PALETTES)} className={`h-11 w-full rounded-xl border px-3 text-xs outline-none ${field}`}>{Object.keys(CURATED_PALETTES).map((name) => <option key={name}>{name}</option>)}</select>
-              <div className="grid grid-cols-7 gap-1.5">{CURATED_PALETTES[paletteName].map((color) => <button key={color} type="button" onClick={() => applyColor(color)} className={`h-10 rounded-lg border ${isLight ? 'border-black/15' : 'border-white/15'}`} style={{ backgroundColor: color }} aria-label={`Use ${color}`} />)}</div>
+              <div className="grid grid-cols-7 gap-1.5">
+                {CURATED_PALETTES[paletteName].map((color) => {
+                  const isSelected = !selectedPresetId && color.toLowerCase() === currentColor.toLowerCase();
+                  return (
+                    <button
+                      key={color}
+                      type="button"
+                      onClick={() => applyColor(color)}
+                      className={`aspect-square w-full rounded-full border shadow-xs transition-transform active:scale-95 ${
+                        isSelected
+                          ? isLight
+                            ? 'border-neutral-900 ring-2 ring-neutral-900/35 scale-105'
+                            : 'border-white ring-2 ring-white/35 scale-105'
+                          : isLight
+                          ? 'border-black/15 hover:scale-105'
+                          : 'border-white/15 hover:scale-105'
+                      }`}
+                      style={{ backgroundColor: color }}
+                      aria-label={`Use ${color}`}
+                      title={color}
+                    />
+                  );
+                })}
+              </div>
             </div>}
           </div>}
 
@@ -712,7 +1035,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
             <button type="button" onClick={() => setShowPosterize((shown) => !shown)} className={`flex h-11 w-full items-center justify-between border-t text-xs font-semibold ${divider} ${ghostButton}`}><span>Posterize</span><ChevronDown className={`h-4 w-4 ${showPosterize ? 'rotate-180' : ''}`} /></button>
             {showPosterize && <div className="space-y-3">
               {slider('Steps', String(posterizeSteps), <input type="range" min="2" max="12" value={posterizeSteps} onChange={(event) => setPosterizeSteps(Number(event.target.value))} className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`} />)}
-              <button type="button" onClick={() => applyColor(posterizedColor)} className={`flex h-11 w-full items-center justify-between rounded-xl border px-3 ${field}`}><span className="text-xs font-semibold">Use posterized color</span><span className="flex items-center gap-2 font-mono text-[10px] font-bold">{posterizedColor.toUpperCase()}<span className={`h-7 w-7 rounded-lg border ${isLight ? 'border-black/15' : 'border-white/15'}`} style={{ backgroundColor: posterizedColor }} /></span></button>
+              <button type="button" onClick={() => applyColor(posterizedColor)} className={`flex h-11 w-full items-center justify-between rounded-xl border px-3 ${field}`}><span className="text-xs font-semibold">Use posterized color</span><span className="flex items-center gap-2 font-mono text-[10px] font-bold">{posterizedColor.toUpperCase()}<span className={`h-7 w-7 rounded-full border shadow-xs ${isLight ? 'border-black/15' : 'border-white/15'}`} style={{ backgroundColor: posterizedColor }} /></span></button>
             </div>}
           </div>}
 
@@ -720,7 +1043,30 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
             {baseColorControl('Harmony suggestions are generated from this color.')}
             <div className={`grid grid-cols-2 border-b ${divider}`}>{([['complementary', 'Complementary'], ['analogous', 'Analogous']] as Array<[HarmonyMode, string]>).map(([mode, label]) => <button key={mode} type="button" onClick={() => setHarmonyMode(mode)} className={`h-11 border-b-2 text-[11px] font-semibold ${harmonyMode === mode ? (isLight ? 'border-neutral-900 text-neutral-950 font-bold' : 'border-white text-white font-bold') : `border-transparent ${ghostButton}`}`}>{label}</button>)}</div>
             <div className={`text-[10px] font-semibold ${quietText}`}>Choose a swatch to use it as the paint color.</div>
-            <div className="grid min-h-20 gap-2" style={{ gridTemplateColumns: `repeat(${Math.min(harmonyColors.length, 7)}, minmax(0, 1fr))` }}>{harmonyColors.slice(0, 7).map((color, index) => <button key={`${color}-${index}`} type="button" onClick={() => applyColor(color)} className={`min-h-20 rounded-xl border ${color.toLowerCase() === currentColor.toLowerCase() ? 'border-neutral-900 ring-2 ring-neutral-900/35 dark:border-white dark:ring-white/35' : isLight ? 'border-black/15' : 'border-white/15'}`} style={{ backgroundColor: color }} aria-label={`Use ${color}`} />)}</div>
+            <div className="flex items-center justify-center gap-2.5 py-3">
+              {harmonyColors.slice(0, 7).map((color, index) => {
+                const isSelected = !selectedPresetId && color.toLowerCase() === currentColor.toLowerCase();
+                return (
+                  <button
+                    key={`${color}-${index}`}
+                    type="button"
+                    onClick={() => applyColor(color)}
+                    className={`h-11 w-11 sm:h-12 sm:w-12 shrink-0 rounded-full border shadow-xs transition-transform active:scale-95 ${
+                      isSelected
+                        ? isLight
+                          ? 'border-neutral-900 ring-2 ring-neutral-900/35 scale-105'
+                          : 'border-white ring-2 ring-white/35 scale-105'
+                        : isLight
+                        ? 'border-black/15 hover:scale-105'
+                        : 'border-white/15 hover:scale-105'
+                    }`}
+                    style={{ backgroundColor: color }}
+                    aria-label={`Use ${color}`}
+                    title={color}
+                  />
+                );
+              })}
+            </div>
             <select value={harmonyMode} onChange={(event) => setHarmonyMode(event.target.value as HarmonyMode)} className={`h-11 w-full rounded-xl border px-3 text-xs outline-none ${field}`} aria-label="Harmony mode"><option value="complementary">Complementary (Graphic Contrast)</option><option value="analogous">Analogous (Harmonious Palette)</option></select>
           </div>}
 
@@ -737,6 +1083,14 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
                 ]}
               />
 
+              {/* Visual Confirmation Banner */}
+              {appliedNotice && (
+                <div className="flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-xl bg-emerald-500/15 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 text-xs font-semibold animate-in fade-in duration-150 shadow-xs">
+                  <Check className="w-3.5 h-3.5 stroke-[2.5]" />
+                  <span>{appliedNotice}</span>
+                </div>
+              )}
+
               {/* All Shaders Unified Grid */}
               <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
                 {allShaders.map((preset) => {
@@ -750,22 +1104,29 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
                       className={`flex flex-col items-center justify-center gap-1 rounded-xl p-1.5 border transition-all active:scale-95 ${
                         isSelected
                           ? isLight
-                            ? 'border-neutral-900 bg-black/10 text-neutral-950 font-bold'
-                            : 'border-white bg-white/15 text-white font-bold'
+                            ? 'border-sky-500 bg-sky-500/10 text-sky-950 font-bold shadow-xs ring-1 ring-sky-500/30'
+                            : 'border-sky-400 bg-sky-500/15 text-sky-100 font-bold shadow-xs ring-1 ring-sky-400/30'
                           : `border-transparent ${ghostButton}`
                       }`}
                       title={preset.name}
                     >
                       <span
-                        className={`block h-10 w-10 sm:h-11 sm:w-11 overflow-hidden rounded-full border shadow-sm ${
+                        className={`relative block h-10 w-10 sm:h-11 sm:w-11 overflow-hidden rounded-full border shadow-sm transition-transform ${
                           isSelected
-                            ? 'border-neutral-900 ring-2 ring-neutral-900/25 dark:border-white dark:ring-white/25'
+                            ? 'border-sky-500 ring-2 ring-sky-400/50 scale-105'
                             : isLight ? 'border-black/15' : 'border-white/15'
                         }`}
                       >
                         <img src={preset.url} alt="" className="h-full w-full object-cover" loading="lazy" />
+                        {isSelected && (
+                          <span className="absolute inset-0 flex items-center justify-center bg-black/40">
+                            <Check className="w-4 h-4 text-white stroke-[3]" />
+                          </span>
+                        )}
                       </span>
-                      <span className="text-[10px] truncate max-w-full font-medium text-center">{label}</span>
+                      <span className={`text-[10px] truncate max-w-full text-center ${isSelected ? 'font-bold text-sky-600 dark:text-sky-400' : 'font-medium'}`}>
+                        {label}
+                      </span>
                     </button>
                   );
                 })}

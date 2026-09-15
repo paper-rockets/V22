@@ -56,6 +56,15 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
   const [selectionMode, setSelectionMode] = useState<'pointer' | 'lasso'>('pointer');
   const [softSelection, setSoftSelection] = useState<boolean>(false);
   const [showTransformDetails, setShowTransformDetails] = useState<boolean>(false);
+  const [isPhone, setIsPhone] = useState<boolean>(false);
+  const [showPrecisionModal, setShowPrecisionModal] = useState<boolean>(false);
+
+  React.useEffect(() => {
+    const check = () => setIsPhone(window.innerWidth < 640);
+    check();
+    window.addEventListener('resize', check);
+    return () => window.removeEventListener('resize', check);
+  }, []);
 
   // Track relative transform values for display
   const [transformValues, setTransformValues] = useState({
@@ -140,7 +149,7 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
           <button
             type="button"
             onClick={handlePointerSelect}
-            className={`min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center justify-center gap-1.5 font-semibold transition-all ${
+            className={`min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center justify-center gap-1.5 font-semibold transition-colors duration-150 ease-out ${
               (tool === 'pointer' || tool === 'select') && selectionMode === 'pointer'
                 ? isLight
                   ? 'bg-neutral-900 border-neutral-900 text-white shadow-sm'
@@ -157,7 +166,7 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
           <button
             type="button"
             onClick={handleLassoSelect}
-            className={`min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center justify-center gap-1.5 font-semibold transition-all ${
+            className={`min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center justify-center gap-1.5 font-semibold transition-colors duration-150 ease-out ${
               (tool === 'pointer' || tool === 'select') && selectionMode === 'lasso'
                 ? isLight
                   ? 'bg-neutral-900 border-neutral-900 text-white shadow-sm'
@@ -182,8 +191,7 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
             { id: 'all' as const, label: 'Everything' },
             { id: 'active_layer' as const, label: 'Current Layer' },
             { id: 'strokes' as const, label: 'Strokes' },
-            { id: 'model' as const, label: 'Model' },
-            { id: 'guide' as const, label: 'Guides' },
+            { id: 'model' as const, label: '3D Models' },
           ].map((scope) => (
             <button
               key={scope.id}
@@ -193,8 +201,6 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
                 onSelectTargetScope(scope.id);
               }}
               className={`min-h-[44px] px-2 py-1 rounded-lg border text-center font-medium transition-all text-xs ${
-                scope.id === 'all' ? 'col-span-2' : ''
-              } ${
                 targetScope === scope.id
                   ? isLight
                     ? 'bg-neutral-900 border-neutral-900 text-white font-bold shadow-xs'
@@ -210,12 +216,64 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
         </div>
       </div>
 
-      {/* 3. OPTIONS & ACTIONS */}
+      {/* 3. MOVE CONTROLS & ACTIONS */}
       <div className={cardClass}>
-        <div className={subHeadingClass}>Options & Actions</div>
+        <div className={subHeadingClass}>Move, Turn & Resize</div>
 
-        <div className="space-y-1.5">
-          {/* Show Gizmo Toggle */}
+        {/* Direct Action Buttons: Move / Turn / Resize */}
+        <div className="grid grid-cols-3 gap-1.5">
+          <button
+            type="button"
+            onClick={() => {
+              haptics.trigger('light');
+              if (!isGizmoActive) onToggleGizmo();
+            }}
+            className={`min-h-[44px] px-2 py-1.5 rounded-lg border font-semibold text-xs flex items-center justify-center gap-1 transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-95 ${
+              isLight
+                ? 'bg-white border-black/10 text-neutral-800 hover:bg-neutral-200/50'
+                : 'bg-black/30 border-white/10 text-neutral-200 hover:bg-white/10'
+            }`}
+            title="Move selected object in 3D"
+          >
+            <Compass className="w-3.5 h-3.5 text-sky-400" />
+            <span>Move</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              haptics.trigger('light');
+              if (!isGizmoActive) onToggleGizmo();
+            }}
+            className={`min-h-[44px] px-2 py-1.5 rounded-lg border font-semibold text-xs flex items-center justify-center gap-1 transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-95 ${
+              isLight
+                ? 'bg-white border-black/10 text-neutral-800 hover:bg-neutral-200/50'
+                : 'bg-black/30 border-white/10 text-neutral-200 hover:bg-white/10'
+            }`}
+            title="Turn and rotate selected object"
+          >
+            <RotateCcw className="w-3.5 h-3.5 text-emerald-400" />
+            <span>Turn</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              haptics.trigger('light');
+              if (!isGizmoActive) onToggleGizmo();
+            }}
+            className={`min-h-[44px] px-2 py-1.5 rounded-lg border font-semibold text-xs flex items-center justify-center gap-1 transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-95 ${
+              isLight
+                ? 'bg-white border-black/10 text-neutral-800 hover:bg-neutral-200/50'
+                : 'bg-black/30 border-white/10 text-neutral-200 hover:bg-white/10'
+            }`}
+            title="Resize and scale selected object"
+          >
+            <CircleDot className="w-3.5 h-3.5 text-amber-400" />
+            <span>Resize</span>
+          </button>
+        </div>
+
+        <div className="space-y-1.5 pt-1">
+          {/* Show Move Controls Toggle */}
           <button
             type="button"
             onClick={() => {
@@ -234,71 +292,9 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
           >
             <div className="flex items-center gap-1.5">
               <Compass className="w-3.5 h-3.5" />
-              <span>Show Transform Gizmo</span>
+              <span>Show Move handles</span>
             </div>
             {isGizmoActive ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5 opacity-50" />}
-          </button>
-
-          {/* Lock Selection Toggle */}
-          <button
-            type="button"
-            onClick={() => {
-              haptics.trigger('light');
-              onToggleLock();
-            }}
-            className={`w-full min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center justify-between font-medium text-xs transition-colors ${
-              isGizmoLocked
-                ? isLight
-                  ? 'bg-neutral-900 border-neutral-900 text-white'
-                  : 'bg-white border-white text-neutral-950 font-bold'
-                : isLight
-                ? 'bg-white border-black/10 text-neutral-700 hover:bg-neutral-200/40'
-                : 'bg-black/30 border-white/10 text-neutral-300 hover:bg-white/5'
-            }`}
-          >
-            <div className="flex items-center gap-1.5">
-              {isGizmoLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
-              <span>Lock Proportions & Movement</span>
-            </div>
-            <span className="text-[10px] font-mono opacity-80">{isGizmoLocked ? 'Locked' : 'Free'}</span>
-          </button>
-
-          {/* Soft Selection Toggle */}
-          <button
-            type="button"
-            onClick={() => {
-              haptics.trigger('light');
-              setSoftSelection((prev) => !prev);
-            }}
-            className={`w-full min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center justify-between font-medium text-xs transition-colors ${
-              softSelection
-                ? isLight
-                  ? 'bg-neutral-900 border-neutral-900 text-white'
-                  : 'bg-white border-white text-neutral-950 font-bold'
-                : isLight
-                ? 'bg-white border-black/10 text-neutral-700 hover:bg-neutral-200/40'
-                : 'bg-black/30 border-white/10 text-neutral-300 hover:bg-white/5'
-            }`}
-          >
-            <div className="flex items-center gap-1.5">
-              <CircleDot className="w-3.5 h-3.5" />
-              <span>Soft Selection Falloff</span>
-            </div>
-            <span className="text-[10px] font-mono opacity-80">{softSelection ? 'On' : 'Off'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={handleResetTransform}
-            className={`w-full min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center gap-1.5 font-medium text-xs transition-colors ${
-              isLight
-                ? 'bg-white border-black/10 text-neutral-700 hover:bg-neutral-200/40'
-                : 'bg-black/30 border-white/10 text-neutral-300 hover:bg-white/5'
-            }`}
-            title="Reset position, rotation, and scale"
-          >
-            <RotateCcw className="w-3.5 h-3.5" />
-            <span>Reset Transform</span>
           </button>
         </div>
 
@@ -310,7 +306,7 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
               haptics.trigger('medium');
               engine?.snapActiveToGround(targetScope);
             }}
-            className={`h-11 min-h-[40px] p-1.5 rounded-lg border flex flex-col items-center justify-center gap-0.5 font-semibold text-[10px] transition-all active:scale-95 ${
+            className={`h-11 min-h-[40px] p-1.5 rounded-lg border flex flex-col items-center justify-center gap-0.5 font-semibold text-[10px] transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-95 ${
               isLight
                 ? 'bg-white border-black/10 hover:bg-neutral-200/50 text-neutral-800'
                 : 'bg-black/30 border-white/10 hover:bg-white/10 text-white'
@@ -327,7 +323,7 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
               haptics.trigger('medium');
               engine?.cloneModel();
             }}
-            className={`h-11 min-h-[40px] p-1.5 rounded-lg border flex flex-col items-center justify-center gap-0.5 font-semibold text-[10px] transition-all active:scale-95 ${
+            className={`h-11 min-h-[40px] p-1.5 rounded-lg border flex flex-col items-center justify-center gap-0.5 font-semibold text-[10px] transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-95 ${
               isLight
                 ? 'bg-white border-black/10 hover:bg-neutral-200/50 text-neutral-800'
                 : 'bg-black/30 border-white/10 hover:bg-white/10 text-white'
@@ -344,7 +340,7 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
               haptics.trigger('medium');
               engine?.deleteActiveSelection();
             }}
-            className={`h-11 min-h-[40px] p-1.5 rounded-lg border flex flex-col items-center justify-center gap-0.5 font-semibold text-[10px] transition-all active:scale-95 ${
+            className={`h-11 min-h-[40px] p-1.5 rounded-lg border flex flex-col items-center justify-center gap-0.5 font-semibold text-[10px] transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-95 ${
               isLight
                 ? 'bg-red-50 border-red-200 hover:bg-red-100 text-red-700'
                 : 'bg-red-950/40 border-red-900/60 hover:bg-red-900/40 text-red-300'
@@ -357,7 +353,7 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
         </div>
       </div>
 
-      {/* 4. TRANSFORM DETAILS */}
+      {/* 4. ADVANCED SELECTION & TRANSFORM CONTROLS */}
       <div className={cardClass}>
         <button
           type="button"
@@ -365,12 +361,12 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
             haptics.trigger('light');
             setShowTransformDetails((prev) => !prev);
           }}
-          className="w-full flex items-center justify-between min-h-[28px] py-0.5 text-left"
+          className="w-full flex items-center justify-between min-h-[32px] py-0.5 text-left"
         >
-          <div className={subHeadingClass}>Transform Details</div>
+          <div className={subHeadingClass}>Advanced</div>
           <div className="flex items-center gap-1.5 opacity-70">
-            <span className="text-[10px] font-mono">
-              {showTransformDetails ? 'Hide' : 'X / Y / Z'}
+            <span className="text-[10px]">
+              {showTransformDetails ? 'Hide' : 'Lock, falloff & coordinates'}
             </span>
             {showTransformDetails ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
           </div>
@@ -378,85 +374,189 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
 
         {showTransformDetails && (
           <div className="space-y-2 pt-1 border-t border-black/5 dark:border-white/5">
-            {/* Position Row with Direct Stepper */}
-            <div className="space-y-1">
-              <div className="flex justify-between items-center text-[10px] font-medium">
-                <span className={isLight ? 'text-neutral-700' : 'text-neutral-300'}>Position (m)</span>
-                <span className="text-[9px] opacity-60">±0.1m nudge</span>
+            {/* Move nearby strokes (Soft Selection Falloff) */}
+            <button
+              type="button"
+              onClick={() => {
+                haptics.trigger('light');
+                setSoftSelection((prev) => !prev);
+              }}
+              className={`w-full min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center justify-between font-medium text-xs transition-colors ${
+                softSelection
+                  ? isLight
+                    ? 'bg-neutral-900 border-neutral-900 text-white'
+                    : 'bg-white border-white text-neutral-950 font-bold'
+                  : isLight
+                  ? 'bg-white border-black/10 text-neutral-700 hover:bg-neutral-200/40'
+                  : 'bg-black/30 border-white/10 text-neutral-300 hover:bg-white/5'
+              }`}
+            >
+              <div className="flex items-center gap-1.5">
+                <CircleDot className="w-3.5 h-3.5" />
+                <span>Move nearby strokes</span>
               </div>
-              <div className="grid grid-cols-3 gap-1.5">
-                {[
-                  { axis: 'posX' as const, label: 'X', val: transformValues.posX },
-                  { axis: 'posY' as const, label: 'Y', val: transformValues.posY },
-                  { axis: 'posZ' as const, label: 'Z', val: transformValues.posZ },
-                ].map(({ axis, label, val }) => (
-                  <div
-                    key={axis}
-                    className={`h-8 min-h-[32px] px-1 rounded-lg border flex items-center justify-between font-mono text-xs ${
-                      isLight ? 'bg-white border-black/10 text-neutral-900' : 'bg-black/30 border-white/10 text-white'
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => handleNudgePos(axis, -0.1)}
-                      className="w-5 h-6 flex items-center justify-center opacity-60 hover:opacity-100 active:scale-90"
-                      title={`Decrease ${label}`}
-                    >
-                      <Minus className="w-3 h-3" />
-                    </button>
-                    <span className="text-[10px] font-bold font-mono">{label}: {val.toFixed(2)}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleNudgePos(axis, 0.1)}
-                      className="w-5 h-6 flex items-center justify-center opacity-60 hover:opacity-100 active:scale-90"
-                      title={`Increase ${label}`}
-                    >
-                      <Plus className="w-3 h-3" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
+              <span className="text-[10px] font-mono opacity-80">{softSelection ? 'On' : 'Off'}</span>
+            </button>
 
-            {/* Rotation Row with Direct 15° Stepper */}
-            <div className="space-y-1 pt-1">
-              <div className="flex justify-between items-center text-[10px] font-medium">
-                <span className={isLight ? 'text-neutral-700' : 'text-neutral-300'}>Rotation (°)</span>
-                <span className="text-[9px] opacity-60">±15° nudge</span>
+            {/* Lock Selection Toggle */}
+            <button
+              type="button"
+              onClick={() => {
+                haptics.trigger('light');
+                onToggleLock();
+              }}
+              className={`w-full min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center justify-between font-medium text-xs transition-colors ${
+                isGizmoLocked
+                  ? isLight
+                    ? 'bg-neutral-900 border-neutral-900 text-white'
+                    : 'bg-white border-white text-neutral-950 font-bold'
+                  : isLight
+                  ? 'bg-white border-black/10 text-neutral-700 hover:bg-neutral-200/40'
+                  : 'bg-black/30 border-white/10 text-neutral-300 hover:bg-white/5'
+              }`}
+            >
+              <div className="flex items-center gap-1.5">
+                {isGizmoLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                <span>Lock Proportions & Movement</span>
               </div>
-              <div className="grid grid-cols-3 gap-1.5">
-                {[
-                  { axis: 'rotX' as const, label: 'X', val: transformValues.rotX },
-                  { axis: 'rotY' as const, label: 'Y', val: transformValues.rotY },
-                  { axis: 'rotZ' as const, label: 'Z', val: transformValues.rotZ },
-                ].map(({ axis, label, val }) => (
-                  <div
-                    key={axis}
-                    className={`h-8 min-h-[32px] px-1 rounded-lg border flex items-center justify-between font-mono text-xs ${
-                      isLight ? 'bg-white border-black/10 text-neutral-900' : 'bg-black/30 border-white/10 text-white'
-                    }`}
-                  >
-                    <button
-                      type="button"
-                      onClick={() => handleNudgeRot(axis, -15)}
-                      className="w-5 h-6 flex items-center justify-center opacity-60 hover:opacity-100 active:scale-90"
-                      title={`Rotate -15° on ${label}`}
-                    >
-                      <Minus className="w-3 h-3" />
-                    </button>
-                    <span className="text-[10px] font-bold font-mono">{label}: {Math.round(val)}°</span>
-                    <button
-                      type="button"
-                      onClick={() => handleNudgeRot(axis, 15)}
-                      className="w-5 h-6 flex items-center justify-center opacity-60 hover:opacity-100 active:scale-90"
-                      title={`Rotate +15° on ${label}`}
-                    >
-                      <Plus className="w-3 h-3" />
-                    </button>
+              <span className="text-[10px] font-mono opacity-80">{isGizmoLocked ? 'Locked' : 'Free'}</span>
+            </button>
+
+            {/* Reset Transform */}
+            <button
+              type="button"
+              onClick={handleResetTransform}
+              className={`w-full min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center gap-1.5 font-medium text-xs transition-colors ${
+                isLight
+                  ? 'bg-white border-black/10 text-neutral-700 hover:bg-neutral-200/40'
+                  : 'bg-black/30 border-white/10 text-neutral-300 hover:bg-white/5'
+              }`}
+              title="Reset position, rotation, and scale"
+            >
+              <RotateCcw className="w-3.5 h-3.5" />
+              <span>Reset position & turn</span>
+            </button>
+
+            {/* Target Guides Scope (Preserved in Advanced) */}
+            <button
+              type="button"
+              onClick={() => {
+                haptics.trigger('light');
+                onSelectTargetScope('guide');
+              }}
+              className={`w-full min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center justify-between font-medium text-xs transition-colors ${
+                targetScope === 'guide'
+                  ? isLight
+                    ? 'bg-neutral-900 border-neutral-900 text-white font-bold'
+                    : 'bg-white border-white text-neutral-950 font-bold'
+                  : isLight
+                  ? 'bg-white border-black/10 text-neutral-700 hover:bg-neutral-200/40'
+                  : 'bg-black/30 border-white/10 text-neutral-300 hover:bg-white/5'
+              }`}
+            >
+              <span>Target 3D Guides & Wires</span>
+              <span className="text-[10px] opacity-70">{targetScope === 'guide' ? 'Active' : 'Off'}</span>
+            </button>
+
+            {/* Precise X/Y/Z Controls */}
+            {isPhone ? (
+              <div>
+                <button
+                  type="button"
+                  onClick={() => setShowPrecisionModal(true)}
+                  className={`w-full min-h-[44px] px-3 py-2 rounded-xl border flex items-center justify-between text-xs font-semibold transition-colors duration-150 ease-out ${
+                    isLight
+                      ? 'bg-white border-black/10 hover:bg-neutral-200/50 text-neutral-800'
+                      : 'bg-black/30 border-white/10 hover:bg-white/10 text-white'
+                  }`}
+                >
+                  <span>Precise X/Y/Z coordinates</span>
+                  <ChevronRight className="w-4 h-4 opacity-60" />
+                </button>
+              </div>
+            ) : (
+              <>
+                {/* Position Row with Direct Stepper */}
+                <div className="space-y-1">
+                  <div className="flex justify-between items-center text-[10px] font-medium">
+                    <span className={isLight ? 'text-neutral-700' : 'text-neutral-300'}>Position (m)</span>
+                    <span className="text-[9px] opacity-60">±0.1m nudge</span>
                   </div>
-                ))}
-              </div>
-            </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { axis: 'posX' as const, label: 'X', val: transformValues.posX },
+                      { axis: 'posY' as const, label: 'Y', val: transformValues.posY },
+                      { axis: 'posZ' as const, label: 'Z', val: transformValues.posZ },
+                    ].map(({ axis, label, val }) => (
+                      <div
+                        key={axis}
+                        className={`h-8 min-h-[32px] px-1 rounded-lg border flex items-center justify-between font-mono text-xs ${
+                          isLight ? 'bg-white border-black/10 text-neutral-900' : 'bg-black/30 border-white/10 text-white'
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleNudgePos(axis, -0.1)}
+                          className="w-5 h-6 flex items-center justify-center opacity-60 hover:opacity-100 active:scale-90"
+                          title={`Decrease ${label}`}
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="text-[10px] font-bold font-mono">{label}: {val.toFixed(2)}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleNudgePos(axis, 0.1)}
+                          className="w-5 h-6 flex items-center justify-center opacity-60 hover:opacity-100 active:scale-90"
+                          title={`Increase ${label}`}
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Rotation Row with Direct 15° Stepper */}
+                <div className="space-y-1 pt-1">
+                  <div className="flex justify-between items-center text-[10px] font-medium">
+                    <span className={isLight ? 'text-neutral-700' : 'text-neutral-300'}>Rotation (°)</span>
+                    <span className="text-[9px] opacity-60">±15° nudge</span>
+                  </div>
+                  <div className="grid grid-cols-3 gap-1.5">
+                    {[
+                      { axis: 'rotX' as const, label: 'X', val: transformValues.rotX },
+                      { axis: 'rotY' as const, label: 'Y', val: transformValues.rotY },
+                      { axis: 'rotZ' as const, label: 'Z', val: transformValues.rotZ },
+                    ].map(({ axis, label, val }) => (
+                      <div
+                        key={axis}
+                        className={`h-8 min-h-[32px] px-1 rounded-lg border flex items-center justify-between font-mono text-xs ${
+                          isLight ? 'bg-white border-black/10 text-neutral-900' : 'bg-black/30 border-white/10 text-white'
+                        }`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => handleNudgeRot(axis, -15)}
+                          className="w-5 h-6 flex items-center justify-center opacity-60 hover:opacity-100 active:scale-90"
+                          title={`Rotate -15° on ${label}`}
+                        >
+                          <Minus className="w-3 h-3" />
+                        </button>
+                        <span className="text-[10px] font-bold font-mono">{label}: {Math.round(val)}°</span>
+                        <button
+                          type="button"
+                          onClick={() => handleNudgeRot(axis, 15)}
+                          className="w-5 h-6 flex items-center justify-center opacity-60 hover:opacity-100 active:scale-90"
+                          title={`Rotate +15° on ${label}`}
+                        >
+                          <Plus className="w-3 h-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
+            )}
 
             {/* Scale Row */}
             <div className="space-y-1 pt-1">
@@ -491,6 +591,93 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
           </div>
         )}
       </div>
+      {/* Dedicated Precision Sheet for Phone */}
+      {showPrecisionModal && (
+        <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-xs flex items-end sm:items-center justify-center p-3 animate-in fade-in duration-150">
+          <div
+            className={`w-full max-w-sm rounded-2xl p-4 shadow-2xl border space-y-3 ${
+              isLight ? 'bg-white text-neutral-900 border-black/10' : 'bg-[#181a1f] text-white border-white/15'
+            }`}
+          >
+            <div className="flex items-center justify-between border-b pb-2 border-black/10 dark:border-white/10">
+              <span className="font-bold text-sm">Precise Transforms</span>
+              <button
+                type="button"
+                onClick={() => setShowPrecisionModal(false)}
+                className="text-xs font-bold px-2 py-1 rounded-md bg-neutral-200 dark:bg-neutral-800"
+              >
+                Done
+              </button>
+            </div>
+
+            {/* Position */}
+            <div className="space-y-1">
+              <div className="flex justify-between items-center text-xs font-medium opacity-75">
+                <span>Position (meters)</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  { axis: 'posX' as const, label: 'X', val: transformValues.posX },
+                  { axis: 'posY' as const, label: 'Y', val: transformValues.posY },
+                  { axis: 'posZ' as const, label: 'Z', val: transformValues.posZ },
+                ].map(({ axis, label, val }) => (
+                  <div
+                    key={axis}
+                    className={`h-10 px-1.5 rounded-lg border flex items-center justify-between font-mono text-xs ${
+                      isLight ? 'bg-neutral-100 border-black/10' : 'bg-black/30 border-white/10'
+                    }`}
+                  >
+                    <button type="button" onClick={() => handleNudgePos(axis, -0.1)} className="p-1 opacity-70 hover:opacity-100">
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="font-bold">{label}: {val.toFixed(2)}</span>
+                    <button type="button" onClick={() => handleNudgePos(axis, 0.1)} className="p-1 opacity-70 hover:opacity-100">
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Rotation */}
+            <div className="space-y-1">
+              <div className="flex justify-between items-center text-xs font-medium opacity-75">
+                <span>Rotation (degrees)</span>
+              </div>
+              <div className="grid grid-cols-3 gap-1.5">
+                {[
+                  { axis: 'rotX' as const, label: 'X', val: transformValues.rotX },
+                  { axis: 'rotY' as const, label: 'Y', val: transformValues.rotY },
+                  { axis: 'rotZ' as const, label: 'Z', val: transformValues.rotZ },
+                ].map(({ axis, label, val }) => (
+                  <div
+                    key={axis}
+                    className={`h-10 px-1.5 rounded-lg border flex items-center justify-between font-mono text-xs ${
+                      isLight ? 'bg-neutral-100 border-black/10' : 'bg-black/30 border-white/10'
+                    }`}
+                  >
+                    <button type="button" onClick={() => handleNudgeRot(axis, -15)} className="p-1 opacity-70 hover:opacity-100">
+                      <Minus className="w-3.5 h-3.5" />
+                    </button>
+                    <span className="font-bold">{label}: {Math.round(val)}°</span>
+                    <button type="button" onClick={() => handleNudgeRot(axis, 15)} className="p-1 opacity-70 hover:opacity-100">
+                      <Plus className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setShowPrecisionModal(false)}
+              className="w-full min-h-[44px] rounded-xl font-bold bg-sky-600 text-white flex items-center justify-center transition-transform active:scale-98 mt-2"
+            >
+              Apply & Close
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -24,12 +24,12 @@
   right: 8px;
   z-index: 50;
   display: flex;
-  width: 54px;
-  padding: 5px;
+  width: 58px;
+  padding: 4px 3px;
   flex-direction: column;
-  gap: 3px;
+  gap: 2px;
   border: 1px solid rgb(255 255 255 / 10%);
-  border-radius: 17px;
+  border-radius: 18px;
   background: rgb(17 19 24 / 94%);
   box-shadow: 0 12px 30px rgb(0 0 0 / 28%);
   transform: translateY(-50%);
@@ -44,15 +44,55 @@
 }
 
 .paperrocket-studio-mode {
-  width: 44px;
-  min-width: 44px;
-  height: 44px;
-  min-height: 44px;
-  padding: 0;
-  gap: 0;
+  width: 50px;
+  min-width: 50px;
+  height: auto;
+  min-height: 48px;
+  padding: 4px 2px;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
 }
 
-.paperrocket-studio-mode-label { display: none; }
+.paperrocket-studio-mode-label {
+  display: block;
+  font-size: 9px;
+  line-height: 1.1;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* Phone-specific labeled tool presentation */
+@media (max-width: 639px) {
+  .paperrocket-studio-mode-group {
+    width: 50px;
+    padding: 3px 2px;
+    right: 4px;
+    border-radius: 15px;
+  }
+
+  .paperrocket-studio-mode {
+    width: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    padding: 3px 1px;
+    flex-direction: column;
+    gap: 1px;
+  }
+
+  .paperrocket-studio-mode-label {
+    display: block;
+    font-size: 8px;
+    line-height: 1;
+    font-weight: 600;
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+}
 
 /* Five focused drawing controls stay centered at the bottom. Each shortcut
    opens only the control it names; the Draw panel remains the full workspace. */
@@ -61,8 +101,8 @@
   left: 50%;
   bottom: max(7px, env(safe-area-inset-bottom));
   display: grid;
-  grid-template-columns: repeat(6, minmax(0, 1fr));
-  width: min(calc(100% - 16px), 400px);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  width: min(calc(100% - 16px), 360px);
   min-height: 62px;
   padding: 4px;
   gap: 2px;
@@ -155,6 +195,9 @@
 
 .paperrocket-studio-rail[data-dock-position='left'] .paperrocket-studio-mode-group { left: 8px; right: auto; }
 .paperrocket-studio-rail[data-dock-position='right'] .paperrocket-studio-mode-group { left: auto; right: 8px; }
+/* Auto keeps the main tool rail on the left on every device. A manually pinned
+   right rail carries its inspector to the right via the shared panel rule. */
+.paperrocket-studio-rail[data-dock-position='auto'] .paperrocket-studio-mode-group { left: 8px; right: auto; }
 
 .paperrocket-studio-rail[data-hidden='true'] .paperrocket-studio-quick-group {
   opacity: 0;
@@ -170,7 +213,15 @@
 }
 
 .paperrocket-studio-rail[data-dock-position='left'][data-hidden='true'] .paperrocket-studio-mode-group {
+  opacity: 0;
   transform: translate(calc(-100% - 20px), -50%);
+  pointer-events: none;
+}
+
+.paperrocket-studio-rail[data-dock-position='auto'][data-hidden='true'] .paperrocket-studio-mode-group {
+  opacity: 0;
+  transform: translate(calc(-100% - 20px), -50%);
+  pointer-events: none;
 }
 
 .paperrocket-studio-dock-reveal {
@@ -182,6 +233,12 @@
   border-radius: 12px 0 0 12px;
   transform: translateY(-50%);
   pointer-events: auto;
+}
+
+.paperrocket-studio-rail[data-hidden='true'] + .paperrocket-studio-dock-reveal,
+.paperrocket-studio-rail[data-hidden='true'] .paperrocket-studio-dock-reveal {
+  opacity: 0 !important;
+  pointer-events: none !important;
 }
 
 .paperrocket-studio-dock-reveal[data-dock-position='left'] {
@@ -196,34 +253,54 @@
   right: auto !important;
   top: auto !important;
   bottom: calc(78px + env(safe-area-inset-bottom)) !important;
-  width: min(calc(100% - 16px), 360px) !important;
+  width: min(calc(100% - 16px), var(--studio-menu-compact)) !important;
   max-width: none !important;
   margin-left: 0 !important;
   transform: translateX(-50%) !important;
 }
 
-.paperrocket-studio-shelf--compact { width: min(calc(100% - 16px), 220px) !important; }
-.paperrocket-studio-shelf--straight { width: min(calc(100% - 16px), 264px) !important; }
+.paperrocket-studio-shelf--compact,
+.paperrocket-studio-shelf--straight { width: min(calc(100% - 16px), var(--studio-menu-compact)) !important; }
+.paperrocket-studio-shelf--wide,
 .paperrocket-studio-shelf--brush {
-  width: min(88vw, 336px) !important;
-  max-width: 336px !important;
+  width: min(calc(100% - 16px), var(--studio-menu-wide)) !important;
+  max-width: var(--studio-menu-wide) !important;
 }
 
 .paperrocket-context-panel {
   left: 8px;
   right: auto;
   bottom: calc(76px + env(safe-area-inset-bottom));
-  width: calc(100vw - 76px);
-  max-width: 360px;
+  width: min(calc(100vw - 16px), var(--studio-menu-wide));
+  max-width: var(--studio-menu-wide);
   max-height: min(68dvh, calc(100dvh - 132px));
   border-radius: 20px;
   animation-name: enter;
 }
 
-  @media (min-width: 700px) {
+@media (max-width: 639px) {
+  .paperrocket-context-panel,
+  .paperrocket-pro-panel {
+    left: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    width: 100vw !important;
+    max-width: 100vw !important;
+    max-height: min(72dvh, calc(100dvh - 56px)) !important;
+    border-radius: 24px 24px 0 0 !important;
+    border-left: 0 !important;
+    border-right: 0 !important;
+    border-bottom: 0 !important;
+    padding-bottom: env(safe-area-inset-bottom) !important;
+    z-index: 60 !important;
+  }
+}
+
+/* Tablet portrait: lower sheet leaving 65-75% artwork area open, with >=18px clearance above bottom dock */
+@media (min-width: 640px) and (max-width: 1023px) and (orientation: portrait) {
   .paperrocket-studio-quick-group {
-    grid-template-columns: repeat(6, minmax(0, 1fr));
-    width: min(calc(100% - 24px), 460px);
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    width: min(calc(100% - 24px), 360px);
     min-height: 62px;
   }
 
@@ -246,15 +323,66 @@
     border-radius: 0 12px 12px 0;
   }
 
-  .paperrocket-context-panel {
-    left: 72px;
+  .paperrocket-context-panel,
+  .paperrocket-pro-panel {
+    left: 50% !important;
+    right: auto !important;
+    top: auto !important;
+    bottom: calc(96px + env(safe-area-inset-bottom)) !important;
+    transform: translateX(-50%) !important;
+    width: min(var(--studio-menu-wide), calc(100vw - 120px)) !important;
+    max-width: var(--studio-menu-wide) !important;
+    max-height: calc(100dvh - 190px) !important;
+    border-radius: 20px !important;
+  }
+
+  .paperrocket-context-backdrop { display: none; }
+}
+
+/* Tablet landscape and desktop: side inspector alongside rail */
+@media (min-width: 1024px), ((min-width: 700px) and (orientation: landscape)) {
+  .paperrocket-studio-quick-group {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    width: min(calc(100% - 24px), 360px);
+    min-height: 62px;
+  }
+
+  .paperrocket-studio-shelf {
+    bottom: calc(78px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .paperrocket-studio-rail[data-dock-position='auto'] .paperrocket-studio-mode-group {
+    left: 10px;
     right: auto;
-    top: 50%;
-    bottom: auto;
-    transform: translateY(-50%);
-    width: min(344px, calc(100vw - 96px));
-    max-height: min(64dvh, 680px);
-    border-radius: 18px;
+  }
+
+  .paperrocket-studio-rail[data-dock-position='auto'][data-hidden='true'] .paperrocket-studio-mode-group {
+    transform: translate(calc(-100% - 20px), -50%);
+  }
+
+  .paperrocket-studio-dock-reveal[data-dock-position='auto'] {
+    left: 0;
+    right: auto;
+    border-radius: 0 12px 12px 0;
+  }
+
+  .paperrocket-context-panel,
+  .paperrocket-pro-panel {
+    left: 72px !important;
+    right: auto !important;
+    top: max(56px, calc(env(safe-area-inset-top) + 48px)) !important;
+    bottom: max(16px, calc(env(safe-area-inset-bottom) + 16px)) !important;
+    transform: none !important;
+    width: min(var(--studio-menu-wide), calc(100vw - 96px)) !important;
+    max-width: var(--studio-menu-wide) !important;
+    max-height: calc(100dvh - 76px) !important;
+    border-radius: 18px !important;
+  }
+
+  .paperrocket-context-panel[data-dock-position='right'],
+  .paperrocket-pro-panel[data-dock-position='right'] {
+    left: auto !important;
+    right: 72px !important;
   }
 
   .paperrocket-context-backdrop { display: none; }
@@ -275,3 +403,12 @@
   .paperrocket-studio-quick-group { transition: none; }
 }
 
+/* Touch device hover gating: prevent sticky hover on touchscreens */
+@media (hover: none) and (pointer: coarse) {
+  .paperrocket-studio-mode:hover,
+  .paperrocket-placement-choice:hover,
+  .paperrocket-brush-card:hover {
+    background-color: inherit;
+    border-color: inherit;
+  }
+}

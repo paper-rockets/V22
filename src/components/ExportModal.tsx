@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { StudioEngine } from '../core/studioEngine';
 import { Download, Camera, Image, Box, X, Check, Loader2, FolderHeart } from 'lucide-react';
 import { ModelStorage } from '../core/modelStorage';
@@ -22,6 +22,17 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const isLight = theme === 'light';
   const [exporting, setExporting] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   const handleExportGLB = async () => {
     if (!engine) return;
@@ -156,24 +167,29 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   };
 
   return (
-    <div className="paperrocket-modal-overlay fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in duration-150">
+    <div className="paperrocket-modal-overlay fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-4 animate-in fade-in duration-150">
       <div
         id="export-modal-dialog"
-        className={`pr-surface w-full max-w-lg flex flex-col p-6 rounded-3xl border shadow-2xl overflow-hidden ${
+        role="dialog"
+        aria-modal="true"
+        aria-label="Export"
+        className={`pr-surface w-full max-w-lg max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-2rem)] flex flex-col p-4 sm:p-6 rounded-3xl border shadow-2xl overflow-hidden my-auto ${
           isLight
             ? 'bg-white border-black/10 text-neutral-800 shadow-2xl'
             : 'bg-[#18191d] border-neutral-800 text-neutral-100 shadow-2xl'
         }`}
       >
-        {/* Header */}
-        <div className={`flex items-center justify-between pb-4 border-b ${isLight ? 'border-black/10' : 'border-neutral-800'}`}>
+        {/* Header - Sticky non-scrolling */}
+        <div className={`shrink-0 flex items-center justify-between pb-3 sm:pb-4 border-b ${isLight ? 'border-black/10' : 'border-neutral-800'}`}>
           <div className={`flex items-center gap-2.5 font-semibold text-base ${isLight ? 'text-neutral-900' : 'text-neutral-100'}`}>
             <Download className="w-5 h-5 text-neutral-700 dark:text-zinc-300" />
             <span>Export</span>
           </div>
           <button
             onClick={onClose}
-            className={`p-1.5 rounded-xl transition-colors ${
+            aria-label="Close"
+            data-testid="modal-close"
+            className={`min-w-[44px] min-h-[44px] p-2 rounded-xl flex items-center justify-center transition-colors cursor-pointer ${
               isLight ? 'hover:bg-neutral-100 text-neutral-500 hover:text-neutral-900' : 'hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200'
             }`}
           >
@@ -181,8 +197,8 @@ export const ExportModal: React.FC<ExportModalProps> = ({
           </button>
         </div>
 
-        {/* Export Options */}
-        <div className="space-y-3 my-5">
+        {/* Export Options - Scrollable Body */}
+        <div className="flex-1 min-h-0 overflow-y-auto studio-scroll space-y-2.5 sm:space-y-3 my-2 sm:my-4 pr-1">
           {/* GLB Option - Recommended */}
           <div
             onClick={handleExportGLB}

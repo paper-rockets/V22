@@ -133,6 +133,8 @@ export class ConformalBeadGenerator {
       cumulativeDistances.push(totalLength);
     }
 
+    const isSurfaceStroke = filteredPoints.some((p) => p.isSurfaceHit);
+
     const seq = settings.strokeSequenceIndex ?? 0;
     const seqElevation = (seq % 1000) * 0.00015;
     const baseOffset = (settings.surfaceOffset ?? 0.0045) + seqElevation;
@@ -140,7 +142,7 @@ export class ConformalBeadGenerator {
 
     // Compute continuous Bishop Rotation Minimizing Frames (RMF) using Double Reflection Method
     const { tangents, normals: bishopNormals, binormals: bishopBinormals } =
-      ConformalBeadGenerator.computeBishopRMF(positions, normals);
+      ConformalBeadGenerator.computeBishopRMF(positions, normals, isSurfaceStroke);
 
     switch (profile) {
       case 'tube':
@@ -212,6 +214,69 @@ export class ConformalBeadGenerator {
   private applyDataToGeometry(geom: THREE.BufferGeometry): THREE.BufferGeometry {
     const vCount = _workVertices.length;
     const iCount = _workIndices.length;
+    const vertexCount = Math.floor(vCount / 3);
+
+    // A malformed pointer sample must never turn into an exploded mesh. This
+    // matters most on Android, where coalesced stylus/touch events can arrive
+    // during a visual-viewport resize. Failing closed keeps the in-progress
+    // stroke hidden instead of sending invalid vertices or indices to the GPU.
+    let geometryIsValid = vCount % 3 === 0 && iCount % 3 === 0;
+    let maxIndex = 0;
+    for (let i = 0; geometryIsValid && i < vCount; i++) {
+      geometryIsValid = Number.isFinite(_workVertices[i]);
+    }
+    for (let i = 0; geometryIsValid && i < iCount; i++) {
+      const index = _workIndices[i];
+      geometryIsValid = Number.isInteger(index) && index >= 0 && index < vertexCount;
+      if (index > maxIndex) maxIndex = index;
+    }
+    if (!geometryIsValid) {
+      console.warn('[stroke] Suppressed invalid dynamic geometry');
+      geom.setDrawRange(0, 0);
+      return geom;
+    }
+
+    // Zero-allocation smooth area-weighted vertex normal computation across active triangles
+    for (let i = 0; i < vCount; i++) {
+      _workNormals[i] = 0;
+    }
+    for (let i = 0; i < iCount; i += 3) {
+      const iA = _workIndices[i] * 3;
+      const iB = _workIndices[i + 1] * 3;
+      const iC = _workIndices[i + 2] * 3;
+
+      const ax = _workVertices[iA], ay = _workVertices[iA + 1], az = _workVertices[iA + 2];
+      const bx = _workVertices[iB], by = _workVertices[iB + 1], bz = _workVertices[iB + 2];
+      const cx = _workVertices[iC], cy = _workVertices[iC + 1], cz = _workVertices[iC + 2];
+
+      const abx = bx - ax, aby = by - ay, abz = bz - az;
+      const acx = cx - ax, acy = cy - ay, acz = cz - az;
+
+      const fnx = aby * acz - abz * acy;
+      const fny = abz * acx - abx * acz;
+      const fnz = abx * acy - aby * acx;
+
+      _workNormals[iA] += fnx; _workNormals[iA + 1] += fny; _workNormals[iA + 2] += fnz;
+      _workNormals[iB] += fnx; _workNormals[iB + 1] += fny; _workNormals[iB + 2] += fnz;
+      _workNormals[iC] += fnx; _workNormals[iC + 1] += fny; _workNormals[iC + 2] += fnz;
+    }
+    const numVertices = Math.floor(vCount / 3);
+    for (let i = 0; i < numVertices; i++) {
+      const idx = i * 3;
+      const nx = _workNormals[idx];
+      const ny = _workNormals[idx + 1];
+      const nz = _workNormals[idx + 2];
+      const len = Math.hypot(nx, ny, nz);
+      if (len > 1e-6) {
+        _workNormals[idx] = nx / len;
+        _workNormals[idx + 1] = ny / len;
+        _workNormals[idx + 2] = nz / len;
+      } else {
+        _workNormals[idx] = 0;
+        _workNormals[idx + 1] = 1;
+        _workNormals[idx + 2] = 0;
+      }
+    }
 
     let posAttr = geom.getAttribute('position') as THREE.BufferAttribute | undefined;
     let normAttr = geom.getAttribute('normal') as THREE.BufferAttribute | undefined;
@@ -249,10 +314,15 @@ export class ConformalBeadGenerator {
       uvAttr!.needsUpdate = true;
     }
 
-    // Reallocate or reuse index buffer
-    if (!indexAttr || indexAttr.array.length < iCount) {
-      const newIndexCapacity = Math.max(iCount * 1.5, 512);
-      const newIndexArr = new Uint32Array(newIndexCapacity);
+    // Reallocate or reuse index buffer. Most strokes have fewer than 65,536
+    // vertices, so Uint16 keeps them compatible with WebGL 1 Android drivers
+    // that do not reliably support UNSIGNED_INT element indices. Uint32 is
+    // reserved for the rare genuinely large geometry.
+    const IndexArray = maxIndex <= 65535 ? Uint16Array : Uint32Array;
+    const hasCompatibleIndexType = indexAttr?.array instanceof IndexArray;
+    if (!indexAttr || indexAttr.array.length < iCount || !hasCompatibleIndexType) {
+      const newIndexCapacity = Math.max(Math.ceil(iCount * 1.5), 512);
+      const newIndexArr = new IndexArray(newIndexCapacity);
       newIndexArr.set(_workIndices);
       indexAttr = new THREE.BufferAttribute(newIndexArr, 1);
       indexAttr.setUsage(THREE.DynamicDrawUsage);
@@ -275,7 +345,8 @@ export class ConformalBeadGenerator {
    */
   public static computeBishopRMF(
     positions: THREE.Vector3[],
-    initialNormals: THREE.Vector3[]
+    initialNormals: THREE.Vector3[],
+    isSurfaceStroke: boolean = false
   ): { tangents: THREE.Vector3[]; normals: THREE.Vector3[]; binormals: THREE.Vector3[] } {
     const n = positions.length;
     if (n < 2) {
@@ -314,77 +385,81 @@ export class ConformalBeadGenerator {
     const normals: THREE.Vector3[] = [];
     const binormals: THREE.Vector3[] = [];
 
-    // Continuous surface-aligned frame construction via Bishop Parallel Transport
-    for (let i = 0; i < n; i++) {
-      const t = tangents[i];
-      const targetNorm = initialNormals[i] || _scratchV1.set(0, 1, 0);
+    // Frame 0 initialization: build an orthonormal frame (t0, norm0, binorm0)
+    const t0 = tangents[0];
+    const targetNorm0 = initialNormals[0] || _scratchV1.set(0, 1, 0);
+    const norm0 = _vecPool.get();
 
-      const norm = _vecPool.get();
-      const isSurfaceSample = initialNormals[i] && initialNormals[i].lengthSq() > 0.5;
+    norm0.copy(targetNorm0).sub(_scratchV1.copy(t0).multiplyScalar(t0.dot(targetNorm0)));
+    if (norm0.lengthSq() < 1e-4) {
+      norm0.crossVectors(t0, _scratchV1.set(0, 1, 0));
+      if (norm0.lengthSq() < 1e-4) {
+        norm0.crossVectors(t0, _scratchV1.set(0, 0, 1));
+      }
+    }
+    norm0.normalize();
+    if (targetNorm0.lengthSq() > 0.1 && norm0.dot(targetNorm0) < 0) {
+      norm0.negate();
+    }
+    const binorm0 = _vecPool.get().crossVectors(t0, norm0).normalize();
+    norm0.crossVectors(binorm0, t0).normalize();
 
-      if (isSurfaceSample) {
-        // Surface conformal: frame normal directly tracks the 3D model's outward surface normal
-        const surfN = initialNormals[i];
-        norm.copy(surfN).sub(_scratchV1.copy(t).multiplyScalar(t.dot(surfN)));
-        if (norm.lengthSq() < 1e-4) {
-          if (i > 0 && normals[i - 1]) {
-            norm.copy(normals[i - 1]).sub(_scratchV1.copy(t).multiplyScalar(t.dot(normals[i - 1])));
+    normals.push(norm0);
+    binormals.push(binorm0);
+
+    // Continuous frame construction
+    for (let i = 1; i < n; i++) {
+      const prevT = tangents[i - 1];
+      const prevN = normals[i - 1];
+      const prevB = binormals[i - 1];
+      const currT = tangents[i];
+      const currN = _vecPool.get();
+
+      if (!isSurfaceStroke) {
+        // Double Reflection Method (Wang et al. 2008) for Rotation-Minimizing Frames (RMF):
+        // Eliminates artificial twist accumulation and ribbon hourglass knots across 3D space.
+        const v1 = _scratchV1.subVectors(positions[i], positions[i - 1]);
+        const c1 = v1.lengthSq();
+        if (c1 > 1e-10) {
+          const n_L = _scratchV2.copy(prevN).addScaledVector(v1, (-2.0 / c1) * v1.dot(prevN));
+          const t_L = _scratchV3.copy(prevT).addScaledVector(v1, (-2.0 / c1) * v1.dot(prevT));
+          const v2 = _scratchV4.subVectors(currT, t_L);
+          const c2 = v2.lengthSq();
+          if (c2 > 1e-10) {
+            currN.copy(n_L).addScaledVector(v2, (-2.0 / c2) * v2.dot(n_L)).normalize();
+          } else {
+            currN.copy(n_L).normalize();
           }
-          if (norm.lengthSq() < 1e-4) {
-            norm.crossVectors(t, _scratchV1.set(0, 1, 0));
-            if (norm.lengthSq() < 1e-4) {
-              norm.crossVectors(t, _scratchV1.set(0, 0, 1));
-            }
-          }
-        }
-        norm.normalize();
-        if (norm.dot(surfN) < 0) {
-          norm.negate();
-        }
-      } else if (i === 0) {
-        // Frame 0 in free 3D space: Initialize orthonormal normal perpendicular to tangent t
-        norm.copy(targetNorm).sub(_scratchV1.copy(t).multiplyScalar(t.dot(targetNorm)));
-        if (norm.lengthSq() < 1e-4) {
-          norm.crossVectors(t, _scratchV1.set(0, 1, 0));
-          if (norm.lengthSq() < 1e-4) {
-            norm.crossVectors(t, _scratchV1.set(0, 0, 1));
-          }
-        }
-        norm.normalize();
-        if (targetNorm.lengthSq() > 0.1 && norm.dot(targetNorm) < 0) {
-          norm.negate();
+        } else {
+          currN.copy(prevN);
         }
       } else {
-        // Frames 1..n-1 in free 3D space: Bishop Parallel Transport along curve
-        const prevT = tangents[i - 1];
-        const prevN = normals[i - 1];
-        const rotAxis = _scratchV1.crossVectors(prevT, t);
-        const rotAxisLenSq = rotAxis.lengthSq();
-
-        if (rotAxisLenSq < 1e-8) {
-          norm.copy(prevN);
-        } else {
-          const angle = Math.atan2(Math.sqrt(rotAxisLenSq), Math.max(-1, Math.min(1, prevT.dot(t))));
-          rotAxis.normalize();
-          norm.copy(prevN).applyAxisAngle(rotAxis, angle).normalize();
+        // Surface-attached conformal frame: frame normal tracks the 3D model surface smoothly
+        const surfN = initialNormals[i] || prevN;
+        currN.copy(surfN).sub(_scratchV1.copy(currT).multiplyScalar(currT.dot(surfN)));
+        if (currN.lengthSq() < 1e-4) {
+          currN.copy(prevN).sub(_scratchV1.copy(currT).multiplyScalar(currT.dot(prevN)));
+        }
+        if (currN.lengthSq() < 1e-4) {
+          currN.crossVectors(currT, _scratchV1.set(0, 1, 0));
+        }
+        currN.normalize();
+        if (currN.dot(surfN) < 0) {
+          currN.negate();
         }
       }
 
-      // Compute binormal as tangent cross normal (lateral axis across stroke ribbon width)
-      const binorm = _vecPool.get().crossVectors(t, norm).normalize();
+      // Compute binormal as tangent cross normal
+      const currB = _vecPool.get().crossVectors(currT, currN).normalize();
 
-      // Smooth phase continuity in free 3D space: prevent sudden 180-degree flipping between consecutive samples
-      // On surfaces, norm is strictly anchored to the surface normal and must never flip upside down
-      if (!isSurfaceSample && i > 0) {
-        const prevBinorm = binormals[i - 1];
-        if (binorm.dot(prevBinorm) < 0) {
-          binorm.negate();
-          norm.crossVectors(binorm, t).normalize();
-        }
+      // Ensure smooth phase continuity across consecutive samples
+      if (currB.dot(prevB) < 0) {
+        currB.negate();
       }
+      currN.crossVectors(currB, currT).normalize();
 
-      normals.push(norm);
-      binormals.push(binorm);
+      normals.push(currN);
+      binormals.push(currB);
     }
 
     return { tangents, normals, binormals };
@@ -406,11 +481,16 @@ export class ConformalBeadGenerator {
     taperLength: number
   ): void {
     const numPoints = positions.length;
-    const radialSegments = 12;
+    const radialSegments = 16;
 
     const jitterStrength = settings.jitterStrength ?? (settings.spatialJitterEnabled ? 0.25 : 0.0);
     const jitterFreq = settings.jitterFrequency ?? 8.0;
     const jitterAxis = settings.jitterAxis || 'binormal';
+
+    const prevRingVertices: THREE.Vector3[] = [];
+    for (let j = 0; j < radialSegments; j++) {
+      prevRingVertices.push(new THREE.Vector3());
+    }
 
     for (let i = 0; i < numPoints; i++) {
       const pos = positions[i];
@@ -444,21 +524,38 @@ export class ConformalBeadGenerator {
 
       _scratchCenter.copy(pos).addScaledVector(normal, baseOffset + radius).add(_scratchJitter);
 
+      const currentRing: THREE.Vector3[] = [];
       for (let j = 0; j < radialSegments; j++) {
         const theta = (j / radialSegments) * Math.PI * 2;
         const cosT = Math.cos(theta);
         const sinT = Math.sin(theta);
 
         _scratchRadialDir.copy(binormal).multiplyScalar(cosT).addScaledVector(normal, sinT).normalize();
-        _scratchPos.copy(_scratchCenter).addScaledVector(_scratchRadialDir, radius);
+        const vert = _scratchPos.copy(_scratchCenter).addScaledVector(_scratchRadialDir, radius).clone();
 
-        _workVertices.push(_scratchPos.x, _scratchPos.y, _scratchPos.z);
+        // Miter-clamp inner corner vertices so they never invert behind previous slice
+        if (i > 0) {
+          const seg = _scratchV1.subVectors(pos, positions[i - 1]);
+          const segLen = seg.length();
+          if (segLen > 1e-6) {
+            const segDir = seg.normalize();
+            const d = _scratchV2.subVectors(vert, prevRingVertices[j]).dot(segDir);
+            if (d < 0.0005) {
+              vert.addScaledVector(segDir, 0.0005 - d);
+            }
+          }
+        }
+
+        prevRingVertices[j].copy(vert);
+        currentRing.push(vert);
+
+        _workVertices.push(vert.x, vert.y, vert.z);
         _workNormals.push(_scratchRadialDir.x, _scratchRadialDir.y, _scratchRadialDir.z);
         _workUvs.push(j / radialSegments, t);
       }
     }
 
-    // Cylindrical ring faces
+    // Cylindrical ring faces with outward-facing counter-clockwise winding
     for (let i = 0; i < numPoints - 1; i++) {
       for (let j = 0; j < radialSegments; j++) {
         const nextJ = (j + 1) % radialSegments;
@@ -467,8 +564,8 @@ export class ConformalBeadGenerator {
         const c = (i + 1) * radialSegments + nextJ;
         const d = i * radialSegments + nextJ;
 
-        _workIndices.push(a, b, d);
-        _workIndices.push(b, c, d);
+        _workIndices.push(a, d, b);
+        _workIndices.push(d, c, b);
       }
     }
 
@@ -497,6 +594,9 @@ export class ConformalBeadGenerator {
     const jitterStrength = settings.jitterStrength ?? (settings.spatialJitterEnabled ? 0.25 : 0.0);
     const jitterFreq = settings.jitterFrequency ?? 8.0;
     const jitterAxis = settings.jitterAxis || 'binormal';
+
+    const prevLeft = new THREE.Vector3();
+    const prevRight = new THREE.Vector3();
 
     for (let i = 0; i < numPoints; i++) {
       const pos = positions[i];
@@ -537,6 +637,26 @@ export class ConformalBeadGenerator {
       const left = _scratchV1.copy(_scratchCenter).addScaledVector(binormal, -width);
       const right = _scratchV2.copy(_scratchCenter).addScaledVector(binormal, width);
 
+      // Miter-clamp inner corner vertices so they never step backwards on tight turns
+      if (i > 0) {
+        const seg = _scratchV3.subVectors(pos, positions[i - 1]);
+        const segLen = seg.length();
+        if (segLen > 1e-6) {
+          const segDir = seg.normalize();
+          const dLeft = _scratchV4.subVectors(left, prevLeft).dot(segDir);
+          const dRight = _scratchPos.subVectors(right, prevRight).dot(segDir);
+          if (dLeft < 0.0005) {
+            left.addScaledVector(segDir, 0.0005 - dLeft);
+          }
+          if (dRight < 0.0005) {
+            right.addScaledVector(segDir, 0.0005 - dRight);
+          }
+        }
+      }
+
+      prevLeft.copy(left);
+      prevRight.copy(right);
+
       _workVertices.push(left.x, left.y, left.z);
       _workNormals.push(normal.x, normal.y, normal.z);
       _workUvs.push(0.0, t);
@@ -552,8 +672,9 @@ export class ConformalBeadGenerator {
       const c = (i + 1) * 2 + 1;
       const d = i * 2 + 1;
 
-      _workIndices.push(a, b, d);
-      _workIndices.push(b, c, d);
+      // Outward-facing counter-clockwise winding
+      _workIndices.push(a, d, b);
+      _workIndices.push(d, c, b);
     }
 
     // Add smooth rounded start and end caps for clean brush tip appearance (zero arrowhead artifacts)
@@ -589,6 +710,13 @@ export class ConformalBeadGenerator {
     const jitterFreq = settings.jitterFrequency ?? 8.0;
     const jitterAxis = settings.jitterAxis || 'binormal';
 
+    const cosAngle = Math.cos(chiselAngleRad);
+    const sinAngle = Math.sin(chiselAngleRad);
+
+    const prevCorners: THREE.Vector3[] = [
+      new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()
+    ];
+
     for (let i = 0; i < numPoints; i++) {
       const pos = positions[i];
       const normal = normals[i];
@@ -610,11 +738,20 @@ export class ConformalBeadGenerator {
       const pressureScale = settings.pressureSensitivity ? Math.max(0.2, pressures[i]) : 1.0;
       const widthMultiplier = Math.max(0.5, Math.min(25.0, settings.brushWidthMultiplier ?? (settings.brushShape === 'wide_flat' ? 3.0 : 1.0)));
       const baseRadius = settings.size * pressureScale * taper;
-      const width = baseRadius * aspectRatio * 0.7 * widthMultiplier;
+
+      // Calligraphic width modulation based on travel direction vs chisel angle:
+      // When travel is perpendicular to the nib, width is maximum; when parallel, width is minimum.
+      const strokeDirAngle = Math.atan2(tangent.y, tangent.x);
+      const angleDelta = strokeDirAngle - chiselAngleRad;
+      const calligraphicFactor = 0.35 + 0.65 * Math.abs(Math.sin(angleDelta));
+
+      const width = baseRadius * aspectRatio * 0.7 * widthMultiplier * calligraphicFactor;
       const height = baseRadius * 0.35;
 
-      // Rotate chisel plane around surface normal by fixed chisel angle
-      _scratchChiselDir.copy(binormal).multiplyScalar(Math.cos(chiselAngleRad)).addScaledVector(tangent, Math.sin(chiselAngleRad)).normalize();
+      // Chisel vector is strictly in the cross-sectional (binormal, normal) plane — NEVER in the tangent direction!
+      // This guarantees slices never tilt into each other and eliminates the spiral-staircase fan fins.
+      const dirU = _scratchV1.copy(binormal).multiplyScalar(cosAngle).addScaledVector(normal, sinAngle).normalize();
+      const dirV = _scratchV2.copy(binormal).multiplyScalar(-sinAngle).addScaledVector(normal, cosAngle).normalize();
 
       _scratchJitter.set(0, 0, 0);
       if (jitterStrength > 0.001) {
@@ -627,14 +764,31 @@ export class ConformalBeadGenerator {
 
       _scratchCenter.copy(pos).addScaledVector(normal, baseOffset + height).add(_scratchJitter);
 
-      // 4 corners of rectangular chisel profile
-      const pTL = _scratchV1.copy(_scratchCenter).addScaledVector(_scratchChiselDir, -width).addScaledVector(normal, height);
-      const pTR = _scratchV2.copy(_scratchCenter).addScaledVector(_scratchChiselDir, width).addScaledVector(normal, height);
-      const pBR = _scratchV3.copy(_scratchCenter).addScaledVector(_scratchChiselDir, width).addScaledVector(normal, -height);
-      const pBL = _scratchV4.copy(_scratchCenter).addScaledVector(_scratchChiselDir, -width).addScaledVector(normal, -height);
+      // 4 corners of rectangular chisel profile in cross-sectional plane
+      const pTL = _scratchV3.copy(_scratchCenter).addScaledVector(dirU, -width).addScaledVector(dirV, height);
+      const pTR = _scratchV4.copy(_scratchCenter).addScaledVector(dirU, width).addScaledVector(dirV, height);
+      const pBR = _scratchPos.copy(_scratchCenter).addScaledVector(dirU, width).addScaledVector(dirV, -height);
+      const pBL = _scratchCenter.clone().addScaledVector(dirU, -width).addScaledVector(dirV, -height);
 
       const corners = [pTL, pTR, pBR, pBL];
+
+      // Miter-clamp inner corners on sharp turns
+      if (i > 0) {
+        const seg = _scratchTipDir.subVectors(pos, positions[i - 1]);
+        const segLen = seg.length();
+        if (segLen > 1e-6) {
+          const segDir = seg.normalize();
+          for (let k = 0; k < 4; k++) {
+            const d = _scratchTipPos.subVectors(corners[k], prevCorners[k]).dot(segDir);
+            if (d < 0.0005) {
+              corners[k].addScaledVector(segDir, 0.0005 - d);
+            }
+          }
+        }
+      }
+
       for (let k = 0; k < 4; k++) {
+        prevCorners[k].copy(corners[k]);
         _workVertices.push(corners[k].x, corners[k].y, corners[k].z);
         _workNormals.push(normal.x, normal.y, normal.z);
         _workUvs.push(k / 3, t);
@@ -649,8 +803,8 @@ export class ConformalBeadGenerator {
         const c = (i + 1) * 4 + nextK;
         const d = i * 4 + nextK;
 
-        _workIndices.push(a, b, d);
-        _workIndices.push(b, c, d);
+        _workIndices.push(a, d, b);
+        _workIndices.push(d, c, b);
       }
     }
   }
@@ -737,8 +891,8 @@ export class ConformalBeadGenerator {
         const c = (i + 1) * segmentsAcross + (j + 1);
         const d = i * segmentsAcross + (j + 1);
 
-        _workIndices.push(a, b, d);
-        _workIndices.push(b, c, d);
+        _workIndices.push(a, d, b);
+        _workIndices.push(d, c, b);
       }
     }
 
@@ -778,9 +932,9 @@ export class ConformalBeadGenerator {
       const ringA = ringStartIndex + j;
       const ringB = ringStartIndex + j + 1;
       if (isStart) {
-        indices.push(tipVertexIdx, ringB, ringA);
-      } else {
         indices.push(tipVertexIdx, ringA, ringB);
+      } else {
+        indices.push(tipVertexIdx, ringB, ringA);
       }
     }
   }
@@ -841,11 +995,7 @@ export class ConformalBeadGenerator {
     for (let k = 0; k < arcIndices.length - 1; k++) {
       const a = arcIndices[k];
       const b = arcIndices[k + 1];
-      if (isStart) {
-        indices.push(centerIdx, b, a);
-      } else {
-        indices.push(centerIdx, a, b);
-      }
+      indices.push(centerIdx, a, b);
     }
   }
 
@@ -934,7 +1084,7 @@ export class ConformalBeadGenerator {
 
   /**
    * Resamples raw points using centripetal Catmull-Rom spline interpolation,
-   * 7-point Gaussian velocity smoothing, and start/end whip clamping.
+   * equidistant arc-length sampling, and 7-point Gaussian velocity smoothing.
    */
   private resampleCurve(
     points: StrokePoint[],
@@ -992,48 +1142,51 @@ export class ConformalBeadGenerator {
     const vectorPoints = points.map((p) => p.position);
     const curve = new THREE.CatmullRomCurve3(vectorPoints, false, 'centripetal', 0.5);
 
-    const stepSize = Math.max(0.005, brushSize * 0.25);
-    const length = curve.getLength();
-    const divisions = Math.max(8, Math.min(3072, Math.max(points.length * 2, Math.ceil(length / stepSize))));
+    // Cumulative input distances for accurate property interpolation
+    const inputCumulative: number[] = [0];
+    let totalInputDist = 0;
+    for (let i = 1; i < points.length; i++) {
+      totalInputDist += points[i].position.distanceTo(points[i - 1].position);
+      inputCumulative.push(totalInputDist);
+    }
 
-    const rawPoints = curve.getPoints(divisions);
+    const curveLength = curve.getLength();
+    const stepSize = Math.max(0.003, Math.min(0.012, brushSize * 0.2));
+    const divisions = Math.max(12, Math.min(3072, Math.max(points.length * 2, Math.ceil(curveLength / stepSize))));
+
+    const rawPoints = curve.getSpacedPoints(divisions);
     const sampledPositions: THREE.Vector3[] = [];
     const sampledNormals: THREE.Vector3[] = [];
     const sampledPressures: number[] = [];
     const sampledVelocities: number[] = [];
 
+    let inputIdx = 0;
     for (let i = 0; i <= divisions; i++) {
-      const t = i / divisions;
-      const rawIndex = t * (points.length - 1);
-      const idxA = Math.floor(rawIndex);
-      const idxB = Math.min(points.length - 1, idxA + 1);
-      const frac = rawIndex - idxA;
+      const s = totalInputDist > 0 ? (i / divisions) * totalInputDist : 0;
 
-      const normA = points[idxA].normal;
-      const normB = points[idxB].normal;
+      while (inputIdx < points.length - 2 && inputCumulative[inputIdx + 1] < s) {
+        inputIdx++;
+      }
+
+      const d0 = inputCumulative[inputIdx];
+      const d1 = inputCumulative[Math.min(points.length - 1, inputIdx + 1)] || totalInputDist;
+      const segSpan = Math.max(1e-6, d1 - d0);
+      const frac = Math.max(0, Math.min(1, (s - d0) / segSpan));
+
+      const normA = points[inputIdx].normal;
+      const normB = points[Math.min(points.length - 1, inputIdx + 1)].normal;
       const interpNorm = _vecPool.get().copy(normA).lerp(normB, frac).normalize();
       const pos = _vecPool.get().copy(rawPoints[i]);
-
-      // Convex model curvature compensation:
-      // A straight 3D spline chord between surface points dips beneath convex surfaces (like a chord through a circle).
-      // If the stroke was drawn on a model surface, arch the chord out along the surface normal.
-      const isSurfA = points[idxA].isSurfaceHit !== false;
-      const isSurfB = points[idxB].isSurfaceHit !== false;
-      if (isSurfA && isSurfB && frac > 0.001 && frac < 0.999) {
-        const chordDist = points[idxA].position.distanceTo(points[idxB].position);
-        const sagittaLift = Math.min(0.015, chordDist * 0.075) * 4.0 * frac * (1.0 - frac);
-        pos.addScaledVector(interpNorm, sagittaLift);
-      }
 
       sampledPositions.push(pos);
       sampledNormals.push(interpNorm);
 
-      const pressA = points[idxA].pressure || 1.0;
-      const pressB = points[idxB].pressure || 1.0;
+      const pressA = points[inputIdx].pressure ?? 1.0;
+      const pressB = points[Math.min(points.length - 1, inputIdx + 1)].pressure ?? 1.0;
       sampledPressures.push(pressA + (pressB - pressA) * frac);
 
-      const velA = smoothedVelocities[idxA] || 0;
-      const velB = smoothedVelocities[idxB] || 0;
+      const velA = smoothedVelocities[inputIdx] || 0;
+      const velB = smoothedVelocities[Math.min(points.length - 1, inputIdx + 1)] || 0;
       sampledVelocities.push(velA + (velB - velA) * frac);
     }
 

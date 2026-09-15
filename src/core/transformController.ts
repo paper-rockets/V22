@@ -275,10 +275,8 @@ export class TransformController {
         });
       });
     } else if (scope === 'active_layer') {
-      let transformedAny = false;
       strokes.forEach(({ descriptor, meshes }) => {
         if (descriptor.layerId === activeLayerId) {
-          transformedAny = true;
           meshes.forEach((mesh) => {
             mesh.applyMatrix4(matrix);
             mesh.updateMatrixWorld(true);
@@ -289,17 +287,8 @@ export class TransformController {
           });
         }
       });
-      // Fallback: If no strokes exist in the active layer, transform modelRoot so navigator remains fully functional
-      if (!transformedAny) {
-        this.ctx.modelRoot.applyMatrix4(matrix);
-        this.ctx.modelRoot.updateMatrixWorld(true);
-        targetMeshes.forEach((mesh) => {
-          if (mesh.geometry) {
-            mesh.geometry.computeBoundingSphere();
-            mesh.geometry.computeBoundingBox();
-          }
-        });
-      }
+      // An empty layer is an empty selection. Never move unrelated scene
+      // objects as a fallback for a layer-specific gesture.
     } else if (scope === 'guide') {
       const guideMesh = this.ctx.getActiveGuideMesh?.();
       if (guideMesh) {

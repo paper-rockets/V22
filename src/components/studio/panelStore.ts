@@ -18,6 +18,7 @@ export type SheetId = 'colour' | 'size' | 'fx' | 'brushes' | 'shapes' | 'setting
 type Listener = () => void;
 
 let openSheet: SheetId = null;
+let studioShelfOpen = false;
 const listeners = new Set<Listener>();
 
 function notify(): void {
@@ -62,4 +63,15 @@ export function subscribeSheet(listener: Listener): () => void {
 
 export function useOpenSheet(): SheetId {
   return useSyncExternalStore(subscribeSheet, getOpenSheet, getOpenSheet);
+}
+
+/** Floating tool shelves also occlude navigation controls. */
+export function setStudioShelfOpen(open: boolean): void {
+  if (studioShelfOpen === open) return;
+  studioShelfOpen = open;
+  notify();
+}
+
+export function useStudioShelfOpen(): boolean {
+  return useSyncExternalStore(subscribeSheet, () => studioShelfOpen, () => false);
 }

@@ -61,7 +61,7 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
   return (
     <div
       id="render-settings-panel"
-      className={`pr-surface paperrocket-context-panel fixed left-[76px] sm:left-[88px] top-1/2 -translate-y-1/2 w-[300px] max-w-[calc(100vw-6rem)] max-h-[72vh] flex flex-col p-4 rounded-2xl border shadow-2xl z-50 select-none animate-in fade-in slide-in-from-left-2 duration-150 overflow-y-auto ${
+      className={`pr-surface paperrocket-context-panel fixed left-[76px] sm:left-[88px] top-1/2 -translate-y-1/2 w-[var(--studio-menu-wide)] max-w-[min(var(--studio-menu-wide),calc(100vw-6rem))] max-h-[72vh] flex flex-col p-4 rounded-2xl border shadow-2xl z-50 select-none animate-in fade-in slide-in-from-left-2 duration-150 overflow-y-auto ${
         isLight
           ? 'bg-white border-black/10 text-neutral-800 shadow-2xl'
           : 'bg-[#18191d] border-neutral-800 text-neutral-200 shadow-2xl'

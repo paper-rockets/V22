@@ -74,11 +74,15 @@ export const DiscJoystick: React.FC<ConceptProps> = ({
     setActiveAxis(axis);
     onSelectAxis?.(axis);
 
+    let lastAmount = 0;
+    const direction = axisInfo.find((info) => info.axis === axis);
     const onPointerMove = (ev: PointerEvent) => {
       const dx = ev.clientX - startPos.current.x;
       const dy = ev.clientY - startPos.current.y;
       if (Math.hypot(dx, dy) > 4) {
-        onAxisDrag?.(axis, dx);
+        const amount = direction ? dx * direction.dx + dy * direction.dy : dx;
+        onAxisDrag?.(axis, amount - lastAmount);
+        lastAmount = amount;
       }
     };
 

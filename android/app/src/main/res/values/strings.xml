@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">Spatial Draw</string>
+    <string name="title_activity_main">Spatial Draw</string>
+    <string name="package_name">com.paperrockets.v22</string>
+    <string name="custom_url_scheme">com.paperrockets.v22</string>
+</resources>

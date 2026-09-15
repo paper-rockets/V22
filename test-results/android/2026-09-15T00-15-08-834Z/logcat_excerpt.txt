@@ -1,0 +1,328 @@
+--------- beginning of main
+09-14 20:18:17.463  5683  5683 D KeyguardImageWallpaper: init: mBitmapHeight = 2000
+09-14 20:18:17.463  5683  5683 D KeyguardImageWallpaper: init: mViewWidth = 1200
+09-14 20:18:17.463  5683  5683 D KeyguardImageWallpaper: init: mViewHeight = 2000
+09-14 20:18:17.463  5683  5683 D KeyguardImageWallpaper: init: scale = 1.0
+09-14 20:18:17.463  5683  5683 D KeyguardImageWallpaper: init: dx = -400.0
+09-14 20:18:17.463  5683  5683 D KeyguardImageWallpaper: init: dy = 0.0
+09-14 20:18:17.463  5683  5683 D WallpaperChangeObserver: updateState: state: 2
+09-14 20:18:17.463  5683  5683 D KeyguardWallpaperController: onLayoutChange() v: com.android.systemui.statusbar.BackDropView{2e2f6f5 V.E...... ......ID 0,0-1200,2000 #7f0b0105 ap[REDACTED_PATH], bottom : 2000, oldBottom : 1200
+09-14 20:18:17.463  5683  5683 I FaceWidgetClockPage: onLayoutChanged: [0, 0, 0, 0] ->[292, 0, 559, 155] 
+09-14 20:18:17.463  5683  5764 D OpenGLRenderer: eglCreateWindowSurface
+09-14 20:18:17.465  5683  5683 D ScrollView:  onsize change changed 
+09-14 20:18:17.465  5683  5683 D ScrollView:  onsize change changed 
+09-14 20:18:17.465  5683  5683 V QsExpandAnimator: setQsExpansionPosition 0.0
+09-14 20:18:17.466  5683  5683 I FaceWidgetPositionAlgorithm: setup() mStatusBarHeight = 36, mDarkAmount = 1.0, mQsTopPadding = 411, notificationStackHeight = 207, mPanelExpansion = 0.0, mHeight = 2000, mFaceWidgetContainerHeight = 191, mCurrentClockType = 2, notificationType = 0, hasVisibleNotifs = false
+09-14 20:18:17.467  5683  5683 V QsExpandAnimator: setQsExpansionPosition 0.0
+09-14 20:18:17.468  5965  5965 I TaskbarDragLayer: Region update (0, 0, 1200, 1128)
+09-14 20:18:17.469  5683  5683 D FaceWidgetMusicPage: onGlobalLayout
+09-14 20:18:17.469  5683  5683 I ViewRootImpl@efa6145[NotificationShade]: reportNextDraw android.view.ViewRootImpl.performTraversal[REDACTED_PATH] android.view.ViewRootImpl.doTraversa[REDACTED_PATH] android.view.ViewRootImpl$TraversalRunnable.ru[REDACTED_PATH] android.view.Choreographer$CallbackRecord.ru[REDACTED_PATH] android.view.Choreographer$CallbackRecord.ru[REDACTED_PATH] 
+09-14 20:18:17.470  5683  5683 I ViewRootImpl@efa6145[NotificationShade]: Setup new sync id=191
+09-14 20:18:17.470  5683  5683 I ViewRootImpl@efa6145[NotificationShade]: Setting syncFrameCallback
+09-14 20:18:17.470  5683  5683 I ViewRootImpl@efa6145[NotificationShade]: registerCallbacksForSync syncBuffer=true
+--------- beginning of system
+09-14 20:18:17.470  5319  7377 D WALLPAPER_SV[REDACTED_PATH] getWallpaperSafeLocked, userId = 0, which = 6, caller = com.android.server.wallpaper.WallpaperManagerService.getWallpaperExtra[REDACTED_PATH] 
+09-14 20:18:17.471  5319  7377 D WALLPAPER_SV[REDACTED_PATH] getWallpaperSafeLocked, userId = 0, which = 5, caller = com.android.server.wallpaper.WallpaperManagerService.getHighlightFilterStat[REDACTED_PATH] 
+09-14 20:18:17.471  5319  7377 I WallpaperManagerService: getHighlightFilterState : which=5, filterState=0, preloaded wallpaper
+09-14 20:18:17.471  5683  5683 I HighlightFilterHelper: canApplyFilterOnHome : elapsed=0, mode=4, result=false, wait=false
+09-14 20:18:17.471  5683  5683 D HighlightFilterHelper: canApplyFilterOnLock: Not applied on Home. result = false
+09-14 20:18:17.471  5683  5683 D ImageDarkModeFilter: isNightMode : Window = 33App = 33
+09-14 20:18:17.471  5683  5683 D ImageDarkModeFilter: isNightMode: true ui_mode true
+09-14 20:18:17.471  5683  5683 D ImageDarkModeFilter: isApplyToWallpaper: false
+09-14 20:18:17.471  5683  5683 D KeyguardImageWallpaper: onDraw: cur bitmap
+09-14 20:18:17.472  5683  5683 I KeyguardWallpaperController: onDrawFinished: chaged = false
+09-14 20:18:17.473  5683  5805 I ViewRootImpl@efa6145[NotificationShade]: Received frameDrawingCallback syncResult=0 frameNum=992.
+09-14 20:18:17.473  5683  5805 I ViewRootImpl@efa6145[NotificationShade]: Setting up sync and frameCommitCallback
+09-14 20:18:17.473  5683  5805 I BLASTBufferQueue: syncNextTransaction, mName= ViewRootImpl@efa6145[NotificationShade] acquireSingleBuffer= true mNativeObject= 0x7a6fb34300 callback= android.view.ViewRootImpl$12$$ExternalSyntheticLambda0@cc51811 caller= android.graphics.BLASTBufferQueue.syncNextTransactio[REDACTED_PATH] android.view.ViewRootImpl$12.onFrameDra[REDACTED_PATH] android.view.ThreadedRenderer$1.onFrameDra[REDACTED_PATH] <bottom of call stack> <bottom of call stack> <bottom of call stack> 
+09-14 20:18:17.473  5683  5805 I BLASTBufferQueue: [ViewRootImpl@efa6145[NotificationShade]#161]([REDACTED_PATH],[REDACTED_PATH],[REDACTED_PATH] syncNextTransaction callback: 1, acquireSingleBuffer: 1, mTransactionReadyCallback: 0
+09-14 20:18:17.486  5965  5965 I TaskbarDragLayer: Region update (0, 0, 1200, 1128)
+09-14 20:18:17.487  5683  5764 I BLASTBufferQueue: [ViewRootImpl@efa6145[NotificationShade]#161]([REDACTED_PATH],[REDACTED_PATH],[REDACTED_PATH] onFrameAvailable-start syncTransactionSet=true
+09-14 20:18:17.487  5683  5764 I BLASTBufferQueue: [ViewRootImpl@efa6145[NotificationShade]#161]([REDACTED_PATH],[REDACTED_PATH],[REDACTED_PATH] onFrameAvailable framenumber=992 syncTransactionSet=true
+09-14 20:18:17.487  5683  5764 I BLASTBufferQueue: [ViewRootImpl@efa6145[NotificationShade]#161]([REDACTED_PATH],[REDACTED_PATH],[REDACTED_PATH] onFrameAvailable framenumber=992 syncTransactionSet=true
+09-14 20:18:17.487  5683  5764 I BLASTBufferQueue: [ViewRootImpl@efa6145[NotificationShade]#161]([REDACTED_PATH],[REDACTED_PATH],[REDACTED_PATH] acquireNextBufferLocked mLastAppliedFrameNumber: 991
+09-14 20:18:17.487  5683  5764 I BLASTBufferQueue: [ViewRootImpl@efa6145[NotificationShade]#161]([REDACTED_PATH],[REDACTED_PATH],[REDACTED_PATH] acquireNextBufferLocked size=1200x2000 mFrameNumber=992 applyTransaction=false mTimestamp=30167710835767(auto) mPendingTransactions.size=0 graphicBufferId=24408299146044 transform=0
+09-14 20:18:17.487  5683  5764 I ViewRootImpl@efa6145[NotificationShade]: Received frameCommittedCallback lastAttemptedDrawFrameNum=992 didProduceBuffer=true
+09-14 20:18:17.487  5683  5683 I ViewRootImpl@efa6145[NotificationShade]: onSyncComplete
+09-14 20:18:17.488  5683  5683 I ViewRootImpl@efa6145[NotificationShade]: setupSync seqId=23 mSyncId=191 fn=992 caller=android.view.ViewRootImpl$$ExternalSyntheticLambda11.accep[REDACTED_PATH] android.window.SurfaceSyncer.lambda$setupSync$1$android-window-SurfaceSynce[REDACTED_PATH] android.window.SurfaceSyncer$$ExternalSyntheticLambda1.accep[REDACTED_PATH] android.window.SurfaceSyncer$SyncSet.checkIfSyncIsComplet[REDACTED_PATH] android.window.SurfaceSyncer$SyncSet.markSyncRead[REDACTED_PATH] android.window.SurfaceSyncer.markSyncRead[REDACTED_PATH] android.view.ViewRootImpl.performTraversal[REDACTED_PATH] 
+09-14 20:18:17.489  5683  5683 I ViewRootImpl@626a8f2[StatusBar]: performTraversals mFirst=false windowShouldResize=true viewVisibilityChanged=false mForceNextWindowRelayout=true params=null
+09-14 20:18:17.489  5319  7377 V WindowManager: Relayout Window{71d006a u0 StatusBar}: viewVisibility=0 req=1200x36 d0
+09-14 20:18:17.493  5319  7377 V WindowManager: Relayout hash=71d006a, pid=5683, syncId=49: mAttrs={(0,0)(fillx36) gr=TOP CENTER_VERTICAL sim={adjust=pan} layoutInDisplayCutoutMode=always ty=STATUS_BAR fmt=TRANSLUCENT
+09-14 20:18:17.493  5319  7377 V WindowManager:   fl=81000008
+09-14 20:18:17.493  5319  7377 V WindowManager:   pfl=13000000
+09-14 20:18:17.493  5319  7377 V WindowManager:   bhv=DEFAULT
+09-14 20:18:17.493  5319  7377 V WindowManager:   paramsForRotation=
+09-14 20:18:17.493  5319  7377 V WindowManager:   rot[0]={(0,0)(fillx36) gr=TOP CENTER_VERTICAL layoutInDisplayCutoutMode=always ty=STATUS_BAR fmt=TRANSLUCENT
+09-14 20:18:17.493  5319  7377 V WindowManager:   fl=80000008
+09-14 20:18:17.493  5319  7377 V WindowManager:   pfl=11000000
+09-14 20:18:17.493  5319  7377 V WindowManager:   bhv=DEFAULT naviIconColor=0} 
+09-14 20:18:17.493  5319  7377 V WindowManager:   rot[1]={(0,0)(fillx36) gr=TOP CENTER_VERTICAL layoutInDisplayCutoutMode=always ty=STATUS_BAR fmt=TRANSLUCENT
+09-14 20:18:17.493  5319  7377 V WindowManager:   fl=80000008
+09-14 20:18:17.493  5319  7377 V WindowManager:   pfl=11000000
+09-14 20:18:17.493  5319  7377 V WindowManager:   bhv=DEFAULT naviIconColor=0} 
+09-14 20:18:17.493  5319  7377 V WindowManager:   rot[2]={(0,0)(fillx36) gr=TOP CENTER_VERTICAL layoutInDisplayCutoutMode=always ty=STATUS_BAR fmt=TRANSLUCENT
+09-14 20:18:17.493  5319  7377 V WindowManager:   fl=80000008
+09-14 20:18:17.493  5319  7377 V WindowManager:   pfl=11000000
+09-14 20:18:17.493  5319  7377 V WindowManager:   bhv=DEFAULT naviIconColor=0} 
+09-14 20:18:17.493  5319  7377 V WindowManager:   rot[3]={(0,0)(fillx36) gr=TOP CENTER_VERTICAL layoutInDisplayCutoutMode=always ty=STATUS_BAR fmt=TRANSLUCENT
+09-14 20:18:17.493  5319  7377 V WindowManager:   fl=80000008
+09-14 20:18:17.493  5319  7377 V WindowManager:   pfl=11000000
+09-14 20:18:17.493  5319  7377 V WindowManager:   bhv=DEFAULT naviIconColor=0} naviIconColor=0}
+09-14 20:18:17.494  5683  5683 I ViewRootImpl@626a8f2[StatusBar]: updateBlastSurfaceIfNeeded mBlastBufferQueue=0x7a7183a300 isSameSurfaceControl=true
+09-14 20:18:17.494  5683  5683 I BLASTBufferQueue: update, w= 1200 h= 36 mName = ViewRootImpl@626a8f2[StatusBar] mNativeObject= 0x7a7183a300 sc.mNativeObject= 0x7a719bfc60 format= -3 caller= android.view.ViewRootImpl.updateBlastSurfaceIfNeede[REDACTED_PATH] android.view.ViewRootImpl.relayoutWindo[REDACTED_PATH] android.view.ViewRootImpl.performTraversal[REDACTED_PATH] android.view.ViewRootImpl.doTraversa[REDACTED_PATH] android.view.ViewRootImpl$TraversalRunnable.ru[REDACTED_PATH] android.view.Choreographer$CallbackRecord.ru[REDACTED_PATH] 
+09-14 20:18:17.494  5683  5683 I ViewRootImpl@626a8f2[StatusBar]: Relayout returned: old=(0,0,1200,36) new=(0,0,1200,36) req=(1200,36)0 dur=5 res=0x1 s={true 0x7b1d874800} ch=false seqId=49
+09-14 20:18:17.494  5683  5683 I ViewRootImpl@626a8f2[StatusBar]: Relayout called with blastSync mSyncSeqId=49
+09-14 20:18:17.494  5683  5683 I ViewRootImpl@626a8f2[StatusBar]: reportNextDraw android.view.ViewRootImpl.performTraversal[REDACTED_PATH] android.view.ViewRootImpl.doTraversa[REDACTED_PATH] android.view.ViewRootImpl$TraversalRunnable.ru[REDACTED_PATH] android.view.Choreographer$CallbackRecord.ru[REDACTED_PATH] android.view.Choreographer$CallbackRecord.ru[REDACTED_PATH] 
+09-14 20:18:17.494  5683  5764 D OpenGLRenderer: setSurface() destroyed EGLSurface
+09-14 20:18:17.494  5683  5764 D OpenGLRenderer: destroyEglSurface
+09-14 20:18:17.494  5683  5683 I ViewRootImpl@626a8f2[StatusBar]: mThreadedRenderer.updateSurface() mSurface={isValid=true 0x7b1d874800}
+09-14 20:18:17.495  5683  5764 D OpenGLRenderer: eglCreateWindowSurface
+09-14 20:18:17.495  5683  5683 I ViewRootImpl@626a8f2[StatusBar]: reportNextDraw android.view.ViewRootImpl.performTraversal[REDACTED_PATH] android.view.ViewRootImpl.doTraversa[REDACTED_PATH] android.view.ViewRootImpl$TraversalRunnable.ru[REDACTED_PATH] android.view.Choreographer$CallbackRecord.ru[REDACTED_PATH] android.view.Choreographer$CallbackRecord.ru[REDACTED_PATH] 
+09-14 20:18:17.495  5683  5683 I ViewRootImpl@626a8f2[StatusBar]: Setup new sync id=107
+09-14 20:18:17.495  5683  5683 I ViewRootImpl@626a8f2[StatusBar]: Setting syncFrameCallback
+09-14 20:18:17.495  5683  5683 I ViewRootImpl@626a8f2[StatusBar]: registerCallbacksForSync syncBuffer=true
+09-14 20:18:17.496  5683  5804 I ViewRootImpl@626a8f2[StatusBar]: Received frameDrawingCallback syncResult=0 frameNum=4039.
+09-14 20:18:17.496  5683  5804 I ViewRootImpl@626a8f2[StatusBar]: Setting up sync and frameCommitCallback
+09-14 20:18:17.496  5683  5804 I BLASTBufferQueue: syncNextTransaction, mName= ViewRootImpl@626a8f2[StatusBar] acquireSingleBuffer= true mNativeObject= 0x7a7183a300 callback= android.view.ViewRootImpl$12$$ExternalSyntheticLambda0@def2f77 caller= android.graphics.BLASTBufferQueue.syncNextTransactio[REDACTED_PATH] android.view.ViewRootImpl$12.onFrameDra[REDACTED_PATH] android.view.ThreadedRenderer$1.onFrameDra[REDACTED_PATH] <bottom of call stack> <bottom of call stack> <bottom of call stack> 
+09-14 20:18:17.496  5683  5804 I BLASTBufferQueue: [ViewRootImpl@626a8f2[StatusBar]#3]([REDACTED_PATH],[REDACTED_PATH],[REDACTED_PATH] syncNextTransaction callback: 1, acquireSingleBuffer: 1, mTransactionReadyCallback: 0
+09-14 20:18:17.497  5683  5764 I BLASTBufferQueue: [ViewRootImpl@626a8f2[StatusBar]#3]([REDACTED_PATH],[REDACTED_PATH],[REDACTED_PATH] onFrameAvailable-start syncTransactionSet=true
+09-14 20:18:17.497  5683  5764 I BLASTBufferQueue: [ViewRootImpl@626a8f2[StatusBar]#3]([REDACTED_PATH],[REDACTED_PATH],[REDACTED_PATH] onFrameAvailable framenumber=4039 syncTransactionSet=true
+09-14 20:18:17.497  5683  5764 I BLASTBufferQueue: [ViewRootImpl@626a8f2[StatusBar]#3]([REDACTED_PATH],[REDACTED_PATH],[REDACTED_PATH] onFrameAvailable framenumber=4039 syncTransactionSet=true
+09-14 20:18:17.497  5683  5764 I BLASTBufferQueue: [ViewRootImpl@626a8f2[StatusBar]#3]([REDACTED_PATH],[REDACTED_PATH],[REDACTED_PATH] acquireNextBufferLocked mLastAppliedFrameNumber: 4038
+09-14 20:18:17.497  5683  5764 I BLASTBufferQueue: [ViewRootImpl@626a8f2[StatusBar]#3]([REDACTED_PATH],[REDACTED_PATH],[REDACTED_PATH] acquireNextBufferLocked size=1200x36 mFrameNumber=4039 applyTransaction=false mTimestamp=30167721612690(auto) mPendingTransactions.size=0 graphicBufferId=24408299146045 transform=0
+09-14 20:18:17.498  5683  5764 I ViewRootImpl@626a8f2[StatusBar]: Received frameCommittedCallback lastAttemptedDrawFrameNum=4039 didProduceBuffer=true
+09-14 20:18:17.498  5683  5683 I ViewRootImpl@626a8f2[StatusBar]: onSyncComplete
+09-14 20:18:17.498  5683  5683 I ViewRootImpl@626a8f2[StatusBar]: setupSync seqId=49 mSyncId=107 fn=4039 caller=android.view.ViewRootImpl$$ExternalSyntheticLambda11.accep[REDACTED_PATH] android.window.SurfaceSyncer.lambda$setupSync$1$android-window-SurfaceSynce[REDACTED_PATH] android.window.SurfaceSyncer$$ExternalSyntheticLambda1.accep[REDACTED_PATH] android.window.SurfaceSyncer$SyncSet.checkIfSyncIsComplet[REDACTED_PATH] android.window.SurfaceSyncer$SyncSet.markSyncRead[REDACTED_PATH] android.window.SurfaceSyncer.markSyncRead[REDACTED_PATH] android.view.ViewRootImpl.performTraversal[REDACTED_PATH] 
+09-14 20:18:17.498  5683  5683 I ViewRootImpl@626a8f2[StatusBar]: reportDrawFinished seqId=49 mSyncId=-1 fn=4039 mSurfaceChangedTransaction=0x7b1d867600
+09-14 20:18:17.499  5683  5683 I ViewRootImpl@efa6145[NotificationShade]: reportDrawFinished seqId=23 mSyncId=-1 fn=992 mSurfaceChangedTransaction=0x7a7062e700
+09-14 20:18:17.500  5683  5683 D KeyguardWallpaperController: mIsKeyguardShowing=true, mOccluded=false
+09-14 20:18:17.500  5683  5683 V QsExpandAnimator: updateAnimators
+09-14 20:18:17.500  5683  5683 V QsExpandAnimator: clearAnimationState 
+09-14 20:18:17.500  5319  7377 D WindowManager: finishDrawingWindow: Window{71d006a u0 StatusBar} mDrawState=DRAW_PENDING seqId=49
+09-14 20:18:17.500  5319  7377 I WindowManager: finishDrawing of orientation change: Window{71d006a u0 StatusBar} 236ms
+09-14 20:18:17.500  5683  5683 V QsExpandAnimator: updateViews
+09-14 20:18:17.500  5319  7377 D WindowManager: Clear waiting to handle resizing w=Window{71d006a u0 StatusBar}, caller=com.android.server.wm.WindowState.$r8$lambda$KRT9GRK4XCFxbCtXhf99RTKi_o[REDACTED_PATH] com.android.server.wm.WindowState$$ExternalSyntheticLambda7.accep[REDACTED_PATH] com.android.server.wm.WindowState.executeDrawHandler[REDACTED_PATH] com.android.server.wm.WindowState.finishDrawin[REDACTED_PATH] com.android.server.wm.WindowManagerService.finishDrawingWindo[REDACTED_PATH] 
+09-14 20:18:17.500  5319  7377 D WindowManager: executeDrawHandlers, seqId=49, h.mSeqId=49, hadHandlers=true, win=Window{71d006a u0 StatusBar}
+09-14 20:18:17.501  5683  5683 V QsExpandAnimator: updateTileAnimator
+09-14 20:18:17.501  5965  5965 I TaskbarDragLayer: Region update (0, 0, 1200, 1128)
+09-14 20:18:17.501  5683  5683 V QsExpandAnimator: updateHeaderAnimator
+09-14 20:18:17.501  5319  5342 V WindowManager: performShowLocked: mDrawState=HAS_DRAWN in Window{71d006a u0 StatusBar}
+09-14 20:18:17.501  5683  5683 V QsExpandAnimator: updateBarAnimator
+09-14 20:18:17.502  5683  5683 V QsExpandAnimator: setQsExpansionPosition 0.0
+09-14 20:18:17.502  5683  5683 V QsExpandAnimator: onAnimationAtStart
+09-14 20:18:17.502  5319  5342 I SurfaceControl: applyGlobalTransaction called, mName=finishDrawing_syncId(49)_StatusBar mNativeObject=0x7a7356fb00
+09-14 20:18:17.502  5319  5342 I SurfaceComposerClient: setTransactionState with buffer. layerId: 81, bufferData(ID: 24408299146045, frameNumber: 4039, barrierFrameNumber: 4038)
+09-14 20:18:17.502  5065  6490 D SurfaceFlinger: [StatusBar$_5683#81] setTransactionState with buffer. bufferData(ID: 24408299146045, frameNumber: 4039, barrierFrameNumber: 4038)
+09-14 20:18:17.503  5319  7079 D WindowManager: finishDrawingWindow: Window{f9cfff1 u0 NotificationShade} mDrawState=DRAW_PENDING seqId=23
+09-14 20:18:17.503  5319  7079 I WindowManager: finishDrawing of orientation change: Window{f9cfff1 u0 NotificationShade} 240ms
+09-14 20:18:17.503  5319  7079 D WindowManager: Clear waiting to handle resizing w=Window{f9cfff1 u0 NotificationShade}, caller=com.android.server.wm.WindowState.$r8$lambda$KRT9GRK4XCFxbCtXhf99RTKi_o[REDACTED_PATH] com.android.server.wm.WindowState$$ExternalSyntheticLambda7.accep[REDACTED_PATH] com.android.server.wm.WindowState.executeDrawHandler[REDACTED_PATH] com.android.server.wm.WindowState.finishDrawin[REDACTED_PATH] com.android.server.wm.WindowManagerService.finishDrawingWindo[REDACTED_PATH] 
+09-14 20:18:17.503  5319  7079 D WindowManager: executeDrawHandlers, seqId=23, h.mSeqId=23, hadHandlers=true, win=Window{f9cfff1 u0 NotificationShade}
+09-14 20:18:17.504  5683  5683 D FaceWidgetContainerObserver: onChanged() FaceWidgetContainerLiveData{mIsContainerVisible=true, mClipLayoutVisibility=0, mRotation=0, mIsOwnerVisible=0, mAdditionalInfoGravity=17, mClockSideStartPadding=174, mClockSideEndPadding=174, mMusicSideStartPadding=174, mMusicSideEndPadding=174, mInfoSideStartPadding=174, mInfoSideEndPadding=174, mClipLayoutWidth = -1, mAdditionalInfoRemoteView=null, mHasCMAS=false, mIsAdditionalViewGoingToSleep=false, mConfig=CustomConfiguration{fontScale=1.1, screenLayout=268435796, orientation=1, screenWidthDp=800, screenHeightDp=1261, smallestScreenWidthDp=800, densityDpi=240, uiMode=33, isRTL=false, mConfiguration={1.1 ?mcc?mnc [en_CA] ldltr sw800dp w800dp h1261dp 240dpi xlrg port night finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 1200, 2000) mAppBounds=Rect(0, 0 - 1200, 1928) mMaxBounds=Rect(0, 0 - 1200, 2000) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0 mPopOver=undefined mStageConfig=undefined mFreeformTaskPinningState=undefined mEmbedActivityMode=undefined mFreeformStashState=undefined mDexTaskDockingState=undefined} s.3560 fontWeightAdjustment=0 ff=0 bf=0 bts=0 desktop/d dm/n ?dc ?dcui themeSeq=0 nightDim=-1}}}
+09-14 20:18:17.504  5683  5683 D FaceWidgetPagesController: onGravityChanged()
+09-14 20:18:17.504  5683  5683 D FaceWidgetClockPage: setClockGravity() gravity = 49
+09-14 20:18:17.505  5319  5342 V WindowManager: performShowLocked: mDrawState=HAS_DRAWN in Window{f9cfff1 u0 NotificationShade}
+09-14 20:18:17.505  5319  5342 I SurfaceControl: applyGlobalTransaction called, mName=finishDrawing_syncId(23)_NotificationShade mNativeObject=0x7a7356fb00
+09-14 20:18:17.505  5319  5342 I SurfaceComposerClient: setTransactionState with buffer. layerId: 3886, bufferData(ID: 24408299146044, frameNumber: 992, barrierFrameNumber: 991)
+09-14 20:18:17.505  5683  5683 I FaceWidgetViewModel: isEditModeAnimating: false
+09-14 20:18:17.505  5683  5683 I FaceWidgetClockPage: updateClockRect: RectF(466.0, 220.0, 733.0, 375.0)
+09-14 20:18:17.506  5683  5683 I FaceWidgetClockRectManager: needRefreshClockRect ret=false, maxDiffRatio=8.3333254E-4, max=0.99999905 [RectF(0.38291666, 0.11, 0.6170833, 0.1875)] vs [RectF(0.38208333, 0.11, 0.6170833, 0.1875)]
+09-14 20:18:17.506  5683  5683 I FaceWidgetViewModel: isEditModeAnimating: false
+09-14 20:18:17.506  5683  5683 I FaceWidgetClockPage: updateClockRect: RectF(466.0, 220.0, 733.0, 375.0)
+09-14 20:18:17.506  5683  5683 I FaceWidgetClockRectManager: needRefreshClockRect ret=false, maxDiffRatio=8.3333254E-4, max=0.99999905 [RectF(0.38291666, 0.11, 0.6170833, 0.1875)] vs [RectF(0.38208333, 0.11, 0.6170833, 0.1875)]
+09-14 20:18:17.506  5065  6490 D SurfaceFlinger: [NotificationShade$_5683#3886] setTransactionState with buffer. bufferData(ID: 24408299146044, frameNumber: 992, barrierFrameNumber: 991)
+09-14 20:18:17.506  5683  5683 I FaceWidgetViewModel: isEditModeAnimating: false
+09-14 20:18:17.507  5683  5683 I FaceWidgetClockPage: updateClockRect: RectF(466.0, 220.0, 733.0, 375.0)
+09-14 20:18:17.507  5683  5683 I FaceWidgetClockRectManager: needRefreshClockRect ret=false, maxDiffRatio=8.3333254E-4, max=0.99999905 [RectF(0.38291666, 0.11, 0.6170833, 0.1875)] vs [RectF(0.38208333, 0.11, 0.6170833, 0.1875)]
+09-14 20:18:17.507  5683  5683 D FaceWidgetMusicPage: mMusicPageTransparencyDataObserver = FaceWidgetMusicPageTransparencyData mMusicPageTransparency = 0.68 mUseLightModeColor = 2 IsUpdatePageColorOnly = true
+09-14 20:18:17.507  5683  5683 I FaceWidgetViewModel: isEditModeAnimating: false
+09-14 20:18:17.507  5683  5683 I FaceWidgetClockPage: updateClockRect: RectF(466.0, 220.0, 733.0, 375.0)
+09-14 20:18:17.507  5683  5683 I FaceWidgetClockRectManager: needRefreshClockRect ret=false, maxDiffRatio=8.3333254E-4, max=0.99999905 [RectF(0.38291666, 0.11, 0.6170833, 0.1875)] vs [RectF(0.38208333, 0.11, 0.6170833, 0.1875)]
+09-14 20:18:17.509  5683  5683 W KeyguardSecurityViewFlipper: onMeasure: widthSpec MeasureSpec: EXACTLY 1200 should be AT_MOST
+09-14 20:18:17.509  5683  5683 W KeyguardSecurityViewFlipper: onMeasure: heightSpec MeasureSpec: EXACTLY 1928 should be AT_MOST
+09-14 20:18:17.509  5683  8512 I BLASTBufferQueue: [ViewRootImpl@efa6145[NotificationShade]#161]([REDACTED_PATH],[REDACTED_PATH],[REDACTED_PATH] transactionCommittedCallback
+09-14 20:18:17.509  5683  8512 I BLASTBufferQueue: [ViewRootImpl@efa6145[NotificationShade]#161]([REDACTED_PATH],[REDACTED_PATH],[REDACTED_PATH] transactionCommittedCallback mSyncedFrameNumbers.erase(992)
+09-14 20:18:17.509  5683  8512 I BLASTBufferQueue: [ViewRootImpl@626a8f2[StatusBar]#3]([REDACTED_PATH],[REDACTED_PATH],[REDACTED_PATH] transactionCommittedCallback
+09-14 20:18:17.509  5683  8512 I BLASTBufferQueue: [ViewRootImpl@626a8f2[StatusBar]#3]([REDACTED_PATH],[REDACTED_PATH],[REDACTED_PATH] transactionCommittedCallback mSyncedFrameNumbers.erase(4039)
+09-14 20:18:17.514  5683  5683 D SystemUIWallpaper: updateDisplayInfo()
+09-14 20:18:17.514  5683  5683 D SystemUIWallpaper: awaitCall()
+09-14 20:18:17.514  5683  5843 D SystemUIWallpaper: mUpdateCallable, start
+09-14 20:18:17.514  5683  5843 D SystemUIWallpaper: mUpdateCallable, end, 1200, 2000
+09-14 20:18:17.514  5683  5683 D SystemUIWallpaper: awaitCall() done
+09-14 20:18:17.514  5683  5683 D KeyguardImageWallpaper: onBackDropLayoutChange: prevRotation = 0, curRotation = 0
+09-14 20:18:17.514  5683  5683 I FaceWidgetViewModel: isEditModeAnimating: false
+09-14 20:18:17.514  5683  5683 I FaceWidgetClockPage: updateClockRect: RectF(466.0, 220.0, 733.0, 375.0)
+09-14 20:18:17.514  5683  5683 I FaceWidgetClockRectManager: needRefreshClockRect ret=false, maxDiffRatio=8.3333254E-4, max=0.99999905 [RectF(0.38291666, 0.11, 0.6170833, 0.1875)] vs [RectF(0.38208333, 0.11, 0.6170833, 0.1875)]
+09-14 20:18:17.514  5683  5683 V QsExpandAnimator: updateAnimators
+09-14 20:18:17.514  5683  5683 V QsExpandAnimator: clearAnimationState 
+09-14 20:18:17.514  5683  5683 V QsExpandAnimator: updateViews
+09-14 20:18:17.515  5683  5683 V QsExpandAnimator: updateTileAnimator
+09-14 20:18:17.515  5683  5683 V QsExpandAnimator: updateHeaderAnimator
+09-14 20:18:17.515  5683  5683 V QsExpandAnimator: updateBarAnimator
+09-14 20:18:17.516  5683  5683 V QsExpandAnimator: setQsExpansionPosition 0.0
+09-14 20:18:17.516  5683  5683 V QsExpandAnimator: onAnimationAtStart
+09-14 20:18:17.516  5683  5683 D FaceWidgetViewModel: onPageTransitionStarted()
+09-14 20:18:17.516  5683  5683 D FaceWidgetViewModel: onPageTransitionEnded()
+09-14 20:18:17.526  5965  5965 I TaskbarDragLayer: Region update (0, 0, 1200, 1128)
+09-14 20:18:17.542  5965  5965 I TaskbarDragLayer: Region update (0, 0, 1200, 1128)
+09-14 20:18:17.559  5965  5965 I TaskbarDragLayer: Region update (0, 0, 1200, 1128)
+09-14 20:18:17.575  5965  5965 I TaskbarDragLayer: Region update (0, 0, 1200, 1128)
+09-14 20:18:17.578  5683  5683 D FaceWidgetMusicPageShownManager: mCurrentMediaData is NULL
+09-14 20:18:17.578  5683  5683 D FaceWidgetMusicPageShownManager: updateMusicPageShownState() show = false, reattach = true, reason = configuration
+09-14 20:18:17.578  5683  5683 D PanelView: setMusicShown() shown = false
+09-14 20:18:17.578  5683  5683 D LockscreenNotificationIconsOnlyController: updateRefArea 32 -> 32
+09-14 20:18:17.579  5683  5683 D FaceWidgetMusicPageShownObserver: onChanged() FaceWidgetMusicShownLiveData{mIsVisible=false, mIsReattach=true, mIsHideImmediately=false}
+09-14 20:18:17.579  5683  5683 D FaceWidgetMusicPage: onDetachedFromWindow =  [ page state :SMALL, orientation : 1] com.samsung.android.app.facewidget.pages.music.FaceWidgetMusicPage{8e042ff VFE...... ......I. 0,0-0,0}
+09-14 20:18:17.579  5683  5683 D FaceWidgetMusicPage: onAttachedToWindow =  [ page state :SMALL, orientation : 1] com.samsung.android.app.facewidget.pages.music.FaceWidgetMusicPage{8e042ff VFE...... ......I. 0,0-0,0}
+09-14 20:18:17.579  5683  5683 D FaceWidgetMusicPageAdapter: onChanged, mediaDataList = 0
+09-14 20:18:17.579  5683  5683 D FaceWidgetMusicPageAdapter: notifyDataSetChanged
+09-14 20:18:17.579  5683  5683 D FaceWidgetMusicPage: mMusicPageTransparencyDataObserver = FaceWidgetMusicPageTransparencyData mMusicPageTransparency = 0.68 mUseLightModeColor = 2 IsUpdatePageColorOnly = true
+09-14 20:18:17.580  5683  5683 D FaceWidgetMusicPage: mViewPager, onViewAttachedToWindow, actualItemCount = -2
+09-14 20:18:17.580  5683  5683 D FaceWidgetClockPage: mMusicPageShowingObserver onChanged() : FaceWidgetMusicShownLiveData{mIsVisible=false, mIsReattach=true, mIsHideImmediately=false}
+09-14 20:18:17.580  5683  5683 D FaceWidgetClockPage: getScaleMode() 0, isLandscape = false
+09-14 20:18:17.580  5683  5683 D FaceWidgetClockPage: updateScaleMode() 0, type = 2, scalable = true
+09-14 20:18:17.580  5319  7079 D SettingsProvider: isChangeAllowed() : name = accelerometer_rotation
+09-14 20:18:17.580  5683  5683 D FaceWidgetMusicPage: mMusicPageShowingObserver onChanged() : FaceWidgetMusicShownLiveData{mIsVisible=false, mIsReattach=true, mIsHideImmediately=false}
+09-14 20:18:17.580  5319  7079 D SettingsProvider: edmUri: conten[REDACTED_PATH]
+09-14 20:18:17.580  5319  7079 D SettingsProvider: projectionArgs: isSettingsChangesAllowed
+09-14 20:18:17.580  5319  7079 D SettingsProvider: selectionArgs: false
+09-14 20:18:17.580  5319  7079 D SettingsProvider: selectionArgs: 2000
+09-14 20:18:17.580  5319  7079 D SecContentProvider: query(), uri = 17 selection = isSettingsChangesAllowed
+09-14 20:18:17.580  5319  7079 D SecContentProvider: called from android.uid.shel[REDACTED_PATH]
+09-14 20:18:17.581  5319  7079 D RestrictionPolicy: isSettingsChangesAllowedAsUser, userId 0 : true
+09-14 20:18:17.581  5319  7079 D SettingsProvider: ret = 1
+09-14 20:18:17.581  5319  7079 I GenerationRegistry: mBackingStore.isClosed() : false
+09-14 20:18:17.581  5319  7079 I GenerationRegistry: Incremented generation for  ke[REDACTED_PATH];type=SETTINGS_SYSTEM] generation :258 at inde[REDACTED_PATH]
+09-14 20:18:17.581  5319  7079 I GenerationRegistry: mBackingStore.isClosed() : false
+09-14 20:18:17.581  5319  7079 I GenerationRegistry: Incremented generation for  ke[REDACTED_PATH];type=SETTINGS_SYSTEM] generation :64 at inde[REDACTED_PATH]
+09-14 20:18:17.582  5319  5339 V WindowManager: rotationForOrientation(orient=SCREEN_ORIENTATION_USER (2), last=ROTATION_0 (0)); user=ROTATION_0 (0) 
+09-14 20:18:17.582  5319  5339 D WindowManager: rotationForOrientation, orientationSource=Window{f9cfff1 u0 NotificationShade}
+09-14 20:18:17.582  5319  5540 I WALLPAPER_SV[REDACTED_PATH] allowScreenRotate, allow rotate on tablet or dual main : 1 
+09-14 20:18:17.582  5319  5339 V WindowManager: Computed rotation=ROTATION_0 (0) for display id=0 based on lastOrientation=SCREEN_ORIENTATION_USER (2) and oldRotation=ROTATION_0 (0), caller=com.android.server.wm.DisplayContent.updateRotationUnchecke[REDACTED_PATH] com.android.server.wm.WindowManagerService.updateRotationUnchecke[REDACTED_PATH] com.android.server.wm.WindowManagerService.updateRotatio[REDACTED_PATH] com.android.server.wm.DisplayRotation$SettingsObserver.onChang[REDACTED_PATH] android.database.ContentObserver.onChang[REDACTED_PATH] android.database.ContentObserver.onChang[REDACTED_PATH] 
+09-14 20:18:17.582  8248  8248 I QuickToolsPanelView: onConfigurationChanged
+09-14 20:18:17.582  5319  5540 I WALLPAPER_SV[REDACTED_PATH] allowScreenRotate, allow rotate on tablet or dual main : 2 
+09-14 20:18:17.582  8248  8248 I e       : onConfigurationChanged : {1.1 ?mcc?mnc [en_CA] ldltr sw800dp w800dp h1261dp 240dpi xlrg port night finger -keyb/v/h -nav/h winConfig={ mBounds=Rect(0, 0 - 1200, 2000) mAppBounds=Rect(0, 0 - 1200, 1928) mMaxBounds=Rect(0, 0 - 1200, 2000) mDisplayRotation=ROTATION_0 mWindowingMode=fullscreen mDisplayWindowingMode=fullscreen mActivityType=undefined mAlwaysOnTop=undefined mRotation=ROTATION_0 mPopOver=undefined mStageConfig=undefined mFreeformTaskPinningState=undefined mEmbedActivityMode=undefined mFreeformStashState=undefined mDexTaskDockingState=undefined} s.3605 fontWeightAdjustment=0 ff=0 bf=0 bts=0 desktop/d dm/n ?dc ?dcui themeSeq=0 nightDim=-1}
+09-14 20:18:17.582  8248  8248 I e       : init()
+09-14 20:18:17.583  5319  5339 D TspStateManager: updateCustomValue customSetting=
+09-14 20:18:17.583  8248  8248 I e       : mPermissionGranted=false mCalibrationResponseCode=-1
+09-14 20:18:17.583  5319  5339 D TspStateManager: updateCustomValue customSetting=
+09-14 20:18:17.584  5319  5339 D TspStateManager: updateCustomValue customSetting=
+09-14 20:18:17.591  5965  5965 I TaskbarDragLayer: Region update (0, 0, 1200, 1128)
+09-14 20:18:17.594  5683  5683 D SettingsHelper: onChange() COMPLETED elapsed= 1
+09-14 20:18:17.594  5683  5683 V SettingsHelper: *** broadcastChange for conten[REDACTED_PATH]
+09-14 20:18:17.594  5683  5683 D Tile.RotationLockTile:  OnChangedCallback : 
+09-14 20:18:17.596  5683  5683 V Navbar.Store: handleEvent(0) OnRotationLockedChanged(rotationLocked=false) [Module] NavBarStoreImpl
+09-14 20:18:17.596  5683  5683 V Navbar.Store: --[Band]TASKBAR_PACK_ROTATION_LOCKED_CHANGED
+09-14 20:18:17.596  5683  5683 V Navbar.Store: ----apply(0) UpdateTaskBarNavBarEvents
+09-14 20:18:17.596  5683  5808 D Tile.RotationLockTile:  handleUpdateState: true orientation = true
+09-14 20:18:17.600  5683  5683 V Navbar.Store: handleEvent(0) OnRotationLockedChanged(rotationLocked=false) [Module] NavBarStoreImpl
+09-14 20:18:17.600  5683  5683 V Navbar.Store: --[Band]TASKBAR_PACK_ROTATION_LOCKED_CHANGED
+09-14 20:18:17.600  5683  5683 V Navbar.Store: ----apply(0) UpdateTaskBarNavBarEvents
+09-14 20:18:17.603  8248  8248 I CocktailQuickTool.LottieAnimationUtils: startAnimation
+09-14 20:18:17.603  8248  8248 I e       : initiateResourcesCleaning android.widget.ImageView{a209237 V.ED..... ......I. 0,0-0,0 #7f090059 ap[REDACTED_PATH]
+09-14 20:18:17.603  8248  8248 I e       : initiateResourcesCleaning android.widget.ImageView{9f533a4 V.ED..... ......I. 0,0-0,0 #7f09005a ap[REDACTED_PATH]
+09-14 20:18:17.603  8248  8248 I e       : init()
+09-14 20:18:17.603  8248  8248 I e       : mPermissionGranted=false mCalibrationResponseCode=-1
+09-14 20:18:17.608  5965  5965 I TaskbarDragLayer: Region update (0, 0, 1200, 1128)
+09-14 20:18:17.608  5965  5965 W TouchInteractionService: handleNavigationBarEvent() type=ON_ROTATION_LOCKED_CHANGED
+09-14 20:18:17.608  5965  5965 W TouchInteractionService: handleNavigationBarEvent() type=ON_ROTATION_LOCKED_CHANGED
+09-14 20:18:17.610  8248  8248 I QuickToolsPanelView: getView
+09-14 20:18:17.610  8248  8248 I c       : composeView { D=true, LP=com.samsung.android.app.cocktailbarservice.ui.panel.n@553455, @=150429290, L2 LP H=getHeight(), V H=1142
+09-14 20:18:17.610  8248  8248 I QuickToolsPanelView: getView
+09-14 20:18:17.610  8248  8248 I QuickToolsPanelView: getView
+09-14 20:18:17.627  8248  8248 I ViewRootImpl@ff2c8cb[CocktailBarService]: performTraversals mFirst=false windowShouldResize=true viewVisibilityChanged=false mForceNextWindowRelayout=false params=null
+09-14 20:18:17.628  5319  7079 V WindowManager: Relayout Window{2c05049 u0 com.samsung.android.app.cocktailbarservice/com.samsung.android.app.cocktailbarservice.CocktailBarService}: viewVisibility=8 req=67x327 d0
+09-14 20:18:17.628  5965  5965 I TaskbarDragLayer: Region update (0, 0, 1200, 1128)
+09-14 20:18:17.630  5683  5683 V QsExpandAnimator: setQsExpansionPosition 0.0
+09-14 20:18:17.631  5319  7079 V WindowManager: Relayout hash=2c05049, pid=8248, syncId=-1: mAttrs={(0,671)(67x327) gr=TOP LEFT CENTER sim={adjust=nothing forwardNavigation} layoutInDisplayCutoutMode=shortEdges ty=2226 fmt=TRANSPARENT
+09-14 20:18:17.631  5319  7079 V WindowManager:   fl=81800508
+09-14 20:18:17.631  5319  7079 V WindowManager:   pfl=2000050
+09-14 20:18:17.631  5319  7079 V WindowManager:   bhv=SHOW_TRANSIENT_BARS_BY_SWIPE
+09-14 20:18:17.631  5319  7079 V WindowManager:   fitTypes=NAVIGATION_BARS CAPTION_BAR
+09-14 20:18:17.631  5319  7079 V WindowManager:  dimAmount=0.0 dimDuration=0 naviIconColor=0
+09-14 20:18:17.631  5319  7079 V WindowManager:   sfl=220000}
+09-14 20:18:17.632  8248  8248 I ViewRootImpl@ff2c8cb[CocktailBarService]: Relayout returned: old=(0,671,67,848) new=(0,671,67,848) req=(67,327)8 dur=5 res=0x0 s={false 0x0} ch=false seqId=6
+09-14 20:18:17.633  5683  5683 V QsExpandAnimator: updateAnimators
+09-14 20:18:17.633  5683  5683 V QsExpandAnimator: clearAnimationState 
+09-14 20:18:17.633  5683  5683 V QsExpandAnimator: updateViews
+09-14 20:18:17.633  5683  5683 V QsExpandAnimator: updateTileAnimator
+09-14 20:18:17.634  5683  5683 V QsExpandAnimator: updateHeaderAnimator
+09-14 20:18:17.634  5683  5683 V QsExpandAnimator: updateBarAnimator
+09-14 20:18:17.634  5683  5683 V QsExpandAnimator: setQsExpansionPosition 0.0
+09-14 20:18:17.634  5683  5683 V QsExpandAnimator: onAnimationAtStart
+09-14 20:18:17.644  5965  5965 I TaskbarDragLayer: Region update (0, 0, 1200, 1128)
+09-14 20:18:17.661  5965  5965 I TaskbarDragLayer: Region update (0, 0, 1200, 1128)
+09-14 20:18:17.677  5965  5965 I TaskbarDragLayer: Region update (0, 0, 1200, 1128)
+09-14 20:18:17.693  5965  5965 I TaskbarDragLayer: Region update (0, 0, 1200, 1128)
+09-14 20:18:17.710  5965  5965 I TaskbarDragLayer: Region update (0, 0, 1200, 1128)
+09-14 20:18:17.726  5965  5965 I TaskbarDragLayer: Region update (0, 0, 1200, 1128)
+09-14 20:18:17.743  5965  5965 I TaskbarDragLayer: Region update (0, 0, 1200, 1128)
+09-14 20:18:17.759  5965  5965 I TaskbarDragLayer: Region update (0, 0, 1200, 1128)
+09-14 20:18:17.775  5965  5965 I TaskbarDragLayer: Region update (0, 0, 1200, 1128)
+09-14 20:18:17.791  5965  5965 I TaskbarDragLayer: Region update (0, 0, 1200, 1128)
+09-14 20:18:17.823  5683  5683 D FaceWidgetAlarmPage: setOrientation() mIsOrientationChanging = false
+09-14 20:18:17.823  5683  5683 D FaceWidgetClockPage: setOrientation() mIsOrientationChanging = false
+09-14 20:18:17.824  5965  5965 I TaskbarDragLayer: Region update (0, 0, 1200, 1128)
+09-14 20:18:17.841  5965  5965 I TaskbarDragLayer: Region update (0, 0, 1200, 1128)
+09-14 20:18:17.877  5683  5683 D FaceWidgetCalendarEventPage: setOrientation() mIsOrientationChanging = false
+09-14 20:18:17.877  5683  5683 D FaceWidgetRemoteViewsPage_com.sec.android.app.voicenote#record_: setOrientation() mIsOrientationChanging = false
+09-14 20:18:17.877  5683  5683 D FaceWidgetRemoteViewsPage_com.sec.android.daemonapp#weather_: setOrientation() mIsOrientationChanging = false
+09-14 20:18:17.877  5683  5683 D FaceWidgetRemoteViewsPage_com.samsung.android.app.routines#dashboard_: setOrientation() mIsOrientationChanging = false
+09-14 20:18:17.902  5319  7079 D ActivityManager: force stop from com.android.server.am.ActivityManagerService.forceStopPackag[REDACTED_PATH] com.android.server.am.ActivityManagerShellCommand.runForceSto[REDACTED_PATH] 
+09-14 20:18:17.902  5319  7079 I ActivityManager: Force stopping com.paperrockets.v22.debug appid=10383 user=0: from pid 27689
+09-14 20:18:17.904  5319  7079 I ActivityManager: Killing 25310:com.paperrockets.v22.debug/u0a383 (adj 0): stop com.paperrockets.v22.debug due to from pid 27689
+09-14 20:18:17.905  5965  5965 I TaskbarView: onAnimationEnd() called - Rect(188, 0 - 504, 72)
+09-14 20:18:17.907  5319  7079 I ActivityManager: Killing 25397:com.google.android.webvie[REDACTED_PATH] (adj 0): isolated not needed
+09-14 20:18:17.908  5319  7079 D ActivityManager: proc ProcessRecord{2bd6ad3 25310:com.paperrockets.v22.debug/u0a383} already removed. so we skip next process.
+09-14 20:18:17.908  5319  7079 W ActivityTaskManager: Force removing ActivityRecord{e4543a4 u0 com.paperrockets.v22.debug/com.paperrockets.v22.MainActivity} t506 f}}: app died, no saved state
+09-14 20:18:17.910  5319  5347 W UsageStatsService: Unexpected activity event reported! (com.paperrockets.v22.debug/com.paperrockets.v22.MainActivity event : 23 instanceId : 247299266)
+09-14 20:18:17.910  5319  5350 I libprocessgroup: Successfully killed process cgroup uid 10383 pid 25310 in 5ms
+09-14 20:18:17.911  5319  7079 D InputTransport: Input channel destroyed: 'cb60cae', fd=782
+09-14 20:18:17.911  5319  7079 W InputManager-JNI: Input channel object 'cb60cae com.paperrockets.v22.debug/com.paperrockets.v22.MainActivity (client)' was disposed without first being removed with the input manager!
+09-14 20:18:17.911  5319  7079 D InputTransport: Input channel destroyed: 'cb60cae', fd=943
+09-14 20:18:17.916  5319  7079 V WindowManager: Remove Window{cb60cae u0 com.paperrockets.v22.debug/com.paperrockets.v22.MainActivity}: mSurfaceController=null mAnimatingExit=false mRemoveOnExit=false mHasSurface=false surfaceShowing=false animating=false app-animation=false mWillReplaceWindow=false mDisplayFrozen=false callers=com.android.server.wm.WindowState.removeIfPossibl[REDACTED_PATH] com.android.server.wm.WindowToken.removeAllWindowsIfPossibl[REDACTED_PATH] com.android.server.wm.ActivityRecord.removeIfPossibl[REDACTED_PATH] com.android.server.wm.ActivityRecord.onRemovedFromDispla[REDACTED_PATH] com.android.server.wm.DisplayContent.removeAppToke[REDACTED_PATH] com.android.server.wm.ActivityRecord.removeFromHistor[REDACTED_PATH] 
+09-14 20:18:17.916  5319  7079 D RestrictionPolicy: isScreenCaptureEnabled : ret=true userId=0
+09-14 20:18:17.916  5319  7079 V WindowManager: Nulling last startingData
+09-14 20:18:17.919  5319  7079 D ActivityTaskManager: Top Process State changed to PROCESS_STATE_TOP_SLEEPING#2
+09-14 20:18:17.923  5965  5965 I RecentsView: onTaskRemoved() taskId : 506
+09-14 20:18:17.924  5965  5965 I TopTaskTracker: onTaskRemoved : taskId = 506
+09-14 20:18:17.925  5965  5965 I RecentsView: onTaskRemoved() taskId : 506
+09-14 20:18:17.925  5065  5065 I Layer   : id=4060 removeFromCurrentState cb60cae com.paperrockets.v22.debug/com.paperrockets.v22.MainActivity#4060 (111)
+09-14 20:18:17.925  5965  5965 I TopTaskTracker: onTaskRemoved : taskId = 506
+09-14 20:18:17.925  5065  5065 I Layer   : id=4058 removeFromCurrentState ActivityRecord{e4543a4 u0 com.paperrockets.v22.debug/com.paperrockets.v22.MainActivity} t506}#4058 (111)
+09-14 20:18:17.925  5065  5065 I Layer   : id=4057 removeFromCurrentState Task=506#4057 (111)
+09-14 20:18:17.925  5065  5065 I SurfaceFlinger: id=4058 Removed ActivityRecord{e4543a4 u0 com.paperrockets.v22.debug/com.paperrockets.v22.MainActivity} t506}#4058 (111)
+09-14 20:18:17.925  5065  5065 I SurfaceFlinger: id=4057 Removed Task=506#4057 (111)
+09-14 20:18:17.925  5065  5065 I SurfaceFlinger: id=4060 Removed cb60cae com.paperrockets.v22.debug/com.paperrockets.v22.MainActivity#4060 (111)
+09-14 20:18:17.925  5065  5065 I Layer   : id=4057 Destroyed Task=506#4057
+09-14 20:18:17.925  5065  5065 I Layer   : id=4058 Destroyed ActivityRecord{e4543a4 u0 com.paperrockets.v22.debug/com.paperrockets.v22.MainActivity} t506}#4058
+09-14 20:18:17.925  5065  5065 I Layer   : id=4060 Destroyed cb60cae com.paperrockets.v22.debug/com.paperrockets.v22.MainActivity#4060
+09-14 20:18:17.927  5319  7079 W ActivityManager: Invalid packageName: com.paperrockets.v22.debug
+09-14 20:18:17.931  5663  5663 D CarrierSvcBindHelper: onHandleForceStop: [com.paperrockets.v22.debug]
+09-14 20:18:17.932  5663  5663 D CarrierSvcBindHelper: No carrier app for: 0
+09-14 20:18:17.932  5319  5348 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_RESTARTED dat=package: flg=0x10 (has extras) } to android/com.kddi.android.CpaNotiReceiver
+09-14 20:18:17.942  7964  7964 I wpa_supplicant: nl80211: Drv Event 33 (NL80211_CMD_TRIGGER_SCAN) received for wlan0
+09-14 20:18:17.942  7964  7964 I wpa_supplicant: wlan0: nl80211: Scan trigger
+09-14 20:18:17.982  5319  5356 D BatteryExternalStatsWorker: update stats : remove-uid (1)
+09-14 20:18:17.983  5911  5911 I Zygote  : Process 25397 exited due to signal 9 (Killed)
+09-14 20:18:18.041  5319  7836 V ActivityManager: Got obituary of 25310:com.paperrockets.v22.debug
+09-14 20:18:18.041  5319  5341 W ActivityManager: setHasOverlayUi called on unknown pid: 25310
+09-14 20:18:18.042  5319  7811 D InputMethodManagerService: removeClient
+09-14 20:18:18.050  4956  4956 I Zygote  : Process 25310 exited due to signal 9 (Killed)
+09-14 20:18:18.051  5319  5350 I libprocessgroup: Successfully killed process cgroup uid 99070 pid 25397 in 0ms
+09-14 20:18:18.071  5319  5356 D BatteryExternalStatsWorker: Update CPU state
+09-14 20:18:18.071  5319  5356 D BatteryExternalStatsWorker: mStats lock released
+09-14 20:18:18.071  5319  5356 D BatteryExternalStatsWorker: done updateExternalStatsLocked
+09-14 20:18:18.090  6970  8145 I SDHM[REDACTED_PATH] : SIO[REDACTED_PATH] A[REDACTED_PATH] BA[REDACTED_PATH] US[REDACTED_PATH] CH[REDACTED_PATH] WIF[REDACTED_PATH] BL[REDACTED_PATH] SKIN[REDACTED_PATH] SKIN[REDACTED_PATH] 
+09-14 20:18:18.261  5319  7111 D ActivityManager: force stop from com.android.server.am.ActivityManagerService.forceStopPackag[REDACTED_PATH] com.android.server.am.ActivityManagerShellCommand.runForceSto[REDACTED_PATH] 
+09-14 20:18:18.261  5319  7111 I ActivityManager: Force stopping com.paperrockets.v22.benchmark appid=10384 user=0: from pid 27694
+09-14 20:18:18.266  5319  7111 W ActivityManager: Invalid packageName: com.paperrockets.v22.benchmark
+09-14 20:18:18.270  5663  5663 D CarrierSvcBindHelper: onHandleForceStop: [com.paperrockets.v22.benchmark]
+09-14 20:18:18.271  5663  5663 D CarrierSvcBindHelper: No carrier app for: 0
+09-14 20:18:18.271  5319  5348 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_RESTARTED dat=package: flg=0x10 (has extras) } to android/com.kddi.android.CpaNotiReceiver
+09-14 20:18:18.351  5319  7111 D WifiNl80211Manager: Scan result ready event
+09-14 20:18:18.352  5319  7111 D WifiNative: Scan result ready event
+09-14 20:18:18.353  5769  7970 D IpClient/wlan0: interfaceLinkStateChanged: ifindex 2 up
+09-14 20:18:18.353  7964  7964 I wpa_supplicant: nl80211: Drv Event 34 (NL80211_CMD_NEW_SCAN_RESULTS) received for wlan0
+09-14 20:18:18.353  7964  7964 I wpa_supplicant: wlan0: nl80211: New scan results available
+09-14 20:18:18.353  7964  7964 I wpa_supplicant: nl80211: Scan probed for SSID ''
+09-14 20:18:18.353  7964  7964 I wpa_supplicant: nl80211: Scan included frequencies: 2412
+09-14 20:18:18.361  5319  5569 V SemWifiScanPool: updateScanResult, partial sca[REDACTED_PATH] configKeys: 13 pool_bssi[REDACTED_PATH] pool_configKey[REDACTED_PATH]

@@ -14,8 +14,8 @@ export interface MenuShelfProps {
 
 export function getMenuSurfaceClasses(isLight: boolean): string {
   return isLight
-    ? 'border-black/15 bg-[#FAF9F5] shadow-[0_20px_50px_rgba(35,28,20,0.16)] text-neutral-900'
-    : 'border-white/[0.08] bg-[#131518]/96 shadow-2xl text-white';
+    ? 'paperrocket-menu-surface border-black/15 bg-[#FAF9F5] shadow-[0_20px_50px_rgba(35,28,20,0.16)] text-neutral-900'
+    : 'paperrocket-menu-surface border-white/[0.08] bg-[#131518]/96 shadow-2xl text-white';
 }
 
 export function getMenuDividerClasses(isLight: boolean): string {
@@ -154,7 +154,7 @@ export function MenuSegmentedToggle<T extends string = string>({
   const iconSizeClass = size === 'sm' ? 'w-3.5 h-3.5' : 'w-4 h-4';
 
   return (
-    <div className={`flex items-center justify-center ${className}`}>
+    <div className={`paperrocket-menu-segments flex items-center justify-center ${className}`}>
       <div
         className={`inline-flex items-center p-0.5 rounded-lg border ${
           isLight
@@ -172,6 +172,7 @@ export function MenuSegmentedToggle<T extends string = string>({
               type="button"
               onClick={() => onChange(opt.id)}
               disabled={opt.disabled}
+              aria-pressed={isSelected}
               title={opt.title || opt.label || opt.id}
               className={`${heightClass} px-3 rounded-md text-xs font-semibold flex items-center gap-1.5 transition-all active:scale-95 cursor-pointer ${
                 isSelected

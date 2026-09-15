@@ -1,0 +1,114 @@
+{
+  "timestamp": "2026-09-15T00:37:53.618Z",
+  "device": {
+    "serial": "R52N606W6XR",
+    "manufacturer": "samsung",
+    "model": "SM-P610",
+    "androidVersion": "13",
+    "resolution": "Physical size: 1200x2000",
+    "initialRotation": "0"
+  },
+  "buildVariants": {
+    "debugApk": {
+      "path": "android\\app\\build\\outputs\\apk\\debug\\app-debug.apk",
+      "sha256": "64c433c0342e8546eff370abf73987185de8b507e7a62fefa04f3b0de417c450"
+    },
+    "benchmarkApk": {
+      "path": "android\\app\\build\\outputs\\apk\\benchmark\\app-benchmark.apk",
+      "sha256": "e16f0d574647b6d002e2deafc073f649b0a22c80d2b506bc54337780d1a8b4cb"
+    }
+  },
+  "tests": [
+    {
+      "name": "A. Installation and Launch",
+      "status": "PASS",
+      "details": "App launched cleanly from stopped state and acquired window focus"
+    },
+    {
+      "name": "B. Primary Tool Navigation & Back Key",
+      "status": "PASS",
+      "details": "Android Back key closed topmost surface and restored active workspace"
+    },
+    {
+      "name": "C. Safe Deterministic Drawing",
+      "status": "PASS",
+      "details": "Drawing strokes executed cleanly with no uncaught exceptions"
+    },
+    {
+      "name": "D. View Controls & Navigator",
+      "status": "PASS",
+      "details": "Camera pose changed and resolved to Front, Side, Top, then Reset via debug API"
+    },
+    {
+      "name": "E. Modal Containment",
+      "status": "PASS",
+      "details": "Modal exposed with reachable close control (44x44) and backdrop"
+    },
+    {
+      "name": "F. Orientation Adaptation",
+      "status": "PASS",
+      "details": "Observed ROTATION_0 then ROTATION_90 with no command failure"
+    },
+    {
+      "name": "G. Lifecycle and Recovery",
+      "status": "FAIL",
+      "severity": "P1",
+      "details": "App did not regain focus on return: mCurrentFocus=Window{f9cfff1 u0 NotificationShade}"
+    },
+    {
+      "name": "H. Export & Storage Isolation",
+      "status": "PASS",
+      "details": "GLB/PNG payloads and baked color materials validated; debug sandbox accessible (total 77\r)"
+    },
+    {
+      "name": "I. Offline Application Behavior",
+      "status": "PASS",
+      "details": "Offline state, local stroke and save verified (status=saved)"
+    },
+    {
+      "name": "J. Accessibility Surface Probe",
+      "status": "FAIL",
+      "details": "Accessibility dump did not contain the WebView surface",
+      "severity": "P3"
+    },
+    {
+      "name": "K. Stylus Diagnostics",
+      "status": "SKIP",
+      "details": "Stylus hardware=true; received type=none, maxPressure=0, events=0"
+    },
+    {
+      "name": "L. Shader Variation Matrix",
+      "status": "PASS",
+      "details": "Compiled 8 representative shader effects with no WebGL context loss"
+    },
+    {
+      "name": "M. Synthetic 3D Model Loading",
+      "status": "PASS",
+      "details": "Mounted 2 copyright-free box/sphere fixtures with mesh metadata and restored Drawing Canvas"
+    },
+    {
+      "name": "N. Draw and Erase Core Tools",
+      "status": "PASS",
+      "details": "Stroke count 0 → 1 → 0"
+    }
+  ],
+  "performance": {
+    "skipped": true,
+    "reason": "--skip-benchmark"
+  },
+  "cleanup": {
+    "orientationRestored": true,
+    "originalRotation": "0",
+    "stoppedPackages": [
+      "com.paperrockets.v22.debug",
+      "com.paperrockets.v22.benchmark"
+    ],
+    "productionDataUntouched": true
+  },
+  "totals": {
+    "pass": 11,
+    "fail": 2,
+    "skip": 1,
+    "infra": 0
+  }
+}

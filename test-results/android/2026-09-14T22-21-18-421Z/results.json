@@ -1,0 +1,109 @@
+{
+  "timestamp": "2026-09-14T22:21:18.432Z",
+  "device": {
+    "serial": "R52N606W6XR",
+    "manufacturer": "samsung",
+    "model": "SM-P610",
+    "androidVersion": "13",
+    "resolution": "Physical size: 1200x2000",
+    "initialRotation": "0"
+  },
+  "buildVariants": {
+    "debugApk": {
+      "path": "android\\app\\build\\outputs\\apk\\debug\\app-debug.apk",
+      "sha256": "3638e8fc97f33cf12370df0721bafb7ac314f03bd99992754f1ddffbe6141e2f"
+    },
+    "benchmarkApk": {
+      "path": "android\\app\\build\\outputs\\apk\\benchmark\\app-benchmark.apk",
+      "sha256": "03a065de41bc9a2ac5973d19356581615af042c40c85787be726d67ad1997ba8"
+    }
+  },
+  "tests": [
+    {
+      "name": "A. Installation and Launch",
+      "status": "PASS",
+      "details": "App launched cleanly from stopped state and acquired window focus"
+    },
+    {
+      "name": "B. Primary Tool Navigation & Back Key",
+      "status": "PASS",
+      "details": "Android Back key closed topmost surface and restored active workspace"
+    },
+    {
+      "name": "C. Safe Deterministic Drawing",
+      "status": "PASS",
+      "details": "Drawing strokes executed cleanly with no uncaught exceptions"
+    },
+    {
+      "name": "D. View Controls & Navigator",
+      "status": "SKIP",
+      "details": "Gesture delivered; camera-state assertion is not implemented"
+    },
+    {
+      "name": "E. Modal Containment",
+      "status": "PASS",
+      "details": "Menu content was exposed and Back returned focus to the app"
+    },
+    {
+      "name": "F. Orientation Adaptation",
+      "status": "PASS",
+      "details": "Observed ROTATION_0 then ROTATION_1 with no command failure"
+    },
+    {
+      "name": "G. Lifecycle and Recovery",
+      "status": "PASS",
+      "details": "Application successfully survived backgrounding and restored active workspace"
+    },
+    {
+      "name": "H. Export & Storage Isolation",
+      "status": "SKIP",
+      "details": "Sandbox listing succeeded, but no export was performed and no exported file was validated"
+    },
+    {
+      "name": "I. Offline Application Behavior",
+      "status": "SKIP",
+      "details": "No network-disable or offline-state assertion is implemented"
+    },
+    {
+      "name": "J. Accessibility Surface Probe",
+      "status": "PASS",
+      "details": "Accessibility dump contains the WebView surface; control labels and focus order require dedicated assertions"
+    },
+    {
+      "name": "K. Stylus Diagnostics",
+      "status": "SKIP",
+      "details": "Stylus hardware is present; pressure-event and stroke assertions are not implemented"
+    }
+  ],
+  "performance": {
+    "startup": {
+      "iterations": [
+        674,
+        701,
+        970
+      ],
+      "medianMs": 701,
+      "p90Ms": 970
+    },
+    "rendering": {
+      "totalFrames": 0,
+      "jankyFrames": 0,
+      "jankyPercent": "0.00%"
+    }
+  },
+  "cleanup": {
+    "orientationRestored": true,
+    "originalRotation": "0",
+    "stoppedPackages": [
+      "com.paperrockets.v22.debug",
+      "com.paperrockets.v22.benchmark"
+    ],
+    "productionDataUntouched": true
+  },
+  "totals": {
+    "pass": 7,
+    "fail": 0,
+    "skip": 4,
+    "infra": 0
+  }
+}

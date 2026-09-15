@@ -102,7 +102,7 @@ export const BrushSettingsPanelComponent: React.FC<BrushSettingsPanelProps> = ({
   return createPortal(
     <div
       id="brush-settings-panel"
-      className={`pr-surface paperrocket-context-panel fixed left-[76px] sm:left-[88px] top-1/2 -translate-y-1/2 z-50 w-[300px] max-w-[calc(100vw-6rem)] max-h-[72vh] flex flex-col rounded-2xl shadow-2xl select-none overflow-hidden font-sans border transition-all animate-in fade-in slide-in-from-left-2 duration-150 ${
+      className={`pr-surface paperrocket-context-panel fixed left-[76px] sm:left-[88px] top-1/2 -translate-y-1/2 z-50 w-[var(--studio-menu-wide)] max-w-[min(var(--studio-menu-wide),calc(100vw-6rem))] max-h-[72vh] flex flex-col rounded-2xl shadow-2xl select-none overflow-hidden font-sans border transition-all animate-in fade-in slide-in-from-left-2 duration-150 ${
         theme === 'light'
           ? 'bg-white text-neutral-800 border-neutral-200 shadow-neutral-400/30'
           : 'bg-[#18191d] text-zinc-200 border-zinc-800 shadow-black/80'
@@ -653,7 +653,7 @@ export const BrushSettingsPanelComponent: React.FC<BrushSettingsPanelProps> = ({
                   key={hex}
                   type="button"
                   onClick={() => handleColorChange(hex)}
-                  className={`h-5 rounded-md border transition-transform active:scale-90 ${
+                  className={`aspect-square h-5 rounded-full border transition-transform active:scale-90 ${
                     isSelected ? 'border-neutral-900 dark:border-white ring-2 ring-neutral-400 dark:ring-neutral-500 scale-110' : 'border-black/30 hover:scale-105'
                   }`}
                   style={{ backgroundColor: hex }}

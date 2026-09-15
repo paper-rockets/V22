@@ -143,6 +143,91 @@
   gap: 6px;
 }
 
+.jn-control-rail {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 29px;
+  padding: 0 2px;
+  border: 1px solid rgb(35 28 20 / 12%);
+  border-radius: 9px;
+  color: var(--ink);
+  background: #faf9f5;
+}
+.jn-dark .jn-control-rail { color: #f1efeb; background: #131518; border-color: rgb(255 255 255 / 12%); }
+.jn-wrap .jn-control-rail button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-width: 0 !important;
+  min-height: 27px !important;
+  height: 27px;
+  padding: 0 6px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 10px;
+  font-weight: 550;
+  cursor: pointer;
+}
+.jn-control-rail .jn-drag-handle {
+  width: 25px;
+  height: 27px;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+.jn-control-rail .jn-drag-pill { width: 15px; height: 3px; }
+.jn-control-rail .jn-drag-handle.dragging { background: transparent; }
+.jn-control-rail button:focus-visible { outline: 2px solid #38bdf8; outline-offset: 1px; }
+.jn-settings-menu { position: fixed; z-index: 48; }
+
+/* Test builds need every navigator concept reachable without reopening
+   settings. This stays deliberately compact so it reads as a tester switch,
+   not a second toolbar. */
+.jn-layout-switcher {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  width: 100%;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 9px;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(255, 255, 255, 0.48);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.jn-dark .jn-layout-switcher {
+  background: rgba(32, 35, 41, 0.76);
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.jn-layout-switcher button {
+  min-height: 24px;
+  padding: 0 2px;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 8px;
+  font-weight: 650;
+  cursor: pointer;
+}
+
+.jn-dark .jn-layout-switcher button { color: #94a3b8; }
+.jn-layout-switcher button.on { background: var(--ink); color: #fff; }
+.jn-dark .jn-layout-switcher button.on { background: #38bdf8; color: #0f172a; }
+.jn-layout-switcher button:active { transform: scale(0.95); }
+.jn-layout-switcher button:focus-visible { outline: 2px solid var(--ax-z); outline-offset: 1px; }
+
 /* Top strips for layout and presets */
 .rig-strip {
   width: 100%;
@@ -511,4 +596,8 @@
   .jsk-disc .settle {
     animation: none;
   }
+}
+.jn-wrap.jn-menu-open .jsk {
+  visibility: hidden;
+  pointer-events: none;
 }

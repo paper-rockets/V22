@@ -53,10 +53,10 @@ export const CurveDecimateModal: React.FC<CurveDecimateModalProps> = ({
   return (
     <div className="paperrocket-modal-overlay fixed inset-0 z-50 flex items-center justify-center select-none p-4">
       <div
-        className={`pr-surface w-full max-w-sm rounded-2xl border shadow-2xl overflow-hidden font-sans animate-in fade-in zoom-in-95 duration-150 ${t.shell}`}
+        className={`pr-surface w-full max-w-sm max-h-[calc(100dvh-1rem)] flex flex-col rounded-2xl border shadow-2xl overflow-hidden font-sans animate-in fade-in zoom-in-95 duration-150 ${t.shell}`}
       >
         {/* Header */}
-        <div className={`flex items-center justify-between px-4 py-3 border-b ${t.header}`}>
+        <div className={`shrink-0 flex items-center justify-between px-4 py-3 border-b ${t.header}`}>
           <div className="flex items-center gap-2">
             <Scissors className={`w-4 h-4 ${isLight ? 'text-neutral-900 dark:text-zinc-200' : 'text-neutral-700 dark:text-zinc-300'}`} />
             <span className={`text-sm font-bold tracking-wide ${t.textPrimary}`}>Simplify Lines</span>
@@ -69,7 +69,7 @@ export const CurveDecimateModal: React.FC<CurveDecimateModalProps> = ({
           </button>
         </div>
 
-        <div className="p-4 space-y-4">
+        <div className="flex-1 min-h-0 overflow-y-auto studio-scroll p-4 space-y-4">
           <p className={`text-xs leading-relaxed ${t.textSecondary}`}>
             Reduces extra points along your strokes to keep the canvas fast and responsive while preserving curve shape.
           </p>

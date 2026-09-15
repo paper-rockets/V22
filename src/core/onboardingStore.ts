@@ -42,7 +42,7 @@ function notify(listeners: Set<Listener>): void {
   }
 }
 
-let hasOnboarded: boolean = readStored(ONBOARDED_KEY) !== 'false';
+let hasOnboarded: boolean = readStored(ONBOARDED_KEY) === 'true';
 const onboardedListeners = new Set<Listener>();
 
 export function getHasOnboarded(): boolean {

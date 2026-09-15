@@ -2,55 +2,6 @@
 
 export const BLOBMIXER_MATERIAL_PRESETS = [
   {
-    id: 'blobmixer_cosmic_fusion_live',
-    name: 'Blobmixer: Cosmic Fusion',
-    category: '?? Blobmixer MatCaps',
-    type: 'shader',
-    description: 'Organic jelly displacement with deep purple-magenta cosmic fusion and iridescent sheen.',
-    generate: (ctx, w, h) => {
-      const cx = w * 0.5, cy = h * 0.5, r = w * 0.5;
-      const grad = ctx.createRadialGradient(cx * 0.65, cy * 0.35, 10, cx, cy, r);
-      grad.addColorStop(0, '#ff9a9e');
-      grad.addColorStop(0.3, '#fecfef');
-      grad.addColorStop(0.65, '#a18cd1');
-      grad.addColorStop(1, '#3b1c54');
-      ctx.fillStyle = grad;
-      ctx.beginPath(); ctx.arc(cx, cy, r, 0, Math.PI * 2); ctx.fill();
-    },
-    vertexShader: `precision mediump float;
-uniform float u_time;
-varying vec3 v_normal;
-varying vec3 v_position;
-varying vec2 v_uv;
-void main() {
-  v_uv = uv;
-  vec3 pos = position;
-  float d = sin(pos.x * 4.0 + u_time * 1.5) * cos(pos.y * 4.0 + u_time * 1.2) * sin(pos.z * 4.0 + u_time * 1.8) * 0.15;
-  pos += normal * d;
-  v_normal = normalize(normalMatrix * normal);
-  v_position = (modelViewMatrix * vec4(pos, 1.0)).xyz;
-  gl_Position = projectionMatrix * modelViewMatrix * vec4(pos, 1.0);
-}`,
-    fragmentShader: `precision mediump float;
-uniform float u_time;
-varying vec3 v_normal;
-varying vec3 v_position;
-varying vec2 v_uv;
-void main() {
-  vec3 N = normalize(v_normal);
-  vec3 V = normalize(-v_position);
-  float fresnel = pow(1.0 - max(0.0, dot(V, N)), 2.0);
-  vec3 colA = vec3(0.98, 0.45, 0.72);
-  vec3 colB = vec3(0.55, 0.22, 0.85);
-  vec3 colC = vec3(0.15, 0.08, 0.32);
-  float ramp = dot(N, vec3(0.0, 1.0, 0.5)) * 0.5 + 0.5;
-  vec3 col = mix(colC, colB, ramp);
-  col = mix(col, colA, fresnel * 0.8);
-  col += vec3(1.0, 0.8, 0.95) * pow(fresnel, 3.5);
-  gl_FragColor = vec4(col, 1.0);
-}`
-  },
-  {
     id: 'blobmixer_deep_ocean_live',
     name: 'Blobmixer: Deep Ocean Blue',
     category: '?? Blobmixer MatCaps',

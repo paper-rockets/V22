@@ -278,8 +278,9 @@ export class StudioEngine {
   };
 
   // Camera Orbit State
-  private get cameraTarget(): THREE.Vector3 { return this.cameraController.cameraTarget; }
-  private get cameraSpherical(): THREE.Spherical { return this.cameraController.cameraSpherical; }
+  /** Live navigation state shared with the precision navigator. */
+  public get cameraTarget(): THREE.Vector3 { return this.cameraController.cameraTarget; }
+  public get cameraSpherical(): THREE.Spherical { return this.cameraController.cameraSpherical; }
   private get targetSpherical(): THREE.Spherical { return this.cameraController.targetSpherical; }
   private get targetPosition(): THREE.Vector3 { return this.cameraController.targetPosition; }
 
@@ -513,6 +514,10 @@ export class StudioEngine {
     this.renderer.shadowMap.type = profile.shadowMapType;
     this.renderer.shadowMap.autoUpdate = profile.shadows;
 
+    this.renderer.domElement.setAttribute('role', 'region');
+    this.renderer.domElement.setAttribute('aria-label', '3D Drawing Canvas');
+    this.renderer.domElement.setAttribute('aria-description', 'Drag with stylus, mouse, or touch to draw in 3D space.');
+    this.renderer.domElement.tabIndex = 0;
     container.appendChild(this.renderer.domElement);
 
     // Frame pacing derived from the profile.
@@ -801,6 +806,87 @@ export class StudioEngine {
 
   public getModelMetadata(): ModelMetadata {
     return { ...this.modelMetadata };
+  }
+
+  /**
+   * Debug-only inspection hook used by the Android test bridge.  Keeping the
+   * count on the engine (rather than reaching into a removed stroke-manager
+   * abstraction) makes the assertion reflect the source of truth.
+   */
+  public getStrokeCount(): number {
+    return this.strokes.size;
+  }
+
+  public getStrokeIds(): string[] {
+    return [...this.strokes.keys()];
+  }
+
+  /** Removes the newest stroke through the normal selection/delete path. */
+  public eraseDebugTestStroke(): boolean {
+    const lastId = this.getStrokeIds().at(-1);
+    if (!lastId) return false;
+    this.selectStroke(lastId);
+    return this.deleteSelectedStroke();
+  }
+
+  /** Mounts a copyright-free procedural fixture for internal model tests. */
+  public setDebugModelFixture(variant: 'box' | 'sphere'): ModelMetadata {
+    const geometry = variant === 'sphere'
+      ? new THREE.SphereGeometry(0.85, 24, 16)
+      : new THREE.BoxGeometry(1.2, 1.2, 1.2);
+    const material = new THREE.MeshStandardMaterial({
+      color: variant === 'sphere' ? 0x38bdf8 : 0xf59e0b,
+      roughness: 0.55,
+      metalness: 0.05,
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = `Debug${variant[0].toUpperCase()}${variant.slice(1)}Fixture`;
+    this.setModelObject(mesh, mesh.name, undefined, 'clear');
+    return this.getModelMetadata();
+  }
+
+  /**
+   * Inserts a deterministic, valid stroke for device/integration tests.
+   * This deliberately uses the same descriptor -> mesh pipeline as restored
+   * projects, so it exercises material and geometry creation without relying
+   * on a particular screen coordinate or model raycast hit.
+   */
+  public addDebugTestStroke(settings: BrushSettings, layerId?: string): number {
+    const resolvedLayerId = layerId || this.activeLayerId || this.currentLayers[0]?.id || 'layer_base_1';
+    const layer = this.currentLayers.find((candidate) => candidate.id === resolvedLayerId);
+    this.activeLayerId = resolvedLayerId;
+    this.activeLayerOpacity = layer?.opacity ?? 1;
+
+    const center = this.cameraTarget.clone();
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(this.camera.quaternion).normalize();
+    const up = new THREE.Vector3(0, 1, 0).applyQuaternion(this.camera.quaternion).normalize();
+    const normal = this.camera.getWorldDirection(new THREE.Vector3()).negate().normalize();
+    const now = performance.now();
+    const points: StrokePoint[] = [-1, 0, 1].map((step) => ({
+      position: center.clone().addScaledVector(right, step * 0.14).addScaledVector(up, Math.sin(step * 0.5) * 0.03),
+      normal: normal.clone(),
+      surfaceOffset: settings.surfaceOffset || 0.0045,
+      pressure: 0.75,
+      isSurfaceHit: false,
+      time: now + (step + 1) * 8,
+    }));
+    const descriptor: StrokeDescriptor = {
+      id: `debug_test_stroke_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`,
+      layerId: resolvedLayerId,
+      tool: 'brush',
+      points,
+      settings: { ...settings, drawingMode: 'spatial_3d' },
+      createdAt: Date.now(),
+    };
+
+    this.recreateStrokeFromDescriptor(descriptor);
+    this.undoStack.push({ type: 'create', strokes: [descriptor] });
+    this.historyUndoStack.push({ kind: 'stroke', action: { type: 'create', strokes: [descriptor] }, timestamp: Date.now() });
+    this.redoStack = [];
+    this.historyRedoStack = [];
+    this.notifyHistory();
+    this.markDirty();
+    return this.strokes.size;
   }
 
   /**
@@ -3055,6 +3141,56 @@ export class StudioEngine {
     }
 
     this.notifyHistory();
+    this.markDirty();
+  }
+
+  /**
+   * Resize the built-in drawing canvas without recreating it. Scaling the
+   * surface preserves any existing surface-attached artwork and avoids a
+   * destructive canvas reset when a creator changes format.
+   */
+  public setDrawingCanvasSize(width: number, height: number): void {
+    const plane = this.drawingPlaneMesh || this.setupDefaultDrawingPlane();
+    const geometry = plane.geometry as THREE.PlaneGeometry;
+    const baseWidth = Number(geometry.parameters?.width) || 2.7;
+    const baseHeight = Number(geometry.parameters?.height) || 3.6;
+    const safeWidth = THREE.MathUtils.clamp(width, 1, 8);
+    const safeHeight = THREE.MathUtils.clamp(height, 1, 8);
+
+    plane.scale.set(safeWidth / baseWidth, safeHeight / baseHeight, 1);
+    plane.position.y = -1.2 + safeHeight / 2;
+    plane.updateMatrixWorld(true);
+    plane.userData.canvasSize = { width: safeWidth, height: safeHeight };
+
+    if (this.modelMetadata) {
+      this.modelMetadata.dimensions.set(safeWidth, safeHeight, 0.01);
+      this.onMetadataUpdate?.(this.modelMetadata);
+    }
+    this.notifyModelsChanged();
+    this.markDirty();
+  }
+
+  /** Set the visibility of the physical drawing surface, from clear to opaque. */
+  public setDrawingCanvasOpacity(opacity: number): void {
+    const plane = this.drawingPlaneMesh || this.setupDefaultDrawingPlane();
+    const safeOpacity = THREE.MathUtils.clamp(opacity, 0, 1);
+    const materials = Array.isArray(plane.material) ? plane.material : [plane.material];
+    materials.forEach((material) => {
+      if (!material) return;
+      material.transparent = safeOpacity < 0.999;
+      material.opacity = safeOpacity;
+      material.depthWrite = safeOpacity >= 0.999;
+      material.needsUpdate = true;
+    });
+    plane.traverse((child) => {
+      if (!(child instanceof THREE.LineSegments)) return;
+      const material = child.material as THREE.LineBasicMaterial;
+      material.transparent = safeOpacity < 0.999;
+      material.opacity = Math.min(0.4, safeOpacity * 0.4);
+      material.needsUpdate = true;
+    });
+    plane.userData.canvasOpacity = safeOpacity;
+    this.markDirty();
   }
 
   /**
@@ -3835,15 +3971,15 @@ export class StudioEngine {
     return this.cameraController.toggleProjectionMode();
   }
 
-  public resetCamera(): void {
-    this.cameraController.resetCamera();
+  public resetCamera(instant: boolean = false): void {
+    this.cameraController.resetCamera(instant);
   }
 
   /**
    * Snaps camera perspective smoothly to an exact orthographic elevation or isometric angle
    */
-  public snapToView(view: PerfectViewType): void {
-    this.cameraController.snapToView(view);
+  public snapToView(view: PerfectViewType, instant: boolean = false): void {
+    this.cameraController.snapToView(view, instant);
   }
 
   /**
@@ -4250,10 +4386,12 @@ export class StudioEngine {
 
     // Clone model
     const modelClone = this.modelRoot.clone(true);
+    this.prepareExportMaterials(modelClone);
     exportScene.add(modelClone);
 
     // Clone strokes
     const strokeClone = this.strokeRoot.clone(true);
+    this.prepareExportMaterials(strokeClone);
     exportScene.add(strokeClone);
 
     const exporter = new GLTFExporter();
@@ -4267,6 +4405,78 @@ export class StudioEngine {
         reject,
         { binary: true }
       );
+    });
+  }
+
+  /**
+   * Converts runtime-only shader materials into portable, static color data.
+   * GLTF has no interoperable representation for our animated GLSL effects;
+   * exporting them as ShaderMaterial silently drops their color in most
+   * viewers. A per-vertex sRGB color bake plus unlit material preserves the
+   * visible tint and opacity everywhere, while ordinary model materials retain
+   * their maps and PBR properties.
+   */
+  private prepareExportMaterials(root: THREE.Object3D): void {
+    root.traverse((child) => {
+      const mesh = child as THREE.Mesh;
+      if (!mesh.isMesh || !mesh.geometry || !mesh.material) return;
+      mesh.geometry = mesh.geometry.clone();
+
+      const bakeShaderMaterial = (source: THREE.Material): THREE.Material => {
+        const src = source as any;
+        const shader = src.isShaderMaterial === true;
+        let color = new THREE.Color(0xffffff);
+        if (src.color?.isColor) {
+          color.copy(src.color);
+        }
+        if (shader && src.uniforms) {
+          const candidate = src.uniforms.uColor?.value
+            || src.uniforms.u_color?.value
+            || src.uniforms.u_tint?.value;
+          if (candidate?.isColor) color.copy(candidate);
+          else if (candidate?.isVector3) color.setRGB(
+            THREE.MathUtils.clamp(candidate.x, 0, 1),
+            THREE.MathUtils.clamp(candidate.y, 0, 1),
+            THREE.MathUtils.clamp(candidate.z, 0, 1),
+          );
+          const position = mesh.geometry.getAttribute('position');
+          if (position && !mesh.geometry.getAttribute('color')) {
+            // Three.js stores material/uniform colors in the linear working
+            // space.  Vertex colors are serialized by GLTFExporter from their
+            // sRGB representation, then normalized back to linear for glTF;
+            // encode here first so the export does not apply a second gamma
+            // conversion and darken mid-tones.
+            const encodedColor = color.clone().convertLinearToSRGB();
+            const colors = new Float32Array(position.count * 3);
+            for (let i = 0; i < position.count; i++) {
+              colors[i * 3] = encodedColor.r;
+              colors[i * 3 + 1] = encodedColor.g;
+              colors[i * 3 + 2] = encodedColor.b;
+            }
+            mesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
+            ensureGeometryLinearVertexColors(mesh.geometry);
+          }
+          return new THREE.MeshBasicMaterial({
+            color: 0xffffff,
+            vertexColors: !!mesh.geometry.getAttribute('color'),
+            transparent: src.transparent === true || Number(src.opacity ?? 1) < 1,
+            opacity: Number(src.opacity ?? 1),
+            side: src.side ?? THREE.DoubleSide,
+            depthTest: src.depthTest !== false,
+            depthWrite: src.depthWrite !== false,
+          });
+        }
+
+        const cloned = source.clone();
+        if ('map' in src && src.map) (cloned as any).map = src.map;
+        return cloned;
+      };
+
+      if (Array.isArray(mesh.material)) {
+        mesh.material = mesh.material.map((material) => bakeShaderMaterial(material));
+      } else {
+        mesh.material = bakeShaderMaterial(mesh.material);
+      }
     });
   }
 

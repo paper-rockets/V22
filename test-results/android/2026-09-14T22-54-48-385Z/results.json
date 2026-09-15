@@ -1,0 +1,112 @@
+{
+  "timestamp": "2026-09-14T22:54:48.405Z",
+  "device": {
+    "serial": "R52N606W6XR",
+    "manufacturer": "samsung",
+    "model": "SM-P610",
+    "androidVersion": "13",
+    "resolution": "Physical size: 1200x2000",
+    "initialRotation": "0"
+  },
+  "buildVariants": {
+    "debugApk": {
+      "path": "android\\app\\build\\outputs\\apk\\debug\\app-debug.apk",
+      "sha256": "93041ca5e536ff82ffe7397b0cad19a6f975b199258cd6ee932de9586434a780"
+    },
+    "benchmarkApk": {
+      "path": "android\\app\\build\\outputs\\apk\\benchmark\\app-benchmark.apk",
+      "sha256": "34d0633ccedc443f81eee64e80d0b9ed82f4ab6f4a3075492bb8ebe6f495b3c1"
+    }
+  },
+  "tests": [
+    {
+      "name": "A. Installation and Launch",
+      "status": "PASS",
+      "details": "App launched cleanly from stopped state and acquired window focus"
+    },
+    {
+      "name": "B. Primary Tool Navigation & Back Key",
+      "status": "PASS",
+      "details": "Android Back key closed topmost surface and restored active workspace"
+    },
+    {
+      "name": "C. Safe Deterministic Drawing",
+      "status": "PASS",
+      "details": "Drawing strokes executed cleanly with no uncaught exceptions"
+    },
+    {
+      "name": "D. View Controls & Navigator",
+      "status": "FAIL",
+      "details": "Camera-state assertion failed: [{\"view\":\"front\",\"changed\":false,\"pose\":{\"x\":-0.275,\"y\":0.738,\"z\":7.841}},{\"view\":\"right\",\"changed\":false,\"pose\":{\"x\":-0.275,\"y\":0.738,\"z\":7.841}},{\"view\":\"top\",\"changed\":false,\"pose\":{\"x\":-0.275,\"y\":0.738,\"z\":7.841}},{\"view\":\"isometric\",\"changed\":false,\"pose\":{\"x\":-0.275,\"y\":0.738,\"z\":7.841}}]",
+      "severity": "P2"
+    },
+    {
+      "name": "E. Modal Containment",
+      "status": "PASS",
+      "details": "Menu content was exposed and Back returned focus to the app"
+    },
+    {
+      "name": "F. Orientation Adaptation",
+      "status": "PASS",
+      "details": "Observed ROTATION_0 then ROTATION_90 with no command failure"
+    },
+    {
+      "name": "G. Lifecycle and Recovery",
+      "status": "PASS",
+      "details": "Application successfully survived backgrounding and restored active workspace"
+    },
+    {
+      "name": "H. Export & Storage Isolation",
+      "status": "FAIL",
+      "details": "Export assertion failed: GLB={\"isValidGlb\":false,\"magic\":\"\",\"success\":true}, PNG={\"reason\":\"No canvas\",\"success\":false}",
+      "severity": "P1"
+    },
+    {
+      "name": "I. Offline Application Behavior",
+      "status": "FAIL",
+      "details": "Offline assertion failed: offline=true, draw=false, save=true",
+      "severity": "P1"
+    },
+    {
+      "name": "J. Accessibility Surface Probe",
+      "status": "PASS",
+      "details": "Accessibility dump contains the WebView surface; control labels and focus order require dedicated assertions"
+    },
+    {
+      "name": "K. Stylus Diagnostics",
+      "status": "SKIP",
+      "details": "Stylus hardware=true; received type=none, maxPressure=0, events=0"
+    }
+  ],
+  "performance": {
+    "startup": {
+      "iterations": [
+        714,
+        770,
+        1234
+      ],
+      "medianMs": 770,
+      "p90Ms": 1234
+    },
+    "rendering": {
+      "totalFrames": 92,
+      "jankyFrames": 5,
+      "jankyPercent": "5.43%"
+    }
+  },
+  "cleanup": {
+    "orientationRestored": true,
+    "originalRotation": "0",
+    "stoppedPackages": [
+      "com.paperrockets.v22.debug",
+      "com.paperrockets.v22.benchmark"
+    ],
+    "productionDataUntouched": true
+  },
+  "totals": {
+    "pass": 7,
+    "fail": 3,
+    "skip": 1,
+    "infra": 0
+  }
+}

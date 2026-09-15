@@ -313,8 +313,8 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
       }}
       className={`pr-surface fixed z-50 select-none pointer-events-auto transition-shadow ${
         panelPos && typeof window !== 'undefined' && window.innerWidth >= 640
-          ? 'sm:w-[280px] sm:rounded-2xl sm:border sm:shadow-2xl'
-          : 'inset-x-0 bottom-0 w-full rounded-t-2xl sm:rounded-2xl border-t sm:border border-x shadow-2xl sm:w-[300px] sm:top-16 sm:right-3 sm:left-auto sm:inset-x-auto sm:bottom-auto'
+          ? 'sm:w-[var(--studio-menu-compact)] sm:rounded-2xl sm:border sm:shadow-2xl'
+          : 'inset-x-0 bottom-0 w-full rounded-t-2xl sm:rounded-2xl border-t sm:border border-x shadow-2xl sm:w-[var(--studio-menu-compact)] sm:top-2 sm:right-3 sm:left-auto sm:inset-x-auto sm:bottom-auto max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-1.5rem)] flex flex-col overflow-hidden'
       } ${
         isLight
           ? 'bg-white/95 border-neutral-200 text-neutral-900 shadow-neutral-400/25'
@@ -329,7 +329,7 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
         onTouchStart={handleHeaderTouchStart}
         onTouchMove={handleHeaderTouchMove}
         onTouchEnd={handleHeaderTouchEnd}
-        className={`flex flex-col sm:flex-row sm:items-center justify-between px-3 py-1.5 border-b min-h-[30px] cursor-grab active:cursor-grabbing rounded-t-2xl ${
+        className={`shrink-0 flex flex-col sm:flex-row sm:items-center justify-between px-3 py-1.5 border-b min-h-[30px] cursor-grab active:cursor-grabbing rounded-t-2xl ${
           isLight ? 'border-neutral-200/80 bg-neutral-50/90' : 'border-neutral-800/80 bg-neutral-900/60'
         }`}
       >
@@ -348,7 +348,7 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
       </div>
 
       {/* Interactive Content: 2-column compact bottom sheet on mobile, stacked on desktop */}
-      <div className="p-2.5 flex flex-row sm:flex-col items-center sm:items-stretch gap-3 sm:gap-2 text-xs">
+      <div className="flex-1 min-h-0 overflow-y-auto studio-scroll p-2.5 flex flex-row sm:flex-col items-center sm:items-stretch gap-3 sm:gap-2 text-xs">
         {/* Left Column on Mobile: Trackball Dome + Tone Chips */}
         <div className="flex flex-col items-center shrink-0">
           <div
@@ -356,12 +356,12 @@ export const SimpleSceneIlluminationModal: React.FC<SimpleSceneIlluminationModal
             onPointerDown={handleDomePointerDown}
             onPointerMove={handleDomePointerMove}
             onPointerUp={handleDomePointerUp}
-            className="relative w-24 h-24 sm:w-28 sm:h-28 rounded-full bg-gradient-to-b from-[#242b3d] to-[#0c0f18] border border-[#3b435a] shadow-inner cursor-crosshair flex items-center justify-center touch-none select-none"
+            className="relative w-20 h-20 sm:w-22 sm:h-22 rounded-full bg-gradient-to-b from-[#242b3d] to-[#0c0f18] border border-[#3b435a] shadow-inner cursor-crosshair flex items-center justify-center touch-none select-none"
             title="Drag inside dome to rotate light live"
           >
             {/* Guide Rings */}
-            <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border border-dashed border-white/10 pointer-events-none" />
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full border border-white/5 pointer-events-none" />
+            <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-full border border-dashed border-white/10 pointer-events-none" />
+            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full border border-white/5 pointer-events-none" />
 
             {/* Compass Marks */}
             <span className="absolute top-1 text-[7px] font-bold text-neutral-400 pointer-events-none">N</span>

@@ -1,4 +1,4 @@
-import React, { lazy, Suspense } from 'react';
+import React, { lazy, Suspense, useCallback, useEffect } from 'react';
 import * as THREE from 'three';
 import { StudioEngine } from '../../core/studioEngine';
 import { DeferredPanel } from '../DeferredPanel';
@@ -39,9 +39,12 @@ const ScaffoldingModal = lazy(() =>
   import('../ScaffoldingModal').then((m) => ({ default: m.ScaffoldingModal }))
 );
 const ARViewerModal = lazy(() => import('../ARViewerModal').then((m) => ({ default: m.ARViewerModal })));
-const ColorStudioModal = lazy(() =>
-  import('../CompactColorStudioModal').then((m) => ({ default: m.ColorStudioModal }))
-);
+// Keep the color studio lazy for initial load, but give it a stable loader so
+// the Draw panel can warm it while the artist is choosing a brush.  Opening a
+// color control must never begin a multi-second module download.
+const loadColorStudioModal = () =>
+  import('../CompactColorStudioModal').then((m) => ({ default: m.ColorStudioModal }));
+const ColorStudioModal = lazy(loadColorStudioModal);
 const HolisticDNAInspector = lazy(() =>
   import('../HolisticDNAInspector').then((m) => ({ default: m.HolisticDNAInspector }))
 );
@@ -104,6 +107,7 @@ export interface AppModalHostProps {
   // Color Studio
   isColorStudioOpen: boolean;
   setIsColorStudioOpen: (open: boolean) => void;
+  onColorStudioInteractionModeChange?: (allowsWorkspaceInteraction: boolean) => void;
   brushSettings: BrushSettings;
   setBrushSettings: React.Dispatch<React.SetStateAction<BrushSettings>>;
   setTool: (tool: ToolType) => void;
@@ -158,6 +162,7 @@ export const AppModalHost: React.FC<AppModalHostProps> = ({
   setIsARViewerOpen,
   isColorStudioOpen,
   setIsColorStudioOpen,
+  onColorStudioInteractionModeChange,
   brushSettings,
   setBrushSettings,
   setTool,
@@ -166,6 +171,18 @@ export const AppModalHost: React.FC<AppModalHostProps> = ({
   snappedShapeNotice,
   windowDragOver,
 }) => {
+  const handleCloseColorStudio = useCallback(() => setIsColorStudioOpen(false), [setIsColorStudioOpen]);
+
+  useEffect(() => {
+    const warm = () => { void loadColorStudioModal(); };
+    const idle = window.requestIdleCallback?.(warm, { timeout: 1200 });
+    const timeout = idle === undefined ? window.setTimeout(warm, 450) : undefined;
+    return () => {
+      if (idle !== undefined) window.cancelIdleCallback?.(idle);
+      if (timeout !== undefined) window.clearTimeout(timeout);
+    };
+  }, []);
+
   return (
     <>
       {/* Visual Render Post-Processing Settings Panel */}
@@ -326,7 +343,8 @@ export const AppModalHost: React.FC<AppModalHostProps> = ({
       <DeferredPanel active={isColorStudioOpen}>
         <ColorStudioModal
           isOpen={isColorStudioOpen}
-          onClose={() => setIsColorStudioOpen(false)}
+          onClose={handleCloseColorStudio}
+          onInteractionModeChange={onColorStudioInteractionModeChange}
           currentColor={brushSettings.color || '#000000'}
           onChangeColor={(hex) => {
             setBrushSettings((prev) => ({ ...prev, color: hex, solidColor: hex }));
@@ -342,6 +360,7 @@ export const AppModalHost: React.FC<AppModalHostProps> = ({
             setTool('eyedropper');
           }}
           theme={theme}
+          brushSettings={brushSettings}
         />
       </DeferredPanel>
 

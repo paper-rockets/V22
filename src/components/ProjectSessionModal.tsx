@@ -143,11 +143,11 @@ export const ProjectSessionModal: React.FC<ProjectSessionModalProps> = ({
       role="dialog"
       aria-modal="false"
       aria-label="Project Sessions"
-      className="pointer-events-none fixed inset-0 z-50 flex items-start justify-end px-2 pt-[calc(env(safe-area-inset-top)+3.25rem)] sm:px-3 animate-in fade-in duration-150"
+      className="pointer-events-none fixed inset-0 z-50 flex items-start justify-end px-2 pt-2 sm:pt-[calc(env(safe-area-inset-top)+3.25rem)] sm:px-3 animate-in fade-in duration-150"
     >
       <div
         data-theme={theme}
-        className={`pr-surface pointer-events-auto w-full max-w-[420px] max-h-[calc(100dvh-4.25rem)] flex flex-col rounded-2xl shadow-2xl border overflow-hidden ${
+        className={`pr-surface pointer-events-auto w-full max-w-[420px] max-h-[calc(100dvh-1rem)] sm:max-h-[calc(100dvh-4.25rem)] flex flex-col rounded-2xl shadow-2xl border overflow-hidden ${
           isLight
             ? 'bg-white text-neutral-900 border-neutral-200'
             : 'bg-[#18191d] text-white border-white/10'
@@ -155,7 +155,7 @@ export const ProjectSessionModal: React.FC<ProjectSessionModalProps> = ({
       >
         {/* Header */}
         <div
-            className={`flex items-center justify-between px-4 py-3 border-b ${
+            className={`shrink-0 flex items-center justify-between px-4 py-3 border-b ${
             isLight ? 'border-neutral-200 bg-neutral-50/50' : 'border-neutral-800 bg-[#121316]'
           }`}
         >

@@ -119,9 +119,9 @@ export const DeformPanel: React.FC<DeformPanelProps> = ({
     const stats = engine.decimateCurves(decimateTolerance, 'layer');
     if (stats && stats.before > 0) {
       const pct = Math.round(((stats.before - stats.after) / stats.before) * 100);
-      setSimplifyFeedback(`Reduced ${pct}%`);
+      setSimplifyFeedback(`Smoothed ${pct}%`);
     } else {
-      setSimplifyFeedback('Done');
+      setSimplifyFeedback('Smoothed');
     }
     setTimeout(() => setSimplifyFeedback(null), 2500);
   };
@@ -205,7 +205,7 @@ export const DeformPanel: React.FC<DeformPanelProps> = ({
                 key={axis}
                 type="button"
                 onClick={() => handleToggleAxis(axis)}
-                className={`h-8 min-h-[32px] rounded-lg border font-bold text-xs transition-all active:scale-95 ${
+                className={`h-8 min-h-[32px] rounded-lg border font-bold text-xs transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-95 ${
                   isSelected
                     ? isLight
                       ? 'bg-neutral-900 border-neutral-900 text-white shadow-xs'
@@ -225,7 +225,7 @@ export const DeformPanel: React.FC<DeformPanelProps> = ({
           <button
             type="button"
             onClick={handleAlignMirrorToView}
-            className={`h-8 min-h-[32px] px-2 py-1 rounded-lg border font-semibold flex items-center justify-center gap-1.5 transition-all text-xs ${
+            className={`h-8 min-h-[32px] px-2 py-1 rounded-lg border font-semibold flex items-center justify-center gap-1.5 transition-colors duration-150 ease-out text-xs ${
               isLight
                 ? 'bg-white hover:bg-neutral-100 border-black/10 text-neutral-800'
                 : 'bg-black/30 hover:bg-white/10 border-white/10 text-neutral-200'
@@ -242,7 +242,7 @@ export const DeformPanel: React.FC<DeformPanelProps> = ({
               haptics.trigger('light');
               onOpenCustomMirror();
             }}
-            className={`h-8 min-h-[32px] px-2 py-1 rounded-lg border font-semibold flex items-center justify-center gap-1.5 transition-all text-xs ${
+            className={`h-8 min-h-[32px] px-2 py-1 rounded-lg border font-semibold flex items-center justify-center gap-1.5 transition-colors duration-150 ease-out text-xs ${
               isLight
                 ? 'bg-white hover:bg-neutral-100 border-black/10 text-neutral-800'
                 : 'bg-black/30 hover:bg-white/10 border-white/10 text-neutral-200'
@@ -268,7 +268,7 @@ export const DeformPanel: React.FC<DeformPanelProps> = ({
               haptics.trigger('light');
               onOpenBentGuide();
             }}
-            className={`h-11 min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center gap-2 font-medium transition-all active:scale-[0.98] ${
+            className={`h-11 min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center gap-2 font-medium transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-[0.98] ${
               isLight
                 ? 'bg-white hover:bg-neutral-100 border-black/10 text-neutral-800 shadow-xs'
                 : 'bg-black/30 hover:bg-white/10 border-white/10 text-neutral-200 shadow-xs'
@@ -289,7 +289,7 @@ export const DeformPanel: React.FC<DeformPanelProps> = ({
                 haptics.trigger('light');
                 onOpenScaffolding();
               }}
-              className={`h-11 min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center gap-2 font-medium transition-all active:scale-[0.98] ${
+              className={`h-11 min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center gap-2 font-medium transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-[0.98] ${
                 isLight
                   ? 'bg-white hover:bg-neutral-100 border-black/10 text-neutral-800 shadow-xs'
                   : 'bg-black/30 hover:bg-white/10 border-white/10 text-neutral-200 shadow-xs'
@@ -306,19 +306,19 @@ export const DeformPanel: React.FC<DeformPanelProps> = ({
         </div>
       </div>
 
-      {/* 4. Simplify Lines */}
+      {/* 4. Smooth Lines */}
       <div className={cardClass}>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-1.5">
             <Scissors className={`w-3.5 h-3.5 ${isLight ? 'text-neutral-900' : 'text-neutral-200'}`} />
-            <span className={subHeadingClass}>Simplify Lines</span>
+            <span className={subHeadingClass}>Smooth Lines</span>
           </div>
           <span className="font-mono text-[9px] font-bold">
             {Math.round((decimateTolerance / 0.02) * 100)}%
           </span>
         </div>
 
-        {/* Reduction slider */}
+        {/* Smoothness slider */}
         <div className="space-y-1">
           <input
             type="range"
@@ -330,6 +330,7 @@ export const DeformPanel: React.FC<DeformPanelProps> = ({
             className={`w-full h-1.5 rounded cursor-pointer ${
               isLight ? 'accent-neutral-900 bg-neutral-200' : 'accent-white bg-neutral-800'
             }`}
+            title="Smoothness & point reduction"
           />
         </div>
 
@@ -337,14 +338,14 @@ export const DeformPanel: React.FC<DeformPanelProps> = ({
           <button
             type="button"
             onClick={handleRunSimplify}
-            className={`h-8 min-h-[32px] px-2 py-1 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-all text-xs active:scale-95 shadow-xs ${
+            className={`h-8 min-h-[32px] px-2 py-1 rounded-lg font-bold flex items-center justify-center gap-1.5 transition-colors duration-150 ease-out text-xs active:scale-95 shadow-xs ${
               isLight
                 ? 'bg-neutral-900 hover:bg-neutral-800 text-white'
                 : 'bg-white hover:bg-neutral-100 text-neutral-950'
             }`}
           >
             <IcQuickSimplify className="w-3.5 h-3.5 shrink-0" />
-            <span>{simplifyFeedback || 'Simplify Now'}</span>
+            <span>{simplifyFeedback || 'Smooth Now'}</span>
           </button>
 
           <button
@@ -353,11 +354,12 @@ export const DeformPanel: React.FC<DeformPanelProps> = ({
               haptics.trigger('light');
               onOpenDecimate();
             }}
-            className={`h-8 min-h-[32px] px-2 py-1 rounded-lg border font-semibold flex items-center justify-center gap-1.5 transition-all text-xs ${
+            className={`h-8 min-h-[32px] px-2 py-1 rounded-lg border font-semibold flex items-center justify-center gap-1.5 transition-colors duration-150 ease-out text-xs ${
               isLight
                 ? 'bg-white hover:bg-neutral-100 border-black/10 text-neutral-800'
                 : 'bg-black/30 hover:bg-white/10 border-white/10 text-neutral-200'
             }`}
+            title="Smoothing & reduction settings"
           >
             <IcSimplifySettings className="w-3.5 h-3.5 shrink-0" />
             <span>Settings</span>

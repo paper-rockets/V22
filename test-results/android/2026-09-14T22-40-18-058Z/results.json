@@ -1,0 +1,114 @@
+{
+  "timestamp": "2026-09-14T22:40:18.071Z",
+  "device": {
+    "serial": "R52N606W6XR",
+    "manufacturer": "samsung",
+    "model": "SM-P610",
+    "androidVersion": "13",
+    "resolution": "Physical size: 1200x2000",
+    "initialRotation": "0"
+  },
+  "buildVariants": {
+    "debugApk": {
+      "path": "android\\app\\build\\outputs\\apk\\debug\\app-debug.apk",
+      "sha256": "9f6314013bd3dc024fde4006c207df41808d54d51a946945883b1f387eba56e6"
+    },
+    "benchmarkApk": {
+      "path": "android\\app\\build\\outputs\\apk\\benchmark\\app-benchmark.apk",
+      "sha256": "34d0633ccedc443f81eee64e80d0b9ed82f4ab6f4a3075492bb8ebe6f495b3c1"
+    }
+  },
+  "tests": [
+    {
+      "name": "A. Installation and Launch",
+      "status": "PASS",
+      "details": "App launched cleanly from stopped state and acquired window focus"
+    },
+    {
+      "name": "B. Primary Tool Navigation & Back Key",
+      "status": "PASS",
+      "details": "Android Back key closed topmost surface and restored active workspace"
+    },
+    {
+      "name": "C. Safe Deterministic Drawing",
+      "status": "PASS",
+      "details": "Drawing strokes executed cleanly with no uncaught exceptions"
+    },
+    {
+      "name": "D. View Controls & Navigator",
+      "status": "FAIL",
+      "severity": "P2",
+      "details": "Uncaught (in promise) Error: Debug test API unavailable"
+    },
+    {
+      "name": "E. Modal Containment",
+      "status": "FAIL",
+      "details": "Menu/focus assertion failed (menuExposed=false, appStillFocused=true)",
+      "severity": "P1"
+    },
+    {
+      "name": "F. Orientation Adaptation",
+      "status": "PASS",
+      "details": "Observed ROTATION_0 then ROTATION_90 with no command failure"
+    },
+    {
+      "name": "G. Lifecycle and Recovery",
+      "status": "PASS",
+      "details": "Application successfully survived backgrounding and restored active workspace"
+    },
+    {
+      "name": "H. Export & Storage Isolation",
+      "status": "FAIL",
+      "severity": "P2",
+      "details": "Uncaught (in promise) Error: Debug test API unavailable"
+    },
+    {
+      "name": "I. Offline Behavior",
+      "status": "FAIL",
+      "severity": "P2",
+      "details": "Uncaught (in promise) Error: Debug test API unavailable"
+    },
+    {
+      "name": "J. Accessibility Surface Probe",
+      "status": "PASS",
+      "details": "Accessibility dump contains the WebView surface; control labels and focus order require dedicated assertions"
+    },
+    {
+      "name": "K. Stylus Diagnostics",
+      "status": "FAIL",
+      "severity": "P3",
+      "details": "Uncaught (in promise) Error: Debug test API unavailable"
+    }
+  ],
+  "performance": {
+    "startup": {
+      "iterations": [
+        732,
+        821,
+        1209
+      ],
+      "medianMs": 821,
+      "p90Ms": 1209
+    },
+    "rendering": {
+      "totalFrames": 108,
+      "jankyFrames": 25,
+      "jankyPercent": "23.15%"
+    }
+  },
+  "cleanup": {
+    "orientationRestored": true,
+    "originalRotation": "0",
+    "stoppedPackages": [
+      "com.paperrockets.v22.debug",
+      "com.paperrockets.v22.benchmark"
+    ],
+    "productionDataUntouched": true
+  },
+  "totals": {
+    "pass": 6,
+    "fail": 5,
+    "skip": 0,
+    "infra": 0
+  }
+}

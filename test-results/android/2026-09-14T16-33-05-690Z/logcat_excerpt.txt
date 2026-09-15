@@ -1,0 +1,370 @@
+--------- beginning of main
+09-14 12:35:29.329 23906 23906 I chsm    : onStart
+09-14 12:35:29.329  5965  5965 I Launcher: !@Boot_DEBUG: Launcher.onResume()
+09-14 12:35:29.329  5965  5965 I Launcher: !@Boot_EBS_D: Launcher.onResume()
+09-14 12:35:29.329  5965  5965 I BaseActivity: addActivityFlags, flags : 18
+09-14 12:35:29.329  5965  5965 I Launcher: mTaskbarManager isNull = false
+09-14 12:35:29.329  5965  5965 I BaseActivity: removeActivityFlags, flags : 1024
+09-14 12:35:29.330  5965  5965 W PageOverlayMover: isMoving : false
+09-14 12:35:29.330  5965  5965 I TaskbarUIController: onLauncherResumedOrPaused() called with: isResumed = [true], fromInit = [false], animationDuration = [450]
+09-14 12:35:29.330  5965  5965 I TaskbarLauncherStateController: applyState - mPrevState : 0 mState : 1
+09-14 12:35:29.332  5965  5965 I TaskbarLauncherStateController: animatorSet start.
+--------- beginning of system
+09-14 12:35:29.333  5319  5356 D BatteryExternalStatsWorker: update stats : remove-uid (1)
+09-14 12:35:29.334  5319  5356 D BatteryExternalStatsWorker: Update CPU state
+09-14 12:35:29.334  5319  5356 D BatteryExternalStatsWorker: mStats lock released
+09-14 12:35:29.334  5319  5356 D BatteryExternalStatsWorker: done updateExternalStatsLocked
+09-14 12:35:29.337  5911  5911 I Zygote  : Process 3588 exited due to signal 9 (Killed)
+09-14 12:35:29.341  5965  5965 I TaskbarLauncherStateController: Start animation onStateChangeApplied
+09-14 12:35:29.342  5965  5965 I BaseActivity: removeActivityFlags, flags : 32
+09-14 12:35:29.343  5965  5965 I AppsSearchBar: restoreCurrentCellLayoutAlpha: []
+09-14 12:35:29.343  5965  6059 I IMM_LC  : hsifw() - flag : 0
+09-14 12:35:29.343  5965  6059 I IMM_LC  : hsifw() - mService.hideSoftInput
+09-14 12:35:29.343  5965  5965 I AppsSearchBar: mCurrentCellLayouts onAnimationEnd
+09-14 12:35:29.344  5965  5965 W PageOverlayMover: isMoving : false
+09-14 12:35:29.344  5319  7086 D InputMethodManagerService: hideSoftInput
+09-14 12:35:29.344  5319  7086 W InputMethodManagerService: Ignoring hideSoftInput of uid 10083: com.android.internal.view.IInputMethodClient$Stub$Proxy@2df3545
+09-14 12:35:29.345 23906 23906 I chsm    : onResume
+09-14 12:35:29.347  5319  7086 D InputMethodManagerService: removeClient
+09-14 12:35:29.348  5319  7086 D InputTransport: Input channel destroyed: 'ClientS', fd=1014
+09-14 12:35:29.348  5319  7086 V InputMethodManagerService: hideCurrentInputLocked : canceled, shouldHideSoftInput=false, mInputShown=false, mImeWindowVis=0
+09-14 12:35:29.348  5319  7086 I InputMethodBindingController: setCurrentMethodNotVisible: mVisibleBound=false, mHasConnection=true, caller = com.android.server.inputmethod.InputMethodManagerService.hideCurrentInputLocke[REDACTED_PATH] com.android.server.inputmethod.InputMethodManagerService.removeClien[REDACTED_PATH] com.android.server.inputmethod.InputMethodManagerService$ClientDeathRecipient.binderDie[REDACTED_PATH] android.os.IBinder$DeathRecipient.binderDie[REDACTED_PATH] android.os.BinderProxy.sendDeathNotic[REDACTED_PATH] <bottom of call stack> <bottom of call stack> <bottom of call stack> <bottom of call stack> <bottom of call stack> 
+09-14 12:35:29.348  5065  5082 I SurfaceFlinger: id=2242 Removed com.paperrockets.v22.benchmark/com.paperrockets.v22.MainActivity$_3544#2242 (125)
+09-14 12:35:29.348  5065  5082 I SurfaceFlinger: id=2246 Removed Surface(name=4f1ae9e InputMethod)/@0xa03c14c - animation-leash of insets_animation#2246 (125)
+09-14 12:35:29.349  5965  6061 I SPayUpdater: updateSpayHandler, show = true, defaultPage = true
+09-14 12:35:29.349  5965  5965 I DecorView: notifyKeepScreenOnChanged: keepScreenOn=false
+09-14 12:35:29.349  4956  4956 I Zygote  : Process 3544 exited due to signal 9 (Killed)
+09-14 12:35:29.350  5319  5816 V ActivityManager: Got obituary of 3544:com.paperrockets.v22.benchmark
+09-14 12:35:29.350  5319  5341 W ActivityManager: setHasOverlayUi called on unknown pid: 3544
+09-14 12:35:29.350  5319  5350 I libprocessgroup: Successfully killed process cgroup uid 99022 pid 3588 in 0ms
+09-14 12:35:29.352  5965  7754 I Launcher: DisplayMetrics from Resources : DisplayMetrics{density=1.5, width=2000, height=1128, scaledDensity=1.6500001, xdpi=225.777, ydpi=224.778}
+09-14 12:35:29.352  5965  7754 I Launcher: realMetrics from Wm : DisplayMetrics{density=1.5, width=2000, height=1200, scaledDensity=1.5, xdpi=225.777, ydpi=224.778}
+09-14 12:35:29.352  5965  7754 I Launcher: Launcher DeviceProfile onResume availSize: 2000x1128 windowSize: 2000x1200 isLandscape: true
+09-14 12:35:29.352  5319  5319 I Pageboost: package null
+09-14 12:35:29.353  5965  5965 I Launcher: setWallpaperOffsets
+09-14 12:35:29.353  6555  6555 E pageboostd: Received HALT command code 2
+09-14 12:35:29.354  5965  5965 I DecorView: notifyKeepScreenOnChanged: keepScreenOn=false
+09-14 12:35:29.355  5965  5965 I MSHandlerLifeCycle: removeMultiSplitHandler: no exist. decor=DecorView@25cce08[LauncherActivity]
+09-14 12:35:29.356  5319  5381 D AnalyticsContainerHandler: handleMessage : { when=0 what=1 target=com.android.server.knox.KnoxAnalyticsContainer$AnalyticsHandler }
+09-14 12:35:29.357  9572  2951 I Finsky  : [2520] SCH: Satisfied jobs for 9077 are: 12-1
+09-14 12:35:29.360  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.360  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.360  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.360  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.360  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.360  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.360  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.360  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.361  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.361  5065  5065 I Layer   : id=2246 Destroyed Surface(name=4f1ae9e InputMethod)/@0xa03c14c - animation-leash of insets_animation#2246
+09-14 12:35:29.361  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.361  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.361  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.361  5065  5065 E BpTransactionCompletedListener: Failed to transact (-32)
+09-14 12:35:29.361  5065  5065 I Layer   : id=2242 Destroyed com.paperrockets.v22.benchmark/com.paperrockets.v22.MainActivity$_3544#2242
+09-14 12:35:29.364  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.365  9572  3045 I Finsky  : [2527] SCH: Job 12-1 starting
+09-14 12:35:29.365  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: performTraversals params={(0,0)(fillxfill) sim={adjust=nothing forwardNavigation} layoutInDisplayCutoutMode=shortEdges ty=BASE_APPLICATION fmt=TRANSPARENT wanim=0x10302f4
+09-14 12:35:29.365  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]:   fl=81910100
+09-14 12:35:29.365  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]:   pfl=1e020040
+09-14 12:35:29.365  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]:   vsysui=1700
+09-14 12:35:29.365  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]:   bhv=SHOW_TRANSIENT_BARS_BY_SWIPE
+09-14 12:35:29.365  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]:   fitSides= screenDimDuration=100000 naviIconColor=0}
+09-14 12:35:29.366  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: performTraversals mFirst=false windowShouldResize=false viewVisibilityChanged=true mForceNextWindowRelayout=false params={(0,0)(fillxfill) sim={adjust=nothing forwardNavigation} layoutInDisplayCutoutMode=shortEdges ty=BASE_APPLICATION fmt=TRANSPARENT wanim=0x10302f4
+09-14 12:35:29.366  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]:   fl=81910100
+09-14 12:35:29.366  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]:   pfl=1e020040
+09-14 12:35:29.366  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]:   vsysui=1700
+09-14 12:35:29.366  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]:   bhv=SHOW_TRANSIENT_BARS_BY_SWIPE
+09-14 12:35:29.366  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]:   fitSides= screenDimDuration=100000 naviIconColor=0}
+09-14 12:35:29.366  5319  5816 V WindowManager: Relayout Window{ea8fa7e u0 com.sec.android.app.launcher/com.sec.android.app.launcher.activities.LauncherActivity}: viewVisibility=0 req=2000x1200 d0
+09-14 12:35:29.366  5319  5816 D RestrictionPolicy: isScreenCaptureEnabled : ret=true userId=0
+09-14 12:35:29.367  5065  6462 I SurfaceFlinger: id=2250 createSurf flag=40004, com.sec.android.app.launcher/com.sec.android.app.launcher.activities.LauncherActivity$_5965#2250
+09-14 12:35:29.367  5319  5816 D WindowManager: makeSurface duration=1 name=com.sec.android.app.launcher/com.sec.android.app.launcher.activities.LauncherActivity$_5965
+09-14 12:35:29.368  9572  9572 I Finsky  : [2] W[REDACTED_PATH] Logging work start for 12-1
+09-14 12:35:29.368  5319  5816 I ResourceType: [SWT] pull resource Id table from file
+09-14 12:35:29.368  9572  9572 I Finsky  : [2] [ContentSync] job started
+09-14 12:35:29.369  5319  5341 D PowerManagerService: [api] setScreenDimDurationOverrideFromWindowManagerInternal: timeoutMillis: 100000
+09-14 12:35:29.370  5319  5816 V WindowManager: Changing focus from null to Window{ea8fa7e u0 com.sec.android.app.launcher/com.sec.android.app.launcher.activities.LauncherActivity} displayId=0 Callers=com.android.server.wm.RootWindowContainer.updateFocusedWindowLocke[REDACTED_PATH] com.android.server.wm.WindowManagerService.updateFocusedWindowLocke[REDACTED_PATH] com.android.server.wm.WindowManagerService.relayoutWindo[REDACTED_PATH] com.android.server.wm.Session.relayou[REDACTED_PATH] 
+09-14 12:35:29.370  5319  5816 D MARsPolicyManager: onPackageResumedFG pkgName = com.sec.android.app.launcher, userId = 0
+09-14 12:35:29.370  5319  5816 I WindowManager: Cancelling animation restarting=true, leash=Surface(name=Surface(name=71d006a StatusBar)/@0xc24e0b4 - animation-leash of insets_animation)/@0x60570be
+09-14 12:35:29.370  5319  5816 I WindowManager: Reparenting to original parent: Surface(name=WindowToken{2e41e55 type=2000 android.os.BinderProxy@d12c83f})/@0x762b4dd, destroy=false, surface=Surface(name=71d006a StatusBar)/@0xc24e0b4
+09-14 12:35:29.370  5319  5816 I WindowManager: Reparenting to leash, surface=Surface(name=71d006a StatusBar)/@0xc24e0b4, leashParent=Surface(name=WindowToken{2e41e55 type=2000 android.os.BinderProxy@d12c83f})/@0x762b4dd
+09-14 12:35:29.370  5065  6462 I SurfaceFlinger: id=2251 createSurf flag=24000, Surface(name=71d006a StatusBar)/@0xc24e0b4 - animation-leash of insets_animation#2251
+09-14 12:35:29.371  5319  5816 D WindowManager: makeSurface duration=0 leash=Surface(name=Surface(name=71d006a StatusBar)/@0xc24e0b4 - animation-leash of insets_animation)/@0x71e71cb
+09-14 12:35:29.371  5319  5816 I WindowManager: Cancelling animation restarting=true, leash=Surface(name=Surface(name=efae176 Taskbar)/@0xd0f8be4 - animation-leash of insets_animation)/@0x625a06c
+09-14 12:35:29.371  5319  5816 I WindowManager: Reparenting to original parent: Surface(name=WindowToken{9dc6438 type=2024 android.os.BinderProxy@ce2989b})/@0x296384d, destroy=false, surface=Surface(name=efae176 Taskbar)/@0xd0f8be4
+09-14 12:35:29.371  5319  5816 I WindowManager: Reparenting to leash, surface=Surface(name=efae176 Taskbar)/@0xd0f8be4, leashParent=Surface(name=WindowToken{9dc6438 type=2024 android.os.BinderProxy@ce2989b})/@0x296384d
+09-14 12:35:29.371  5065  6462 I SurfaceFlinger: id=2252 createSurf flag=24000, Surface(name=efae176 Taskbar)/@0xd0f8be4 - animation-leash of insets_animation#2252
+09-14 12:35:29.372  5319  5816 D WindowManager: makeSurface duration=0 leash=Surface(name=Surface(name=efae176 Taskbar)/@0xd0f8be4 - animation-leash of insets_animation)/@0x842e0c1
+09-14 12:35:29.372  5319  5816 D WindowManager: updateSystemBarAttributes: displayId=0, win=Window{ea8fa7e u0 com.sec.android.app.launcher/com.sec.android.app.launcher.activities.LauncherActivity}, navColorWin=null, focusedCanBeNavColorWin=false, behavior=2, appearance=0, statusBarAppearanceRegions=[], requestedVisibilities=ITYPE_STATUS_BAR: visible, ITYPE_NAVIGATION_BAR: visible, ITYPE_CLIMATE_BAR: visible, ITYPE_EXTRA_NAVIGATION_BAR: visible, ITYPE_LOCAL_NAVIGATION_BAR_1: visible, ITYPE_LOCAL_NAVIGATION_BAR_2: visible, from=com.android.server.wm.DisplayPolicy.focusChangedL[REDACTED_PATH] com.android.server.wm.DisplayContent.updateFocusedWindowLocke[REDACTED_PATH] com.android.server.wm.RootWindowContainer.updateFocusedWindowLocke[REDACTED_PATH] 
+09-14 12:35:29.373  5319  5816 D StatusBarManagerService: notifyRequestedSystemKey recent=false home=false
+09-14 12:35:29.373  5683  5683 D SamsungLightBarControlHelper: onStatusBarAppearanceChanged() -  sbModeChange[REDACTED_PATH], statusBarMod[REDACTED_PATH], barStat[REDACTED_PATH], isKeyguardShowin[REDACTED_PATH], navbarColorManagedByIm[REDACTED_PATH], stackAppearancesChange[REDACTED_PATH], (), packageNam[REDACTED_PATH]
+09-14 12:35:29.373  5683  5683 D TaskbarDelegate: onSystemBarAttributesChanged() -  displayI[REDACTED_PATH], appearanc[REDACTED_PATH], navbarColorManagedByIme: false, packageName: com.sec.android.app.launcher
+09-14 12:35:29.373  5965  7482 I TouchInteractionService: onSystemBarAttributesChanged, displayId : 0, behavior : 2
+09-14 12:35:29.374  5319  5816 V WindowManager: Relayout hash=ea8fa7e, pid=5965, syncId=-1: mAttrs={(0,0)(fillxfill) sim={adjust=nothing forwardNavigation} layoutInDisplayCutoutMode=shortEdges ty=BASE_APPLICATION fmt=TRANSPARENT wanim=0x10302f4
+09-14 12:35:29.374  5319  5816 V WindowManager:   fl=81910100
+09-14 12:35:29.374  5319  5816 V WindowManager:   pfl=1e020040
+09-14 12:35:29.374  5319  5816 V WindowManager:   vsysui=1700
+09-14 12:35:29.374  5319  5816 V WindowManager:   bhv=SHOW_TRANSIENT_BARS_BY_SWIPE
+09-14 12:35:29.374  5319  5816 V WindowManager:   fitSides= screenDimDuration=100000 naviIconColor=0}
+09-14 12:35:29.375  5965  7482 I TouchInteractionService: onSystemUiStateChanged, stateFlags : 16777216 |immersive_mode|
+09-14 12:35:29.376  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: updateBlastSurfaceIfNeeded mBlastBufferQueue=null isSameSurfaceControl=false
+09-14 12:35:29.376  5965  5965 I BLASTBufferQueue: new BLASTBufferQueue, mName= ViewRootImpl@3af503f[LauncherActivity] mNativeObject= 0x7b362a4e00 sc.mNativeObject= 0x7a4fbe6ba0 caller= android.view.ViewRootImpl.updateBlastSurfaceIfNeede[REDACTED_PATH] android.view.ViewRootImpl.relayoutWindo[REDACTED_PATH] android.view.ViewRootImpl.performTraversal[REDACTED_PATH] android.view.ViewRootImpl.doTraversa[REDACTED_PATH] android.view.ViewRootImpl$TraversalRunnable.ru[REDACTED_PATH] android.view.Choreographer$CallbackRecord.ru[REDACTED_PATH] android.view.Choreographer$CallbackRecord.ru[REDACTED_PATH] android.view.Choreographer.doCallback[REDACTED_PATH] android.view.Choreographer.doFram[REDACTED_PATH] android.view.Choreographer$FrameDisplayEventReceiver.ru[REDACTED_PATH] 
+09-14 12:35:29.376  5965  5965 I BLASTBufferQueue: update, w= 2000 h= 1200 mName = ViewRootImpl@3af503f[LauncherActivity] mNativeObject= 0x7b362a4e00 sc.mNativeObject= 0x7a4fbe6ba0 format= -2 caller= android.graphics.BLASTBufferQueue.<init>:84 android.view.ViewRootImpl.updateBlastSurfaceIfNeede[REDACTED_PATH] android.view.ViewRootImpl.relayoutWindo[REDACTED_PATH] android.view.ViewRootImpl.performTraversal[REDACTED_PATH] android.view.ViewRootImpl.doTraversa[REDACTED_PATH] android.view.ViewRootImpl$TraversalRunnable.ru[REDACTED_PATH] 
+09-14 12:35:29.377  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: Relayout returned: old=(0,0,2000,1200) new=(0,0,2000,1200) req=(2000,1200)0 dur=10 res=0x3 s={true 0x7b21ee8800} ch=true seqId=0
+09-14 12:35:29.377  5965  5965 I LauncherRootView: onApplyWindowInsets, state = Normal
+09-14 12:35:29.378  5965  5965 I LauncherRootView: onApplyWindowInsets, systemWindowInset = Rect(0, 36 - 0, 72)
+09-14 12:35:29.379  5965  5965 I LauncherRootView: handleSystemWindowInsets Rect(0, 36 - 0, 72)
+09-14 12:35:29.380  5319  5342 I ResourceType: [SWT] pull resource Id table from file
+09-14 12:35:29.381  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: mThreadedRenderer.initialize() mSurface={isValid=true 0x7b21ee8800} hwInitialized=true
+09-14 12:35:29.381  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.381  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.381  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.381  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.381  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.381  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.381  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.381  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.381  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.381  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.381  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.381  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.382  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:35:29.384  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: reportNextDraw android.view.ViewRootImpl.performTraversal[REDACTED_PATH] android.view.ViewRootImpl.doTraversa[REDACTED_PATH] android.view.ViewRootImpl$TraversalRunnable.ru[REDACTED_PATH] android.view.Choreographer$CallbackRecord.ru[REDACTED_PATH] android.view.Choreographer$CallbackRecord.ru[REDACTED_PATH] 
+09-14 12:35:29.384  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: Setup new sync id=45
+09-14 12:35:29.384  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: Setting syncFrameCallback
+09-14 12:35:29.384  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: registerCallbacksForSync syncBuffer=false
+09-14 12:35:29.394  5065  5065 I Layer   : id=2243 removeFromCurrentState Surface(name=71d006a StatusBar)/@0xc24e0b4 - animation-leash of insets_animation#2243 (126)
+09-14 12:35:29.394  5065  5065 I Layer   : id=2244 removeFromCurrentState Surface(name=efae176 Taskbar)/@0xd0f8be4 - animation-leash of insets_animation#2244 (126)
+09-14 12:35:29.395  5065  5065 D SurfaceFlinger: [input] inputWindowCommands.focusRequests size is 1
+09-14 12:35:29.395  5065  5065 I SurfaceFlinger: id=2243 Removed Surface(name=71d006a StatusBar)/@0xc24e0b4 - animation-leash of insets_animation#2243 (126)
+09-14 12:35:29.395  5065  5065 I SurfaceFlinger: id=2244 Removed Surface(name=efae176 Taskbar)/@0xd0f8be4 - animation-leash of insets_animation#2244 (126)
+09-14 12:35:29.395  5065  5065 I Layer   : id=2243 Destroyed Surface(name=71d006a StatusBar)/@0xc24e0b4 - animation-leash of insets_animation#2243
+09-14 12:35:29.396  5065  5065 I Layer   : id=2244 Destroyed Surface(name=efae176 Taskbar)/@0xd0f8be4 - animation-leash of insets_animation#2244
+09-14 12:35:29.397  5065  5161 D SurfaceFlinger: [input] setFocusedWindow: ea8fa7e com.sec.android.app.launcher/com.sec.android.app.launcher.activities.LauncherActivity
+09-14 12:35:29.397  5319  5816 D InputDispatcher: Focus request (0): ea8fa7e com.sec.android.app.launcher/com.sec.android.app.launcher.activities.LauncherActivity but waiting because NOT_VISIBLE
+09-14 12:35:29.406  5965  8211 I ViewRootImpl@3af503f[LauncherActivity]: Received frameDrawingCallback syncResult=0 frameNum=1.
+09-14 12:35:29.406  5965  8211 I ViewRootImpl@3af503f[LauncherActivity]: Setting up sync and frameCommitCallback
+09-14 12:35:29.415  5965  7290 I BLASTBufferQueue: [ViewRootImpl@3af503f[LauncherActivity]#25]([REDACTED_PATH],[REDACTED_PATH],[REDACTED_PATH] onFrameAvailable the first frame is available
+09-14 12:35:29.415  5965  7290 I ViewRootImpl@3af503f[LauncherActivity]: Received frameCommittedCallback lastAttemptedDrawFrameNum=1 didProduceBuffer=true
+09-14 12:35:29.416  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: onSyncComplete
+09-14 12:35:29.416  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: setupSync seqId=0 mSyncId=45 fn=1 caller=android.view.ViewRootImpl$$ExternalSyntheticLambda11.accep[REDACTED_PATH] android.window.SurfaceSyncer.lambda$setupSync$1$android-window-SurfaceSynce[REDACTED_PATH] android.window.SurfaceSyncer$$ExternalSyntheticLambda1.accep[REDACTED_PATH] android.window.SurfaceSyncer$SyncSet.checkIfSyncIsComplet[REDACTED_PATH] android.window.SurfaceSyncer$SyncSet.markSyncRead[REDACTED_PATH] android.window.SurfaceSyncer.markSyncRead[REDACTED_PATH] android.view.ViewRootImpl.performTraversal[REDACTED_PATH] 
+09-14 12:35:29.417  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]: performTraversals params={(0,0)(fillx1200) gr=BOTTOM CENTER_VERTICAL sim={adjust=nothing} layoutInDisplayCutoutMode=always ty=NAVIGATION_BAR_PANEL fmt=TRANSLUCENT receive insets ignoring z-order
+09-14 12:35:29.417  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:   fl=21800008
+09-14 12:35:29.417  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:   pfl=2200000
+09-14 12:35:29.417  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:   bhv=DEFAULT
+09-14 12:35:29.417  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:   insetsTypes=ITYPE_EXTRA_NAVIGATION_BAR ITYPE_BOTTOM_TAPPABLE_ELEMENT
+09-14 12:35:29.417  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:  providedInternalInsets=null null null null null null null null null null null null null null null null null null Insets{left=0, top=1128, right=0, bottom=0} null null Insets{left=0, top=1128, right=0, bottom=0} null null
+09-14 12:35:29.417  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:  providedInternalImeInsets=null null null null null null null null null null null null null null null null null null Insets{left=0, top=1128, right=0, bottom=0} null null Insets{left=0, top=1128, right=0, bottom=0} null null naviIconColor=0}
+09-14 12:35:29.417  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]: performTraversals mFirst=false windowShouldResize=false viewVisibilityChanged=false mForceNextWindowRelayout=false params={(0,0)(fillx1200) gr=BOTTOM CENTER_VERTICAL sim={adjust=nothing} layoutInDisplayCutoutMode=always ty=NAVIGATION_BAR_PANEL fmt=TRANSLUCENT receive insets ignoring z-order
+09-14 12:35:29.417  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:   fl=21800008
+09-14 12:35:29.417  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:   pfl=2200000
+09-14 12:35:29.417  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:   bhv=DEFAULT
+09-14 12:35:29.417  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:   insetsTypes=ITYPE_EXTRA_NAVIGATION_BAR ITYPE_BOTTOM_TAPPABLE_ELEMENT
+09-14 12:35:29.417  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:  providedInternalInsets=null null null null null null null null null null null null null null null null null null Insets{left=0, top=1128, right=0, bottom=0} null null Insets{left=0, top=1128, right=0, bottom=0} null null
+09-14 12:35:29.417  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:  providedInternalImeInsets=null null null null null null null null null null null null null null null null null null Insets{left=0, top=1128, right=0, bottom=0} null null Insets{left=0, top=1128, right=0, bottom=0} null null naviIconColor=0}
+09-14 12:35:29.418  5319  5816 V WindowManager: Relayout Window{efae176 u0 Taskbar}: viewVisibility=0 req=2000x1200 d0
+09-14 12:35:29.419  5965  7482 I ViewRootImpl@3af503f[LauncherActivity]: Resizing android.view.ViewRootImpl@152b15b: frame = [0,0][2000,1200] reportDraw = true forceLayout = false syncSeqId = 0
+09-14 12:35:29.419  5683  5748 I ViewRootImpl@626a8f2[StatusBar]: Resizing android.view.ViewRootImpl@e72623e: frame = [0,0][2000,36] reportDraw = false forceLayout = false syncSeqId = 16
+09-14 12:35:29.420  5965  8268 I ViewRootImpl@7eb92b0[Taskbar]: Resizing android.view.ViewRootImpl@aef29dc: frame = [0,0][2000,1200] reportDraw = false forceLayout = false syncSeqId = 16
+09-14 12:35:29.420  5683  6341 I ViewRootImpl@57f68d[ScreenDecorOverlay]: Resizing android.view.ViewRootImpl@2f26a45: frame = [0,0][36,1200] reportDraw = false forceLayout = false syncSeqId = 35
+09-14 12:35:29.420  5683  5713 I ViewRootImpl@c461df2[ScreenDecorOverlayBottom]: Resizing android.view.ViewRootImpl@f214131: frame = [1964,0][2000,1200] reportDraw = false forceLayout = false syncSeqId = 35
+09-14 12:35:29.420  5683  6472 I ViewRootImpl@57f68d[ScreenDecorOverlay]: handleResized, msg = 4 frames=ClientWindowFrames{frame=[0,0][36,1200] display=[0,0][2000,1200] parentFrame=[0,0][0,0] parentClippedByDisplayCutout=false} forceNextWindowRelayout=false displayId=0 resizeMode=-1 frameChanged=false displayFrameChanged=false configChanged=false displayChanged=false
+09-14 12:35:29.420  5683  5683 D InsetsController: onStateChanged: InsetsState: {mDisplayFrame=Rect(0, 0 - 2000, 1200), mDisplayCutout=DisplayCutout{insets=Rect(0, 0 - 0, 0) waterfall=Insets{left=0, top=0, right=0, bottom=0} boundingRect={Bounds=[Rect(0, 0 - 0, 0), Rect(0, 0 - 0, 0), Rect(0, 0 - 0, 0), Rect(0, 0 - 0, 0)]} cutoutPathParserInfo={CutoutPathParserInfo{displayWidth=0 displayHeight=0 physicalDisplayWidth=0 physicalDisplayHeight=0 density={0.0} cutoutSpec={} rotation={0} scale={0.0} physicalPixelDisplaySizeRatio={0.0}}}}, mRoundedCorners=RoundedCorners{[RoundedCorner{position=TopLeft, radius=20, center=Point(20, 20)}, RoundedCorner{position=TopRight, radius=20, center=Point(1980, 20)}, RoundedCorner{position=BottomRight, radius=20, center=Point(1980, 1180)}, RoundedCorner{position=BottomLeft, radius=20, center=Point(20, 1180)}]}  mRoundedCornerFrame=Rect(0, 0 - 0, 0), mPrivacyIndicatorBounds=PrivacyIndicatorBounds {static bounds=Rect(1934, 0 - 2000, 36) rotation=1}, mSources= { InsetsSource: {mType=ITYPE_LEFT_GESTURES, mFrame=[0,0][0,1200], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_RIGHT_GESTURES, mFrame=[2000,0][2000,1200], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_TOP_MANDATORY_GESTURES, mFrame=[0,0][2000,36], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_BOTTOM_MANDATORY_GESTURES, mFrame=[0,1128][2000,1200], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_BOTTOM_TAPPABLE_ELEMENT, mFrame=[0,1128][2000,1200], mVisible=true, mInsetsRoundedCornerFrame=false}, InsetsSource: {mType=ITYPE_EXTRA_NAVIGATION_BAR, mFrame=[0,1128][2000,1200], mVisible=true, mInsetsRoundedCornerFrame=false} } host=StatusBar from=android.view.ViewRootImpl$ViewRootHandler.handleMessageImp[REDACTED_PATH]
+09-14 12:35:29.421  5319  5816 V WindowManager: Relayout hash=efae176, pid=5965, syncId=-1: mAttrs={(0,0)(fillx1200) gr=BOTTOM CENTER_VERTICAL sim={adjust=nothing} layoutInDisplayCutoutMode=always ty=NAVIGATION_BAR_PANEL fmt=TRANSLUCENT receive insets ignoring z-order
+09-14 12:35:29.421  5319  5816 V WindowManager:   fl=21800008
+09-14 12:35:29.421  5319  5816 V WindowManager:   pfl=2200000
+09-14 12:35:29.421  5319  5816 V WindowManager:   bhv=DEFAULT
+09-14 12:35:29.421  5319  5816 V WindowManager:   insetsTypes=ITYPE_EXTRA_NAVIGATION_BAR ITYPE_BOTTOM_TAPPABLE_ELEMENT
+09-14 12:35:29.421  5319  5816 V WindowManager:  providedInternalInsets=null null null null null null null null null null null null null null null null null null Insets{left=0, top=1128, right=0, bottom=0} null null Insets{left=0, top=1128, right=0, bottom=0} null null
+09-14 12:35:29.421  5319  5816 V WindowManager:  providedInternalImeInsets=null null null null null null null null null null null null null null null null null null Insets{left=0, top=1128, right=0, bottom=0} null null Insets{left=0, top=1128, right=0, bottom=0} null null naviIconColor=0}
+09-14 12:35:29.421  5683  6472 I ViewRootImpl@c461df2[ScreenDecorOverlayBottom]: handleResized, msg = 4 frames=ClientWindowFrames{frame=[1964,0][2000,1200] display=[0,0][2000,1200] parentFrame=[0,0][0,0] parentClippedByDisplayCutout=false} forceNextWindowRelayout=false displayId=0 resizeMode=-1 frameChanged=false displayFrameChanged=false configChanged=false displayChanged=false
+09-14 12:35:29.421  8248  8296 I ViewRootImpl@ff2c8cb[CocktailBarService]: Resizing android.view.ViewRootImpl@4918643: frame = [0,671][67,848] reportDraw = false forceLayout = false syncSeqId = 1
+09-14 12:35:29.421  5683  5683 I ViewRootImpl@626a8f2[StatusBar]: handleResized, msg = 4 frames=ClientWindowFrames{frame=[0,0][2000,36] display=[0,0][2000,1200] parentFrame=[0,0][0,0] parentClippedByDisplayCutout=false} forceNextWindowRelayout=false displayId=0 resizeMode=-1 frameChanged=false displayFrameChanged=false configChanged=false displayChanged=false
+09-14 12:35:29.421  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]: updateBlastSurfaceIfNeeded mBlastBufferQueue=0x7a9fd51400 isSameSurfaceControl=true
+09-14 12:35:29.422  5965  5965 I BLASTBufferQueue: update, w= 2000 h= 1200 mName = ViewRootImpl@7eb92b0[Taskbar] mNativeObject= 0x7a9fd51400 sc.mNativeObject= 0x7a4ff2c640 format= -3 caller= android.view.ViewRootImpl.updateBlastSurfaceIfNeede[REDACTED_PATH] android.view.ViewRootImpl.relayoutWindo[REDACTED_PATH] android.view.ViewRootImpl.performTraversal[REDACTED_PATH] android.view.ViewRootImpl.doTraversa[REDACTED_PATH] android.view.ViewRootImpl$TraversalRunnable.ru[REDACTED_PATH] android.view.Choreographer$CallbackRecord.ru[REDACTED_PATH] 
+09-14 12:35:29.422  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]: Relayout returned: old=(0,0,2000,1200) new=(0,0,2000,1200) req=(2000,1200)0 dur=4 res=0x0 s={true 0x7a9fe7d800} ch=false seqId=16
+09-14 12:35:29.422  5965  5965 I TaskbarDragLayer: Region update (0, 0, 2000, 1128)
+09-14 12:35:29.423  8248  8248 I ViewRootImpl@ff2c8cb[CocktailBarService]: handleResized, msg = 4 frames=ClientWindowFrames{frame=[0,671][67,848] display=[0,0][2000,1128] parentFrame=[0,0][0,0] parentClippedByDisplayCutout=false} forceNextWindowRelayout=false displayId=0 resizeMode=-1 frameChanged=false displayFrameChanged=false configChanged=false displayChanged=false
+09-14 12:35:29.425  5319  5816 I ResourceType: [SWT] pull resource Id table from file
+09-14 12:35:29.425  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: reportDrawFinished seqId=0 mSyncId=-1 fn=1 mSurfaceChangedTransaction=0x7b36330e00
+09-14 12:35:29.426  5319  5816 I ResourceType: [SWT] pull resource Id table from file
+09-14 12:35:29.426  5965  5965 I RecentsView: onTaskRemoved() taskId : 459
+09-14 12:35:29.426  5965  5965 I TopTaskTracker: onTaskRemoved : taskId = 459
+09-14 12:35:29.426  5965  5965 I RecentsView: onTaskRemoved() taskId : 459
+09-14 12:35:29.426  5965  5965 I TopTaskTracker: onTaskRemoved : taskId = 459
+09-14 12:35:29.428  5319  5816 D WindowManager: finishDrawingWindow: Window{ea8fa7e u0 com.sec.android.app.launcher/com.sec.android.app.launcher.activities.LauncherActivity} mDrawState=DRAW_PENDING seqId=0
+09-14 12:35:29.428  5965  5965 I TaskbarRecentView: Block stack change
+09-14 12:35:29.428  5965  5965 I Launcher: onOccludeChangeNotice: cn = null, fullscreen: false
+09-14 12:35:29.428  5965  5965 I Launcher: onOccludeChangeNotice return by resume
+09-14 12:35:29.428  5965  5965 I BaseActivity: removeActivityFlags, flags : 1024
+09-14 12:35:29.429  5965  5965 I BaseActivity: addActivityFlags, flags : 4
+09-14 12:35:29.429  5965  5965 I Launcher: onDeferredResumed
+09-14 12:35:29.431  5965  5965 I InstallShortcutReceiver: flushInstallQueue 0
+09-14 12:35:29.431  5965  5965 I Launcher.NotificationListener: onNotificationFullRefresh
+09-14 12:35:29.432  5965  5965 I BadgeCountUpdaterImpl: onNotificationsChangedConnected
+09-14 12:35:29.432  5965  5965 W LauncherAppWidgetHost: setShouldListenFlag, mFlag[REDACTED_PATH] fla[REDACTED_PATH] o[REDACTED_PATH] isFron[REDACTED_PATH]
+09-14 12:35:29.432  5319  5342 V WindowManager: Setting visibility of Window{cfd3fda u0 com.android.systemui.ImageWallpaper}: true, caller=com.android.server.wm.WindowContainer.sendAppVisibilityToClient[REDACTED_PATH] com.android.server.wm.WindowToken.setClientVisibl[REDACTED_PATH] com.android.server.wm.WallpaperWindowToken.setVisibl[REDACTED_PATH] com.android.server.wm.WallpaperWindowToken.commitVisibilit[REDACTED_PATH] com.android.server.wm.WallpaperWindowToken.setVisibilit[REDACTED_PATH] 
+09-14 12:35:29.433  5683  5713 D WallpaperService: dispatchAppVisibility onVisibilityChanged(): true
+09-14 12:35:29.433  5319  5342 I ResourceType: [SWT] pull resource Id table from file
+09-14 12:35:29.434  5319  6034 I AppWidgetServiceImpl: startListening callbacks : com.android.internal.appwidget.IAppWidgetHost$Stub$Proxy@b3ab066
+09-14 12:35:29.435  5965  6060 I LauncherActivityInfo: Trying to load live icon for com.sec.android.app.clockpackage
+09-14 12:35:29.436  5319  5342 D WindowManager: Loading animation for app transition. transit=TRANSIT_OLD_WALLPAPER_OPEN enter=true frame=Rect(0, 0 - 2000, 1200) insets=Rect(0, 36 - 0, 72) surfaceInsets=Rect(0, 0 - 0, 0)
+09-14 12:35:29.436  5965  5965 W LauncherAppWidgetHost: startListening, mFlag[REDACTED_PATH] isFron[REDACTED_PATH]
+09-14 12:35:29.438  5683  5683 D WallpaperService: updateSurface forceRelayout=true forceReport=false redrawNeeded=false myWidth=2000 myHeight=2000 fixedSize=true x = 0 y = 0 mWidth=2000 mHeight=2000 mIsSleepMode=false
+09-14 12:35:29.438  5319  5342 I WindowManager: Reparenting to leash, surface=Surface(name=Task=1)/@0x1aa4a26, leashParent=Surface(name=DefaultTaskDisplayArea)/@0x76c7cbd
+09-14 12:35:29.438  5683  5683 D WallpaperService: maxBounds : Rect(0, 0 - 2000, 1200) , mDeviceHeight : 1200, mDeviceWidth : 2000,mDeviceRotation  : 1
+09-14 12:35:29.439  5965  5965 I Launcher.Hotseat: hotseatLocationX - sidePadding : 250 paddingLeft : 217 iconWidth : 268 mWidthGap : 6 hotseatPadding : 250
+09-14 12:35:29.439  5965  5965 I Launcher.Hotseat: hotseatLocationY - height : 1200 getLayoutParams().height : 211 getHotseatHeight : 139
+09-14 12:35:29.439  5065  6462 I SurfaceFlinger: id=2253 createSurf flag=24004, Surface(name=Task=1)/@0x1aa4a26 - animation-leash of app_transition#2253
+09-14 12:35:29.439  5319  5342 D WindowManager: makeSurface duration=1 leash=Surface(name=Surface(name=Task=1)/@0x1aa4a26 - animation-leash of app_transition)/@0x9316cf2
+09-14 12:35:29.440  5319  5342 D ActivityTaskManager: mStartingWindow and mStartingData is null for token=ActivityRecord{cea1feb u0 com.sec.android.app.launcher/.activities.LauncherActivity} t420}
+09-14 12:35:29.440  5319  5342 V WindowManager: performShowLocked: mDrawState=HAS_DRAWN in Window{ea8fa7e u0 com.sec.android.app.launcher/com.sec.android.app.launcher.activities.LauncherActivity}
+09-14 12:35:29.441  5319  5342 I ResourceType: [SWT] pull resource Id table from file
+09-14 12:35:29.442  5319  5342 D WindowManager: updateSystemBarAttributes: displayId=0, win=Window{ea8fa7e u0 com.sec.android.app.launcher/com.sec.android.app.launcher.activities.LauncherActivity}, navColorWin=Window{ea8fa7e u0 com.sec.android.app.launcher/com.sec.android.app.launcher.activities.LauncherActivity}, focusedCanBeNavColorWin=false, behavior=2, appearance=0, statusBarAppearanceRegions=[AppearanceRegion{ bounds=[0,0][2000,1200]}], requestedVisibilities=ITYPE_STATUS_BAR: visible, ITYPE_NAVIGATION_BAR: visible, ITYPE_CLIMATE_BAR: visible, ITYPE_EXTRA_NAVIGATION_BAR: visible, ITYPE_LOCAL_NAVIGATION_BAR_1: visible, ITYPE_LOCAL_NAVIGATION_BAR_2: visible, from=com.android.server.wm.DisplayPolicy.finishPostLayoutPolicyL[REDACTED_PATH] com.android.server.wm.DisplayContent.applySurfaceChangesTransactio[REDACTED_PATH] com.android.server.wm.RootWindowContainer.applySurfaceChangesTransactio[REDACTED_PATH] 
+09-14 12:35:29.443  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]: performTraversals params={(0,0)(fillx1200) gr=BOTTOM CENTER_VERTICAL sim={adjust=nothing} layoutInDisplayCutoutMode=always ty=NAVIGATION_BAR_PANEL fmt=TRANSLUCENT receive insets ignoring z-order
+09-14 12:35:29.443  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:   fl=21800008
+09-14 12:35:29.443  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:   pfl=2200000
+09-14 12:35:29.443  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:   bhv=DEFAULT
+09-14 12:35:29.443  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:   insetsTypes=ITYPE_EXTRA_NAVIGATION_BAR ITYPE_BOTTOM_TAPPABLE_ELEMENT
+09-14 12:35:29.443  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:  providedInternalInsets=null null null null null null null null null null null null null null null null null null Insets{left=0, top=1128, right=0, bottom=0} null null Insets{left=0, top=1128, right=0, bottom=0} null null
+09-14 12:35:29.443  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:  providedInternalImeInsets=null null null null null null null null null null null null null null null null null null Insets{left=0, top=1128, right=0, bottom=0} null null Insets{left=0, top=1128, right=0, bottom=0} null null naviIconColor=0}
+09-14 12:35:29.443  5065  6462 I SurfaceFlinger: id=2254 createSurf flag=80000, af1a62e ActivityRecordInputSink com.sec.android.app.launcher/com.android.launcher3.uioverrides.QuickstepLauncher#2254
+09-14 12:35:29.444  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]: performTraversals mFirst=false windowShouldResize=false viewVisibilityChanged=false mForceNextWindowRelayout=false params={(0,0)(fillx1200) gr=BOTTOM CENTER_VERTICAL sim={adjust=nothing} layoutInDisplayCutoutMode=always ty=NAVIGATION_BAR_PANEL fmt=TRANSLUCENT receive insets ignoring z-order
+09-14 12:35:29.444  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:   fl=21800008
+09-14 12:35:29.444  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:   pfl=2200000
+09-14 12:35:29.444  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:   bhv=DEFAULT
+09-14 12:35:29.444  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:   insetsTypes=ITYPE_EXTRA_NAVIGATION_BAR ITYPE_BOTTOM_TAPPABLE_ELEMENT
+09-14 12:35:29.444  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:  providedInternalInsets=null null null null null null null null null null null null null null null null null null Insets{left=0, top=1128, right=0, bottom=0} null null Insets{left=0, top=1128, right=0, bottom=0} null null
+09-14 12:35:29.444  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]:  providedInternalImeInsets=null null null null null null null null null null null null null null null null null null Insets{left=0, top=1128, right=0, bottom=0} null null Insets{left=0, top=1128, right=0, bottom=0} null null naviIconColor=0}
+09-14 12:35:29.447  5319  6034 V WindowManager: Relayout Window{efae176 u0 Taskbar}: viewVisibility=0 req=2000x1200 d0
+09-14 12:35:29.449  5683  5740 D Bubbles : onLocusVisibilityChanged: LocusId[17_chars] visible=true
+09-14 12:35:29.449  5319  7365 V WindowManager: Relayout Window{cfd3fda u0 com.android.systemui.ImageWallpaper}: viewVisibility=0 req=2000x2000 d0
+09-14 12:35:29.450  5319  6034 V WindowManager: Relayout hash=efae176, pid=5965, syncId=-1: mAttrs={(0,0)(fillx1200) gr=BOTTOM CENTER_VERTICAL sim={adjust=nothing} layoutInDisplayCutoutMode=always ty=NAVIGATION_BAR_PANEL fmt=TRANSLUCENT receive insets ignoring z-order
+09-14 12:35:29.450  5319  6034 V WindowManager:   fl=21800008
+09-14 12:35:29.450  5319  6034 V WindowManager:   pfl=2200000
+09-14 12:35:29.450  5319  6034 V WindowManager:   bhv=DEFAULT
+09-14 12:35:29.450  5319  6034 V WindowManager:   insetsTypes=ITYPE_EXTRA_NAVIGATION_BAR ITYPE_BOTTOM_TAPPABLE_ELEMENT
+09-14 12:35:29.450  5319  6034 V WindowManager:  providedInternalInsets=null null null null null null null null null null null null null null null null null null Insets{left=0, top=1128, right=0, bottom=0} null null Insets{left=0, top=1128, right=0, bottom=0} null null
+09-14 12:35:29.450  5319  6034 V WindowManager:  providedInternalImeInsets=null null null null null null null null null null null null null null null null null null Insets{left=0, top=1128, right=0, bottom=0} null null Insets{left=0, top=1128, right=0, bottom=0} null null naviIconColor=0}
+09-14 12:35:29.451  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]: updateBlastSurfaceIfNeeded mBlastBufferQueue=0x7a9fd51400 isSameSurfaceControl=true
+09-14 12:35:29.451  5965  5965 I BLASTBufferQueue: update, w= 2000 h= 1200 mName = ViewRootImpl@7eb92b0[Taskbar] mNativeObject= 0x7a9fd51400 sc.mNativeObject= 0x7a4ff2c6e0 format= -3 caller= android.view.ViewRootImpl.updateBlastSurfaceIfNeede[REDACTED_PATH] android.view.ViewRootImpl.relayoutWindo[REDACTED_PATH] android.view.ViewRootImpl.performTraversal[REDACTED_PATH] android.view.ViewRootImpl.doTraversa[REDACTED_PATH] android.view.ViewRootImpl$TraversalRunnable.ru[REDACTED_PATH] android.view.Choreographer$CallbackRecord.ru[REDACTED_PATH] 
+09-14 12:35:29.451  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]: Relayout returned: old=(0,0,2000,1200) new=(0,0,2000,1200) req=(2000,1200)0 dur=7 res=0x0 s={true 0x7a9fe7d800} ch=false seqId=16
+09-14 12:35:29.452  5965  5965 I TaskbarDragLayer: Region update Empty
+09-14 12:35:29.453  5065  5065 D SurfaceFlinger: Display 0 HWC layers:
+09-14 12:35:29.453  5065  5065 D SurfaceFlinger:      DEVICE | 0x7deeca6e00 | 0100 | RGBx_8888    |  400.0    0.0 1600.0 2000.0 |    0    0 1200 2000 | Wallpaper BBQ wrapper#84
+09-14 12:35:29.453  5065  5065 D SurfaceFlinger:      DEVICE | 0x7deeca5b40 | 0100 | RGBA_8888    |    0.0    0.0   36.0 2000.0 | 1164    0 1200 2000 | StatusBar$_5683#81
+09-14 12:35:29.453  5065  5065 D SurfaceFlinger:      DEVICE | 0x7dc2af5780 | 0100 | RGBA_8888    |    0.0    0.0  177.0   67.0 |  352    0  529   67 | com.samsung.android.app.cocktailbars[...]ervice.CocktailBarService$_8248#2086
+09-14 12:35:29.453  5065  5065 D SurfaceFlinger:      DEVICE | 0x7ded3ef540 | 0100 | RGBA_8888    |    0.0    0.0   72.0 2000.0 |    0    0   72 2000 | Taskbar$_5965#174
+09-14 12:35:29.453  5065  5065 D SurfaceFlinger:      DEVICE | 0x7dd1b9d000 | 0140 | RGBA_8888    |    0.0    0.0 1200.0   36.0 |    0    0 1200   36 | ScreenDecorOverlay$_5683#89
+09-14 12:35:29.453  5065  5065 D SurfaceFlinger:      DEVICE | 0x7dc2af5c80 | 0140 | RGBA_8888    |    0.0    0.0 1200.0   36.0 |    0 1964 1200 2000 | ScreenDecorOverlayBottom$_5683#90
+09-14 12:35:29.453  5065  5065 D SurfaceFlinger: 
+09-14 12:35:29.454  5965  5965 W TouchInteractionService: handleNavigationBarEvent() type=ON_APPEARANCE_CHANGED
+09-14 12:35:29.454  5965  5965 I TouchInteractionService: ON_APPEARANCE_CHANGED appearance = 0
+09-14 12:35:29.454  5965  5965 I RecentsAnimationDeviceState: setSystemUiFlags, stateFlags : 16777216
+09-14 12:35:29.454  5319  7365 V WindowManager: Relayout hash=cfd3fda, pid=5683, syncId=-1: mAttrs={(0,0)(2000x2000) gr=TOP START CENTER layoutInDisplayCutoutMode=always ty=WALLPAPER fmt=RGBX_8888 wanim=0x103031a
+09-14 12:35:29.454  5319  7365 V WindowManager:   fl=14318
+09-14 12:35:29.454  5319  7365 V WindowManager:   pfl=2000014
+09-14 12:35:29.454  5319  7365 V WindowManager:   bhv=DEFAULT naviIconColor=0}
+09-14 12:35:29.454  5965  5965 I TouchInteractionService: onSystemUiFlagsChanged, lastSysUIFlags : 131072
+09-14 12:35:29.455  5319  5342 D ActivityTaskManager: mStartingWindow and mStartingData is null for token=ActivityRecord{cea1feb u0 com.sec.android.app.launcher/.activities.LauncherActivity} t420}
+09-14 12:35:29.455  5965  5965 I TaskbarActivityContext: updateSysuiStateFlags : 16777216
+09-14 12:35:29.457  5683  5683 I BLASTBufferQueue: update, w= 2000 h= 2000 mName = Wallpaper mNativeObject= 0x7a71ab4f00 sc.mNativeObject= 0x7a7173d660 format= 2 caller= android.service.wallpaper.WallpaperService$Engine.getOrCreateBLASTSurfac[REDACTED_PATH] android.service.wallpaper.WallpaperService$Engine.updateSurfac[REDACTED_PATH] android.service.wallpaper.WallpaperService$Engine.reportVisibilit[REDACTED_PATH] android.service.wallpaper.WallpaperService$Engine.doVisibilityChange[REDACTED_PATH] android.service.wallpaper.WallpaperService$IWallpaperEngineWrapper.executeMessag[REDACTED_PATH] com.android.internal.os.HandlerCaller$MyHandler.handleMessag[REDACTED_PATH] 
+09-14 12:35:29.458  5683  5683 D WallpaperService: reportVisibility onVisibilityChanged visible: true
+09-14 12:35:29.458  5683  5828 I ImageWallpaper[GLEngine]:  onVisibilityChanged true , 0
+09-14 12:35:29.459  5319  6034 I ResourceType: [SWT] pull resource Id table from file
+09-14 12:35:29.459  5319  6034 I ResourceType: [SWT] pull resource Id table from file
+09-14 12:35:29.459  5965  6060 I LiveIconUtil: getLiveIcon was called in ClockPackage
+09-14 12:35:29.459  5683  5683 D SamsungLightBarControlHelper: onStatusBarAppearanceChanged() -  sbModeChange[REDACTED_PATH], statusBarMod[REDACTED_PATH], barStat[REDACTED_PATH], isKeyguardShowin[REDACTED_PATH], navbarColorManagedByIm[REDACTED_PATH], stackAppearancesChange[REDACTED_PATH], (AppearanceRegion{ bounds=[0,0][2000,1200]}, ), packageNam[REDACTED_PATH]
+09-14 12:35:29.460  5965  7482 I TouchInteractionService: onSystemBarAttributesChanged, displayId : 0, behavior : 2
+09-14 12:35:29.460  5683  5683 D TaskbarDelegate: onSystemBarAttributesChanged() -  displayI[REDACTED_PATH], appearanc[REDACTED_PATH], navbarColorManagedByIme: false, packageName: com.sec.android.app.launcher
+09-14 12:35:29.461  5065  5065 I Layer   : Layer [com.sec.android.app.launcher/com.sec.android.app.launcher.activities.LauncherActivity$_5965#2250] hidden!! flag(0)
+09-14 12:35:29.462  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: handleResized, msg = 5 frames=ClientWindowFrames{frame=[0,0][2000,1200] display=[0,0][2000,1200] parentFrame=[0,0][0,0] parentClippedByDisplayCutout=false} forceNextWindowRelayout=false displayId=0 resizeMode=-1 frameChanged=false displayFrameChanged=false configChanged=false displayChanged=false
+09-14 12:35:29.462  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: handleResized mSyncSeqId = 0
+09-14 12:35:29.462  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: reportNextDraw android.view.ViewRootImpl.handleResize[REDACTED_PATH] android.view.ViewRootImpl.-$$Nest$mhandleResize[REDACTED_PATH] android.view.ViewRootImpl$ViewRootHandler.handleMessageImp[REDACTED_PATH] android.view.ViewRootImpl$ViewRootHandler.handleMessag[REDACTED_PATH] android.os.Handler.dispatchMessag[REDACTED_PATH] 
+09-14 12:35:29.462  5965  5965 I ViewRootImpl@7eb92b0[Taskbar]: handleResized, msg = 4 frames=ClientWindowFrames{frame=[0,0][2000,1200] display=[0,0][2000,1200] parentFrame=[0,0][0,0] parentClippedByDisplayCutout=false} forceNextWindowRelayout=false displayId=0 resizeMode=-1 frameChanged=false displayFrameChanged=false configChanged=false displayChanged=false
+09-14 12:35:29.463  5965  5965 I TaskbarDragLayer: Region update Empty
+09-14 12:35:29.463  5965  6060 I LiveIconUtil: getLiveIcon res = com.sec.android.app.clockpackage
+09-14 12:35:29.464  5965  5965 I LauncherRootView: onApplyWindowInsets, state = Normal
+09-14 12:35:29.464  5965  5965 I LauncherRootView: onApplyWindowInsets, systemWindowInset = Rect(0, 36 - 0, 72)
+09-14 12:35:29.465  5965  5965 I LauncherRootView: handleSystemWindowInsets Rect(0, 36 - 0, 72)
+09-14 12:35:29.465  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: Setup new sync id=46
+09-14 12:35:29.465  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: Setting syncFrameCallback
+09-14 12:35:29.465  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: registerCallbacksForSync syncBuffer=false
+09-14 12:35:29.467  5965  8212 I ViewRootImpl@3af503f[LauncherActivity]: Received frameDrawingCallback syncResult=0 frameNum=3.
+09-14 12:35:29.467  5319  7365 D WALLPAPER_SV[REDACTED_PATH] getWallpaperSafeLocked, userId = 0, which = 1, caller = com.android.server.wallpaper.WallpaperManagerService.semGetWallpaperTyp[REDACTED_PATH] 
+09-14 12:35:29.467  5965  8212 I ViewRootImpl@3af503f[LauncherActivity]: Setting up sync and frameCommitCallback
+09-14 12:35:29.467  5319  7365 D WallpaperManagerService: which : 1, return type : 0 (called by userId= 0)
+09-14 12:35:29.471  5965  6060 I LiveIconUtil: stdIconSize : 72 , targetIconSize : 111
+09-14 12:35:29.471  5965  6060 I LiveIconUtil: mIconDpi : 480 , mTargetIconDpi : 240
+09-14 12:35:29.473  5683  5828 I ImageWallpaperRenderer: updateWallpaperOffset 0 lastCropOffset 0 , wp Type 0 , rotation 1 , allowed true Do not change Display offset 0
+09-14 12:35:29.474  5965  7290 I ViewRootImpl@3af503f[LauncherActivity]: Received frameCommittedCallback lastAttemptedDrawFrameNum=3 didProduceBuffer=true
+09-14 12:35:29.474  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: onSyncComplete
+09-14 12:35:29.474  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: setupSync seqId=0 mSyncId=46 fn=3 caller=android.view.ViewRootImpl$$ExternalSyntheticLambda11.accep[REDACTED_PATH] android.window.SurfaceSyncer.lambda$setupSync$1$android-window-SurfaceSynce[REDACTED_PATH] android.window.SurfaceSyncer$$ExternalSyntheticLambda1.accep[REDACTED_PATH] android.window.SurfaceSyncer$SyncSet.checkIfSyncIsComplet[REDACTED_PATH] android.window.SurfaceSyncer$SyncSet.markSyncRead[REDACTED_PATH] android.window.SurfaceSyncer.markSyncRead[REDACTED_PATH] android.view.ViewRootImpl.performTraversal[REDACTED_PATH] 
+09-14 12:35:29.474  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: reportDrawFinished seqId=0 mSyncId=-1 fn=3 mSurfaceChangedTransaction=0x7b36330e00
+09-14 12:35:29.475  5319  7365 D WindowManager: finishDrawingWindow: Window{ea8fa7e u0 com.sec.android.app.launcher/com.sec.android.app.launcher.activities.LauncherActivity} mDrawState=HAS_DRAWN seqId=0
+09-14 12:35:29.475  5965  5965 W TouchInteractionService: handleNavigationBarEvent() type=ON_APPEARANCE_CHANGED
+09-14 12:35:29.475  5965  5965 I TouchInteractionService: ON_APPEARANCE_CHANGED appearance = 0
+09-14 12:35:29.475  5319  5342 I ResourceType: [SWT] pull resource Id table from file
+09-14 12:35:29.500  5965  6060 I AppIconSolution: load= live icon for com.sec.android.app.clockpackage, from overlay = false
+09-14 12:35:29.500  5965  6060 I LauncherActivityInfo: packageName: com.sec.android.app.clockpackage, useThemeIcon: false, height: 216, width: 216, density: 480
+09-14 12:35:29.506  5965  6060 I LauncherActivityInfo: Trying to load live icon for com.samsung.android.calendar
+09-14 12:35:29.511  5319  7365 D InputDispatcher: Focus entered window (0): ea8fa7e com.sec.android.app.launcher/com.sec.android.app.launcher.activities.LauncherActivity
+09-14 12:35:29.515  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: MSG_WINDOW_FOCUS_CHANGED 1 0
+09-14 12:35:29.516  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: mThreadedRenderer.initializeIfNeeded()#2 mSurface={isValid=true 0x7b21ee8800}
+09-14 12:35:29.516  5965  5965 I BaseActivity: addActivityFlags, flags : 8
+09-14 12:35:29.520  5065  5065 D SurfaceFlinger: Display 0 HWC layers:
+09-14 12:35:29.520  5065  5065 D SurfaceFlinger:      CLIENT | 0x7deeca6e00 | 0100 | RGBx_8888    |  400.0    0.0 1600.0 2000.0 |    0    0 1200 2000 | Wallpaper BBQ wrapper#84
+09-14 12:35:29.520  5065  5065 D SurfaceFlinger:      CLIENT | 0x7deeca6540 | 0100 | RGBA_8888    |  299.0  499.0  901.0 1501.0 |    0    0 1200 2000 | com.sec.android.app.launcher/com.sec[...]tivities.LauncherActivity$_5965#2250
+09-14 12:35:29.520  5065  5065 D SurfaceFlinger:      CLIENT | 0x7deeca5b40 | 0100 | RGBA_8888    |    0.0    0.0   36.0 2000.0 | 1164    0 1200 2000 | StatusBar$_5683#81
+09-14 12:35:29.520  5065  5065 D SurfaceFlinger:      CLIENT | 0x7dc2af5780 | 0100 | RGBA_8888    |    0.0    0.0  177.0   67.0 |  352    0  529   67 | com.samsung.android.app.cocktailbars[...]ervice.CocktailBarService$_8248#2086
+09-14 12:35:29.520  5065  5065 D SurfaceFlinger:      CLIENT | 0x7dd1b9d280 | 0100 | RGBA_8888    |    0.0    0.0 1200.0 2000.0 |    0    0 1200 2000 | Taskbar$_5965#174
+09-14 12:35:29.520  5065  5065 D SurfaceFlinger:      DEVICE | 0x7dd1b9d000 | 0140 | RGBA_8888    |    0.0    0.0 1200.0   36.0 |    0    0 1200   36 | ScreenDecorOverlay$_5683#89
+09-14 12:35:29.520  5065  5065 D SurfaceFlinger:      DEVICE | 0x7dc2af5c80 | 0140 | RGBA_8888    |    0.0    0.0 1200.0   36.0 |    0 1964 1200 2000 | ScreenDecorOverlayBottom$_5683#90
+09-14 12:35:29.520  5065  5065 D SurfaceFlinger: 
+09-14 12:35:29.522  5965  5965 I InputMethodManager: startInputInner - mService.startInputOrWindowGainedFocus
+09-14 12:35:29.523  5319  5816 V InputMethodManagerService: Unspecified window will hide input
+09-14 12:35:29.524  5319  5816 V InputMethodManagerService: hideCurrentInputLocked : canceled, shouldHideSoftInput=false, mInputShown=false, mImeWindowVis=0
+09-14 12:35:29.524  5319  5816 I InputMethodBindingController: setCurrentMethodNotVisible: mVisibleBound=false, mHasConnection=true, caller = com.android.server.inputmethod.InputMethodManagerService.hideCurrentInputLocke[REDACTED_PATH] com.android.server.inputmethod.InputMethodManagerService.startInputOrWindowGainedFocusInternalLocke[REDACTED_PATH] com.android.server.inputmethod.InputMethodManagerService.startInputOrWindowGainedFocusInterna[REDACTED_PATH] com.android.server.inputmethod.InputMethodManagerService.startInputOrWindowGainedFocu[REDACTED_PATH] com.android.internal.view.IInputMethodManager$Stub.onTransac[REDACTED_PATH] com.android.server.inputmethod.InputMethodManagerService.onTransac[REDACTED_PATH] android.os.Binder.execTransactInterna[REDACTED_PATH] android.os.Binder.execTransac[REDACTED_PATH] <bottom of call stack> <bottom of call stack> 
+09-14 12:35:29.524  5319  5816 D InputMethodManagerService: DESKTOP MODE! : 2
+09-14 12:35:29.524  5319  5816 D InputMethodManagerService: NOT IN KNOX DESKTOP MODE!
+09-14 12:35:29.524  5319  5816 V InputMethodManagerService: getDisplayIdOfInputMethodWindowToBeAdded: displayId=0
+09-14 12:35:29.524  5319  5816 D InputMethodManagerService: isImeSwitcherDisabledPackage : false
+09-14 12:35:29.524  5319  5816 D InputMethodManagerService: shouldShowImeSwitcherLocked : checking vis : 3
+09-14 12:35:29.525  5319  5816 D InputMethodManagerService: checkDisplayOfStartInputAndUpdateKeyboard: displayId=0, mFocusedDisplayId=0
+09-14 12:35:29.525  5319  5816 D InputTransport: Input channel constructed: 'ClientS', fd=995
+09-14 12:35:29.525  5319  5816 D InputTransport: Input channel destroyed: 'ClientS', fd=995
+09-14 12:35:29.527  9212  9212 I HBD     : HoneyBoardService onFinishInput 
+09-14 12:35:29.527  5319  5816 D RestrictionPolicy: isScreenCaptureEnabled : ret=true userId=0
+09-14 12:35:29.527  5319  5816 I WindowManager: Cancelling animation restarting=true, leash=Surface(name=Surface(name=4f1ae9e InputMethod)/@0xa03c14c - animation-leash of insets_animation)/@0xe7e6363
+09-14 12:35:29.528  5319  5816 I WindowManager: Reparenting to original parent: Surface(name=WindowToken{50b8193 type=2011 android.os.Binder@72eb682})/@0x546a595, destroy=false, surface=Surface(name=4f1ae9e InputMethod)/@0xa03c14c
+09-14 12:35:29.528  5319  5816 I WindowManager: Reparenting to leash, surface=Surface(name=4f1ae9e InputMethod)/@0xa03c14c, leashParent=Surface(name=WindowToken{50b8193 type=2011 android.os.Binder@72eb682})/@0x546a595
+09-14 12:35:29.528  5065  6462 I SurfaceFlinger: id=2255 createSurf flag=24004, Surface(name=4f1ae9e InputMethod)/@0xa03c14c - animation-leash of insets_animation#2255
+09-14 12:35:29.528  9212  9212 I HBD     : a IC have been unbinding,  RemoteInputConnection{idHash=#e4767c4}
+09-14 12:35:29.528  9212  9212 I HBD     : HoneyBoardService [PF_CL][onFinishInput]  1 ms 
+09-14 12:35:29.529  5319  5816 D WindowManager: makeSurface duration=1 leash=Surface(name=Surface(name=4f1ae9e InputMethod)/@0xa03c14c - animation-leash of insets_animation)/@0x8ae565e
+09-14 12:35:29.529  9212  9212 I HBD     : HoneyBoardService [IMI] onStartInput - caller pid : 5965 , caller uid : 10083 
+09-14 12:35:29.529  9212  9212 I HBD     : j updateConfigs 
+09-14 12:35:29.529  9212  9212 I HBD     : j isEnabledNightMode : true 
+09-14 12:35:29.530  5319  5342 I ResourceType: [SWT] pull resource Id table from file
+09-14 12:35:29.530  9212  9212 I HBD     : a IC have been binding, RemoteInputConnection{idHash=#b9d16ad} 
+09-14 12:35:29.531  9212  9212 I HBD     : h [EditorInputType]setPrivateImeOptionsToTable privateImeOptions ( null )
+09-14 12:35:29.531  9212  9212 I HBD     : b incognitoMode : false 
+09-14 12:35:29.531  9212  9212 I HBD     : b needOff = true , isForceOff = false, isNullInputClass : true 
+09-14 12:35:29.532  9212  9212 I HBD     : h getDefaultInputRange : UNKNOWN 
+09-14 12:35:29.532  9212  9212 I HBD     : h getDefaultInputRange : UNKNOWN 
+09-14 12:35:29.532  9212  9212 I HBD     : h getDefaultInputRange : UNKNOWN 
+09-14 12:35:29.536  9212  9212 I HBD     : b needOff = true , isForceOff = false, isNullInputClass : true 
+09-14 12:35:29.536  9212  9212 I HBD     : b update cached prediction status : false 
+09-14 12:35:29.537  9212  9212 I HBD     : h getDefaultInputRange : UNKNOWN 
+09-14 12:35:29.537  5319  5816 D InputMethodManagerService: isImeSwitcherDisabledPackage : false
+09-14 12:35:29.537  9212  9212 I HBD     : a currentState : 0 
+09-14 12:35:29.539  9212  9212 I HBD     : a [UpdatePolicy] [post] a: 0 cl: 65537 kit: [0/0] vt: 0 ir: 1 
+09-14 12:35:29.541  9212  9212 I HBD     : a [NRIC] resetNoResponseState 
+09-14 12:35:29.542  9212  9212 I HBD     : b needOff = true , isForceOff = false, isNullInputClass : true 
+09-14 12:35:29.542  9212  9212 I HBD     : b update cached prediction status : false 
+09-14 12:35:29.543  9212  9212 I HBD     : HoneyBoardService [PF_OP][onStartInput]  14 ms 
+09-14 12:35:29.544  9212  9212 I InputMethodService: removeImeSurface
+09-14 12:35:29.544  5065  5065 I Layer   : id=2248 removeFromCurrentState Surface(name=4f1ae9e InputMethod)/@0xa03c14c - animation-leash of insets_animation#2248 (127)
+09-14 12:35:29.544  9212  9212 I MSHandlerLifeCycle: check: return. pkg=com.samsung.android.honeyboard isActivity=false callers=com.android.internal.policy.DecorView.setVisibilit[REDACTED_PATH] android.app.Dialog.hid[REDACTED_PATH] android.inputmethodservice.InputMethodService.removeImeSurfac[REDACTED_PATH] android.inputmethodservice.InputMethodService.scheduleImeSurfaceRemova[REDACTED_PATH] android.inputmethodservice.InputMethodService.-$$Nest$mscheduleImeSurfaceRemova[REDACTED_PATH] 
+09-14 12:35:29.544  9212  9212 I MSHandlerLifeCycle: removeMultiSplitHandler: no exist. decor=DecorView@907e400[InputMethod]

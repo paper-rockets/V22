@@ -98,7 +98,7 @@
 #nv {
   position: fixed;
   inset: 0;
-  z-index: 38;
+  z-index: 48;
   pointer-events: none;
   color: var(--nv-ink);
   font-family: ui-sans-serif, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
@@ -112,6 +112,78 @@
 #nv.nv-interacting {
   pointer-events: auto !important;
   touch-action: none !important;
+}
+
+/* Only the surrounding controls are refined. Canvas drawing and dimensions
+   retain the navigator concept's artwork. */
+.nv-control-rail {
+  position: absolute;
+  top: -31px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 1px 2px;
+  border: 1px solid var(--nv-line);
+  border-radius: 9px;
+  background: var(--nv-panel);
+  pointer-events: auto;
+}
+#nv .nv-control-rail button {
+  position: static;
+  min-width: 0 !important;
+  min-height: 27px !important;
+  height: 27px;
+  padding: 0 7px;
+  transform: none;
+  border: 0;
+  border-radius: 7px;
+  background: transparent;
+  box-shadow: none;
+  font-size: 10px;
+  font-weight: 550;
+  letter-spacing: 0;
+  text-transform: none;
+  display: flex;
+  gap: 4px;
+}
+#nv .nv-control-rail button:active { background: var(--nv-btn); }
+#nv .nv-label {
+  top: auto;
+  bottom: -18px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  font-size: 9px;
+  line-height: 14px;
+}
+#nv .nv-menu.navigator-settings-surface {
+  width: min(260px, calc(100vw - 24px));
+  padding: 10px;
+  background: var(--navigator-surface);
+  border-color: var(--navigator-line);
+  border-radius: 16px;
+  box-shadow: 0 12px 32px rgb(35 28 20 / 16%);
+  color: var(--navigator-ink);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+#nv .nv-menu :is(.nv-sec, .nv-wide) { color: var(--navigator-muted); }
+#nv .nv-menu .nv-sec { font-size: 10px; font-weight: 550; letter-spacing: 0; margin-top: 10px; }
+#nv .nv-menu :is(.nv-mode, .nv-chip, .nv-act, .nv-layout, .nv-pick, .nv-opt) {
+  min-width: 0 !important;
+  font-size: 10.5px;
+  font-weight: 500;
+  color: var(--navigator-ink);
+  background: var(--navigator-control);
+  border-color: var(--navigator-line);
+}
+#nv .nv-menu [aria-pressed='true'] {
+  background: var(--navigator-selected);
+  border-color: color-mix(in srgb, var(--navigator-accent) 45%, transparent);
+  color: var(--navigator-accent);
 }
 
 #nv.nv-dim {
@@ -210,6 +282,65 @@
 }
 
 
+/* ── Direct View Controls Bar ── */
+.nv-view-bar {
+  position: absolute;
+  /* Small camera rail above the Orbit state; no overlapping bubbles. */
+  top: -70px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 1px;
+  padding: 2px 3px;
+  border-radius: 9999px;
+  background: var(--nv-panel);
+  border: 1px solid var(--nv-edge);
+  box-shadow: 0 3px 10px rgba(51, 46, 40, 0.12);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  z-index: 12;
+  pointer-events: auto;
+  white-space: nowrap;
+}
+
+.nv-view-btn {
+  height: 27px;
+  min-height: 27px;
+  padding: 0 7px;
+  border-radius: 9999px;
+  border: none;
+  background: transparent;
+  color: var(--nv-ink);
+  font: inherit;
+  font-size: 10px;
+  font-weight: 650;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.nv-view-btn:hover {
+  background: var(--nv-btn);
+  color: var(--nv-ink);
+}
+
+.nv-view-btn:active {
+  transform: scale(0.95);
+  background: var(--nv-btn-on);
+}
+
+.nv-view-btn--more {
+  width: 27px;
+  min-width: 27px;
+  padding: 0;
+  font-size: 16px;
+  line-height: 1;
+}
+
 .nv-tab {
   position: absolute;
   top: -6px;
@@ -239,21 +370,23 @@
 
 .nv-mode-badge {
   position: absolute;
-  top: -6px;
-  right: 44px;
-  height: 44px;
-  padding: 0 12px;
-  border-radius: 22px;
+  top: -35px;
+  left: 50%;
+  right: auto;
+  height: 27px;
+  padding: 0 10px;
+  border-radius: 14px;
+  transform: translateX(-50%);
   cursor: pointer;
   font: inherit;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.04em;
+  font-size: 10px;
+  font-weight: 650;
+  letter-spacing: 0.035em;
   text-transform: uppercase;
   color: var(--nv-ink);
   background: var(--nv-panel);
   border: 1px solid var(--nv-edge);
-  box-shadow: 0 4px 14px rgba(51, 46, 40, 0.14);
+  box-shadow: 0 3px 10px rgba(51, 46, 40, 0.12);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -263,7 +396,7 @@
 }
 
 .nv-mode-badge:active {
-  transform: scale(0.95);
+  transform: translateX(-50%) scale(0.95);
 }
 
 .nv-tab::before {
@@ -374,6 +507,29 @@
   border-color: var(--nv-ink);
 }
 
+.nv-layer-select {
+  display: block;
+  width: 100%;
+}
+
+.nv-layer-select select {
+  width: 100%;
+  min-height: 29px;
+  border: 1px solid var(--nv-line);
+  border-radius: 8px;
+  padding: 0 8px;
+  color: var(--nv-ink);
+  background: var(--nv-btn);
+  font: inherit;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.nv-layer-select select:focus-visible {
+  outline: 2px solid var(--nv-ink);
+  outline-offset: 1px;
+}
+
 #nv-list {
   display: none;
   margin-top: 2px;
@@ -454,10 +610,17 @@
   gap: 3px;
 }
 
+.nv-targets {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 3px;
+}
+
 .nv-mode,
 .nv-chip,
 .nv-act,
-.nv-layout {
+.nv-layout,
+.nv-target {
   font: inherit;
   font-size: 11px;
   line-height: 1.1;
@@ -485,6 +648,10 @@
   min-height: 27px !important;
 }
 
+#nv .nv-target {
+  min-height: 32px !important;
+}
+
 .paperrocket-ui #nv .nv-opt,
 #nv .nv-opt {
   min-height: 24px !important;
@@ -492,7 +659,8 @@
 
 .nv-mode[aria-pressed="true"],
 .nv-chip[aria-pressed="true"],
-.nv-layout[aria-pressed="true"] {
+.nv-layout[aria-pressed="true"],
+.nv-target[aria-pressed="true"] {
   background: var(--nv-btn-on);
   border-color: var(--nv-ink);
   font-weight: 600;
@@ -521,6 +689,7 @@
 .nv-chip:focus-visible,
 .nv-act:focus-visible,
 .nv-layout:focus-visible,
+.nv-target:focus-visible,
 .nv-opt:focus-visible,
 .nv-tab:focus-visible {
   outline: 2px solid var(--nv-ink);
@@ -540,4 +709,9 @@
 #nv.nv-interacting {
   pointer-events: auto !important;
   touch-action: none !important;
+}
+#nv[data-menu='open'] .nv-canvas,
+#nv[data-menu='open'] .nv-label {
+  visibility: hidden;
+  pointer-events: none;
 }

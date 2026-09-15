@@ -19,6 +19,12 @@
     "paths": {
       "@/*": [
         "./*"
+      ],
+      "@debug-panel": [
+        "./src/components/debug/DebugTestPanel.tsx"
+      ],
+      "@debug-bridge": [
+        "./src/core/debugBridge.debug.ts"
       ]
     },
     "allowImportingTsExtensions": true,

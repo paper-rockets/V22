@@ -5,11 +5,13 @@ import { ProPanel, ProPanelProps } from './ProPanel';
 export type ProShellProps = ProPanelProps & {
   onOpenIllumination?: () => void;
   isIlluminationOpen?: boolean;
+  isModalActive?: boolean;
 };
 
 export const ProShell: React.FC<ProShellProps> = (props) => {
   return (
     <>
+      <ProPanel {...props} />
       <ProRail
         theme={props.theme}
         tool={props.tool}
@@ -24,8 +26,8 @@ export const ProShell: React.FC<ProShellProps> = (props) => {
         activeGuide={props.activeGuide}
         targetScope={props.targetScope}
         onSelectTargetScope={props.onSelectTargetScope}
+        isModalActive={props.isModalActive}
       />
-      <ProPanel {...props} />
     </>
   );
 };

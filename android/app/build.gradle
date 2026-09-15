@@ -1,0 +1,98 @@
+apply plugin: 'com.android.application'
+
+android {
+    namespace = "com.paperrockets.v22"
+    compileSdk = rootProject.ext.compileSdkVersion
+    defaultConfig {
+        applicationId "com.paperrockets.v22"
+        minSdkVersion rootProject.ext.minSdkVersion
+        targetSdkVersion rootProject.ext.targetSdkVersion
+        versionCode 1
+        versionName "1.0"
+        testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
+        // Firebase Test Lab instruments the production app, not the debug
+        // package. This selects the release variant for the shared
+        // androidTest source set and produces app-release-androidTest.apk.
+        testBuildType "release"
+        aaptOptions {
+             // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
+             // Default: https://android.googlesource.com/platform/frameworks/base/+/282e181b58cf72b6ca770dc7ca5f91f135444502/tools/aapt/AaptAssets.cpp#61
+            ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
+        }
+    }
+    buildFeatures {
+        buildConfig = true
+    }
+    signingConfigs {
+        benchmark {
+            initWith signingConfigs.debug
+        }
+    }
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            testProguardFiles 'proguard-test-rules.pro'
+            buildConfigField "boolean", "ENABLE_TEST_BRIDGE", "false"
+            buildConfigField "String", "BUILD_VARIANT", "\"release\""
+            manifestPlaceholders = [
+                appName: "Spatial Draw"
+            ]
+        }
+        debug {
+            applicationIdSuffix ".debug"
+            buildConfigField "boolean", "ENABLE_TEST_BRIDGE", "true"
+            buildConfigField "String", "BUILD_VARIANT", "\"debug\""
+            manifestPlaceholders = [
+                appName: "[DEV] Spatial Draw"
+            ]
+        }
+        benchmark {
+            initWith release
+            matchingFallbacks = ['release']
+            applicationIdSuffix ".benchmark"
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
+            buildConfigField "boolean", "ENABLE_TEST_BRIDGE", "false"
+            buildConfigField "String", "BUILD_VARIANT", "\"benchmark\""
+            signingConfig signingConfigs.benchmark
+            manifestPlaceholders = [
+                appName: "[BENCH] Spatial Draw"
+            ]
+        }
+    }
+}
+
+repositories {
+    flatDir{
+        dirs '../capacitor-cordova-android-plugins/src/main/libs', 'libs'
+    }
+}
+
+dependencies {
+    implementation fileTree(include: ['*.jar'], dir: 'libs')
+    implementation "androidx.appcompat:appcompat:$androidxAppCompatVersion"
+    implementation "androidx.coordinatorlayout:coordinatorlayout:$androidxCoordinatorLayoutVersion"
+    implementation "androidx.core:core-splashscreen:$coreSplashScreenVersion"
+    implementation project(':capacitor-android')
+    testImplementation "junit:junit:$junitVersion"
+    androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
+    androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
+    androidTestImplementation "androidx.test.uiautomator:uiautomator:2.3.0"
+    androidTestImplementation "androidx.test:runner:1.6.2"
+    androidTestImplementation "androidx.test:rules:1.6.1"
+    implementation project(':capacitor-cordova-android-plugins')
+}
+
+apply from: 'capacitor.build.gradle'
+
+try {
+    def servicesJSON = file('google-services.json')
+    if (servicesJSON.text) {
+        apply plugin: 'com.google.gms.google-services'
+    }
+} catch(Exception e) {
+    logger.info("google-services.json not found, google-services plugin not applied. Push Notifications won't work")
+}

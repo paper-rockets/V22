@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="300" viewBox="0 0 760 300"><title>Brush icon set preview</title><rect width="760" height="300" fill="#F7F4EE"/><g font-family="Inter,Arial,sans-serif" font-size="13" text-anchor="middle" fill="#142B35">
+<g transform="translate(22 24)"><rect width="126" height="112" rx="14" fill="#ECE9E3"/><image href="flat-ribbon.svg" x="31" y="12" width="64" height="64"/><text x="63" y="96">Flat Ribbon</text></g>
+<g transform="translate(170 24)"><rect width="126" height="112" rx="14" fill="#ECE9E3"/><image href="surface-decal.svg" x="31" y="12" width="64" height="64"/><text x="63" y="96">Surface Decal</text></g>
+<g transform="translate(318 24)"><rect width="126" height="112" rx="14" fill="#ECE9E3"/><image href="3d-tube.svg" x="31" y="12" width="64" height="64"/><text x="63" y="96">3D Tube</text></g>
+<g transform="translate(466 24)"><rect width="126" height="112" rx="14" fill="#ECE9E3"/><image href="chisel-marker.svg" x="31" y="12" width="64" height="64"/><text x="63" y="96">Chisel Marker</text></g>
+<g transform="translate(614 24)"><rect width="126" height="112" rx="14" fill="#ECE9E3"/><image href="neon-glow.svg" x="31" y="12" width="64" height="64"/><text x="63" y="96">Neon Glow</text></g>
+<g transform="translate(22 164)"><rect width="106" height="112" rx="14" fill="#ECE9E3"/><image href="halftone-dot.svg" x="21" y="12" width="64" height="64"/><text x="53" y="96">Halftone</text></g>
+<g transform="translate(144 164)"><rect width="106" height="112" rx="14" fill="#ECE9E3"/><image href="stipple-spray.svg" x="21" y="12" width="64" height="64"/><text x="53" y="96">Spray</text></g>
+<g transform="translate(266 164)"><rect width="106" height="112" rx="14" fill="#ECE9E3"/><image href="line-hatch.svg" x="21" y="12" width="64" height="64"/><text x="53" y="96">Hatch</text></g>
+<g transform="translate(388 164)"><rect width="106" height="112" rx="14" fill="#ECE9E3"/><image href="crosshatch.svg" x="21" y="12" width="64" height="64"/><text x="53" y="96">Crosshatch</text></g>
+<g transform="translate(510 164)"><rect width="106" height="112" rx="14" fill="#ECE9E3"/><image href="terrazzo-fleck.svg" x="21" y="12" width="64" height="64"/><text x="53" y="96">Terrazzo</text></g>
+<g transform="translate(632 164)"><rect width="106" height="112" rx="14" fill="#ECE9E3"/><image href="cutout-mask.svg" x="21" y="12" width="64" height="64"/><text x="53" y="96">Cutout</text></g>
+</g></svg>

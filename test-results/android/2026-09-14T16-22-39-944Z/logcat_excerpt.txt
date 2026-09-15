@@ -1,0 +1,317 @@
+--------- beginning of main
+09-14 12:24:51.904  5065  5065 I Layer   : id=1863 Destroyed com.paperrockets.v22.benchmark/com.paperrockets.v22.MainActivity$_29405#1863
+09-14 12:24:51.910  4998 29607 I HYPER-HAL: [RequestManager.cpp]releaseLocked(): Released ID : 14287211
+--------- beginning of system
+09-14 12:24:51.985  5319  7079 D SettingsProvider: isChangeAllowed() : name = accelerometer_rotation
+09-14 12:24:51.985  5319  7079 D SettingsProvider: edmUri: conten[REDACTED_PATH]
+09-14 12:24:51.986  5319  7079 D SettingsProvider: projectionArgs: isSettingsChangesAllowed
+09-14 12:24:51.986  5319  7079 D SettingsProvider: selectionArgs: false
+09-14 12:24:51.986  5319  7079 D SettingsProvider: selectionArgs: 2000
+09-14 12:24:51.986  5319  7079 D SecContentProvider: query(), uri = 17 selection = isSettingsChangesAllowed
+09-14 12:24:51.986  5319  7079 D SecContentProvider: called from android.uid.shel[REDACTED_PATH]
+09-14 12:24:51.986  5319  7079 D RestrictionPolicy: isSettingsChangesAllowedAsUser, userId 0 : true
+09-14 12:24:51.986  5319  7079 D SettingsProvider: ret = 1
+09-14 12:24:51.986  5319  7079 I GenerationRegistry: mBackingStore.isClosed() : false
+09-14 12:24:51.986  5319  7079 I GenerationRegistry: Incremented generation for  ke[REDACTED_PATH];type=SETTINGS_SYSTEM] generation :95 at inde[REDACTED_PATH]
+09-14 12:24:51.986  5319  7079 I GenerationRegistry: mBackingStore.isClosed() : false
+09-14 12:24:51.986  5319  7079 I GenerationRegistry: Incremented generation for  ke[REDACTED_PATH];type=SETTINGS_SYSTEM] generation :8 at inde[REDACTED_PATH]
+09-14 12:24:51.989  5319  5540 I WALLPAPER_SV[REDACTED_PATH] allowScreenRotate, allow rotate on tablet or dual main : 1 
+09-14 12:24:51.990  5319  5540 I WALLPAPER_SV[REDACTED_PATH] allowScreenRotate, allow rotate on tablet or dual main : 2 
+09-14 12:24:51.991  5319  5339 V WindowManager: rotationForOrientation(orient=SCREEN_ORIENTATION_UNSPECIFIED (-1), last=ROTATION_90 (1)); user=ROTATION_90 (1) 
+09-14 12:24:51.991  5319  5339 D WindowManager: rotationForOrientation, orientationSource=ActivityRecord{cea1feb u0 com.sec.android.app.launcher/.activities.LauncherActivity} t420}
+09-14 12:24:51.994  5319  5339 V WindowManager: Computed rotation=ROTATION_90 (1) for display id=0 based on lastOrientation=SCREEN_ORIENTATION_UNSPECIFIED (-1) and oldRotation=ROTATION_90 (1), caller=com.android.server.wm.DisplayContent.updateRotationUnchecke[REDACTED_PATH] com.android.server.wm.WindowManagerService.updateRotationUnchecke[REDACTED_PATH] com.android.server.wm.WindowManagerService.updateRotatio[REDACTED_PATH] com.android.server.wm.DisplayRotation$SettingsObserver.onChang[REDACTED_PATH] android.database.ContentObserver.onChang[REDACTED_PATH] android.database.ContentObserver.onChang[REDACTED_PATH] 
+09-14 12:24:51.996  5319  5339 D TspStateManager: updateCustomValue customSetting=
+09-14 12:24:51.997  5683  5683 D SettingsHelper: onChange() COMPLETED elapsed= 6
+09-14 12:24:51.997  5683  5683 V SettingsHelper: *** broadcastChange for conten[REDACTED_PATH]
+09-14 12:24:51.998  5683  5683 D Tile.RotationLockTile:  OnChangedCallback : 
+09-14 12:24:52.009  5319  5339 I ResourceType: [SWT] pull resource Id table from file
+09-14 12:24:52.010  5319  5339 D TspStateManager: updateCustomValue customSetting=
+09-14 12:24:52.012  5319  5339 D TspStateManager: updateCustomValue customSetting=
+09-14 12:24:52.012  5683  5683 V Navbar.Store: handleEvent(0) OnRotationLockedChanged(rotationLocked=false) [Module] NavBarStoreImpl
+09-14 12:24:52.012  5683  5683 V Navbar.Store: --[Band]TASKBAR_PACK_ROTATION_LOCKED_CHANGED
+09-14 12:24:52.013  5319  5339 I ResourceType: [SWT] pull resource Id table from file
+09-14 12:24:52.019  5683  5808 D Tile.RotationLockTile:  handleUpdateState: true orientation = false
+09-14 12:24:52.022  5683  5683 V Navbar.Store: ----apply(0) UpdateTaskBarNavBarEvents
+09-14 12:24:52.023  5965  5965 W TouchInteractionService: handleNavigationBarEvent() type=ON_ROTATION_LOCKED_CHANGED
+09-14 12:24:52.039  5683  5683 V Navbar.Store: handleEvent(0) OnRotationLockedChanged(rotationLocked=false) [Module] NavBarStoreImpl
+09-14 12:24:52.039  5683  5683 V Navbar.Store: --[Band]TASKBAR_PACK_ROTATION_LOCKED_CHANGED
+09-14 12:24:52.039  5683  5683 V Navbar.Store: ----apply(0) UpdateTaskBarNavBarEvents
+09-14 12:24:52.040  5965  5965 W TouchInteractionService: handleNavigationBarEvent() type=ON_ROTATION_LOCKED_CHANGED
+09-14 12:24:52.074  5319 22232 D SemWifiUsabilityStatsMonitor: onWifiUsabilityStats - seqNum 2250, isSameBssidAndFreq true
+09-14 12:24:52.076  5319  5582 I SemWifiLinkQualityMonitor: Link Qos Query: 0.094 ms / 85.119 Mbps (130 / 0.000 / 1.527)
+09-14 12:24:52.086  5683  5683 V QsExpandAnimator: setQsExpansionPosition 0.0
+09-14 12:24:52.093  5683  5683 V QsExpandAnimator: updateAnimators
+09-14 12:24:52.093  5683  5683 V QsExpandAnimator: clearAnimationState 
+09-14 12:24:52.095  5683  5683 V QsExpandAnimator: updateViews
+09-14 12:24:52.099  5683  5683 V QsExpandAnimator: updateTileAnimator
+09-14 12:24:52.100  5683  5683 V QsExpandAnimator: updateHeaderAnimator
+09-14 12:24:52.100  5683  5683 V QsExpandAnimator: updateBarAnimator
+09-14 12:24:52.100  5683  5683 V QsExpandAnimator: setQsExpansionPosition 0.0
+09-14 12:24:52.100  5683  5683 V QsExpandAnimator: onAnimationAtStart
+09-14 12:24:52.145  5319 29625 D TspStateManager: wrote command: cmd=2,1,0,8,14,14,39,39, type=2
+09-14 12:24:52.209  5025  5025 I sysinpu[REDACTED_PATH] writeInformatio[REDACTED_PATH], OK
+09-14 12:24:52.210  5319  5494 D SysinputHAL_V1_3(V1_2): runTspCmdNoRead(TSP(1)): set_grip_data,2,1,0,8,14,14,39,39 ret=0
+09-14 12:24:52.313  5319 11768 D SG[REDACTED_PATH] identifyGamePackage. com.sec.android.app.launcher, mCurrentUserId: 0, callerUserId: 0, callingMethodInfo: com.android.server.ssrm.SortingMachine.isGame(SortingMachine.jav[REDACTED_PATH]
+09-14 12:24:52.314  5319 11768 D SG[REDACTED_PATH] getGamePkgData(). com.sec.android.app.launcher
+09-14 12:24:52.316  6970  6970 I SDHM[REDACTED_PATH] type: LoadsFreqs, value: 0:0:0:0:0:0:0:0:0:0:0:0
+09-14 12:24:52.322  5319  5482 W InputReader: Received unexpected event (0x35, 0x240) for slot 0 with tracking id 497
+09-14 12:24:52.322  5319  5482 W InputReader: Received unexpected event (0x36, 0x677) for slot 0 with tracking id 497
+09-14 12:24:52.322  5319  5482 D InputReader: Btn_touch(9): value=1 when=17621.004776
+09-14 12:24:52.322  5319  5482 I InputReader: Touch event's action is 0x0 (id=4, t=0) [pCnt=1, s=0.498 ] when=17621.004776
+09-14 12:24:52.323  5319  5481 I InputDispatcher: Delivering touch to (5965): action: 0x0, f=0x0, d=0, 'ea8fa7e', t=1 +(0,1200)
+09-14 12:24:52.324  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: ViewPostIme pointer 0
+09-14 12:24:52.324  5319  5481 D PowerManagerService: [api] userActivityFromNative :  (event: 2 flags: 0 displayId: 0) eventTime = 17621004
+09-14 12:24:52.324  5965  5965 W BaseDragLayer: dispatchTouchEvent, ACTION_DOWN - mTouchDispatchState = 9
+09-14 12:24:52.324  5319  7079 D ActivityManager: force stop from com.android.server.am.ActivityManagerService.forceStopPackag[REDACTED_PATH] com.android.server.am.ActivityManagerShellCommand.runForceSto[REDACTED_PATH] 
+09-14 12:24:52.324  5319  7079 I ActivityManager: Force stopping com.paperrockets.v22.debug appid=10383 user=0: from pid 29628
+09-14 12:24:52.326  5319  5339 I GestureDetector: obtain mCurrentDownEvent. id: 810901513 caller: com.android.server.wm.SystemGesturesPointerEventListener.onPointerEven[REDACTED_PATH] com.android.server.wm.PointerEventDispatcher.onInputEven[REDACTED_PATH] android.view.InputEventReceiver.dispatchInputEven[REDACTED_PATH] 
+09-14 12:24:52.327  5319  5339 I GestureDetector: obtain mCurrentDownEvent. id: 810901513 caller: com.android.server.wm.SystemPerformancePointerEventListener.onPointerEven[REDACTED_PATH] com.android.server.wm.PointerEventDispatcher.onInputEven[REDACTED_PATH] android.view.InputEventReceiver.dispatchInputEven[REDACTED_PATH] 
+09-14 12:24:52.327  5319  7079 I ActivityManager: Killing 26659:com.paperrockets.v22.debug/u0a383 (adj 900): stop com.paperrockets.v22.debug due to from pid 29628
+09-14 12:24:52.328  5965  5965 W PageOverlayMover: isMoving : false
+09-14 12:24:52.330  5319  5339 I GestureDetector: obtain mCurrentMotionEventRaw. action: 2 id: 1068760435
+09-14 12:24:52.330  5319  5339 I GestureDetector: obtain mCurrentMotionEventRaw. action: 2 id: 1068760435
+09-14 12:24:52.331  5965  5965 W BaseDragLayer: findActiveController return false mTouchDispatchState = 9
+09-14 12:24:52.332  5319  7079 I ActivityManager: Killing 26830:com.google.android.webvie[REDACTED_PATH] (adj 0): isolated not needed
+09-14 12:24:52.333  5319  7079 D ActivityManager: proc ProcessRecord{a031af7 26659:com.paperrockets.v22.debug/u0a383} already removed. so we skip next process.
+09-14 12:24:52.333  5965  5965 I GestureDetector: obtain mCurrentDownEvent. id: 810901513 caller: com.android.launcher3.Workspace.dispatchTouchEventForDoubleTapToSlee[REDACTED_PATH] com.android.launcher3.Workspace.dispatchTouchEven[REDACTED_PATH] android.view.ViewGroup.dispatchTransformedTouchEven[REDACTED_PATH] 
+09-14 12:24:52.333  5319  7079 W ActivityTaskManager: Force removing ActivityRecord{21ebf15 u0 com.paperrockets.v22.debug/com.paperrockets.v22.MainActivity} t445 f}}: app died, no saved state
+09-14 12:24:52.334  5319  7079 D InputTransport: Input channel destroyed: '6d3aa9 ', fd=1134
+09-14 12:24:52.334  5319  7079 W InputManager-JNI: Input channel object '6d3aa9 com.paperrockets.v22.debug/com.paperrockets.v22.MainActivity (client)' was disposed without first being removed with the input manager!
+09-14 12:24:52.334  5319  7079 D InputTransport: Input channel destroyed: '6d3aa9 ', fd=1135
+09-14 12:24:52.334  5319  5347 W UsageStatsService: Unexpected activity event reported! (com.paperrockets.v22.debug/com.paperrockets.v22.MainActivity event : 23 instanceId : 112531483)
+09-14 12:24:52.335  5319  7079 V WindowManager: Remove Window{6d3aa9 u0 com.paperrockets.v22.debug/com.paperrockets.v22.MainActivity}: mSurfaceController=null mAnimatingExit=false mRemoveOnExit=false mHasSurface=false surfaceShowing=false animating=false app-animation=false mWillReplaceWindow=false mDisplayFrozen=false callers=com.android.server.wm.WindowState.removeIfPossibl[REDACTED_PATH] com.android.server.wm.WindowToken.removeAllWindowsIfPossibl[REDACTED_PATH] com.android.server.wm.ActivityRecord.removeIfPossibl[REDACTED_PATH] com.android.server.wm.ActivityRecord.onRemovedFromDispla[REDACTED_PATH] com.android.server.wm.DisplayContent.removeAppToke[REDACTED_PATH] com.android.server.wm.ActivityRecord.removeFromHistor[REDACTED_PATH] 
+09-14 12:24:52.335  5319  5350 I libprocessgroup: Successfully killed process cgroup uid 10383 pid 26659 in 6ms
+09-14 12:24:52.335  5319  7079 D RestrictionPolicy: isScreenCaptureEnabled : ret=true userId=0
+09-14 12:24:52.335  5319  7079 V WindowManager: Nulling last startingData
+09-14 12:24:52.336  5319  7079 I ResourceType: [SWT] pull resource Id table from file
+09-14 12:24:52.337  5965  5965 W BaseDragLayer: findActiveController return false mTouchDispatchState = 9
+09-14 12:24:52.337  5965  5965 I GestureDetector: obtain mCurrentMotionEventRaw. action: 2 id: 1068760435
+09-14 12:24:52.337  5965  5965 I Launcher.Workspace: absDeltaX is zero.
+09-14 12:24:52.339  5065  6462 I SurfaceFlinger: id=1877 createSurf flag=24004, Task=445#1877
+09-14 12:24:52.345  5965  5965 I RecentsView: onTaskRemoved() taskId : 445
+09-14 12:24:52.345  5965  5965 I TopTaskTracker: onTaskRemoved : taskId = 445
+09-14 12:24:52.346  5965  5965 I RecentsView: onTaskRemoved() taskId : 445
+09-14 12:24:52.346  5965  5965 I TopTaskTracker: onTaskRemoved : taskId = 445
+09-14 12:24:52.346  5319  7079 W ActivityManager: Invalid packageName: com.paperrockets.v22.debug
+09-14 12:24:52.351  5663  5663 D CarrierSvcBindHelper: onHandleForceStop: [com.paperrockets.v22.debug]
+09-14 12:24:52.353  5319  5348 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_RESTARTED dat=package: flg=0x10 (has extras) } to android/com.kddi.android.CpaNotiReceiver
+09-14 12:24:52.353  5065  5065 I Layer   : id=1724 removeFromCurrentState 6d3aa9 com.paperrockets.v22.debug/com.paperrockets.v22.MainActivity#1724 (129)
+09-14 12:24:52.353  5965  5965 W BaseDragLayer: findActiveController return false mTouchDispatchState = 9
+09-14 12:24:52.353  5065  5065 I Layer   : id=1718 removeFromCurrentState ActivityRecord{21ebf15 u0 com.paperrockets.v22.debug/com.paperrockets.v22.MainActivity} t445}#1718 (129)
+09-14 12:24:52.353  5965  5965 W PageOverlayMover: isMoving : false
+09-14 12:24:52.353  5065  5065 I Layer   : id=1717 removeFromCurrentState Task=445#1717 (129)
+09-14 12:24:52.353  5065  5065 I Layer   : id=1877 removeFromCurrentState Task=445#1877 (129)
+09-14 12:24:52.353  5065  5065 I SurfaceFlinger: id=1718 Removed ActivityRecord{21ebf15 u0 com.paperrockets.v22.debug/com.paperrockets.v22.MainActivity} t445}#1718 (129)
+09-14 12:24:52.354  5065  5065 I SurfaceFlinger: id=1877 Removed Task=445#1877 (129)
+09-14 12:24:52.354  5065  5065 I SurfaceFlinger: id=1724 Removed 6d3aa9 com.paperrockets.v22.debug/com.paperrockets.v22.MainActivity#1724 (129)
+09-14 12:24:52.354  5065  5065 I Layer   : id=1877 Destroyed Task=445#1877
+09-14 12:24:52.354  5065  5065 I Layer   : id=1724 Destroyed 6d3aa9 com.paperrockets.v22.debug/com.paperrockets.v22.MainActivity#1724
+09-14 12:24:52.354  5065  5065 I Layer   : id=1718 Destroyed ActivityRecord{21ebf15 u0 com.paperrockets.v22.debug/com.paperrockets.v22.MainActivity} t445}#1718
+09-14 12:24:52.354  5663  5663 D CarrierSvcBindHelper: No carrier app for: 0
+09-14 12:24:52.370  5965  5965 W PageOverlayMover: isMoving : false
+09-14 12:24:52.370  5965  5965 I StateManager: reset
+09-14 12:24:52.370  5965  5965 I StateManager: createAnimationToNewWorkspaceInternal : AllApps
+09-14 12:24:52.370  5965  5965 I AppsTransitionController: setStateWithAnimation - toState : AllApps
+09-14 12:24:52.375  5965  5965 W AppsTransitionController: setAllAppsState() needToSearchApp is false
+09-14 12:24:52.386  5965  5965 I HomeStateTransitionController: workspace child count: 3
+09-14 12:24:52.390  5965  5965 I SuggestedAppsAnimationCreator: createAnimator: show = false
+09-14 12:24:52.390  5965  5965 I SuggestedAppsAnimationCreator: resetAnimatorProperty: return already toAlpha
+09-14 12:24:52.390  5965  5965 I SuggestedAppsAnimationCreator: cancelAnimator
+09-14 12:24:52.391  5965  5965 I FolderTransitionController: setStateWithAnimation : AllApps
+09-14 12:24:52.391  5965  5965 I FolderTransitionController: setFolderProperty : AllApps,Normal,Normal
+09-14 12:24:52.391  5965  5965 I PageEditTransitionController: setStateWithAnimation - from : Normal to : AllApps
+09-14 12:24:52.392  5965  5965 I CapturedBlurTransitionController: setStateWithAnimation : isLand=true, mPreviousOrientation=2, mLauncher.orientation=2
+09-14 12:24:52.392  5965  5965 I CapturedBlur: shouldTakeScreenshot : needTakeScreenshot=false, mWallpaperChanged=false, mWallpaperDrawCompleted=true, mCapture=nonNull, isOrientationChanged()=false, isDisplayChanged()=false
+09-14 12:24:52.392  5965  5965 I CapturedBlur: takeScreenShot() needTakeScreenshot : false
+09-14 12:24:52.392  5965  5965 I SemDvfsHyPerManager: acquire hyper - LAUNCHER_TOUCH/5965@1, type = -999
+09-14 12:24:52.393  5965  5965 I CapturedBlur: capture start width = 400, height = 240
+09-14 12:24:52.393  4998  5033 I HYPER-HAL: [RequestManager.cpp]acquire(): Acquired ID : 17799562  [5965 / 1]    HINT : LAUNCHER_TOUCH    list : 
+09-14 12:24:52.395  5319  5649 D WindowManager: takeScreenshotToTargetWindow: display=0, target=2013, containsTarget=true, crop=Rect(0, 400 - 0, 240), w=400, h=240, useIdentityTransform=false, ignorePolicy=true, caller=com.android.server.wm.WindowManagerService.takeScreenshotToTargetWindo[REDACTED_PATH] android.view.IWindowManager$Stub.onTransac[REDACTED_PATH] com.android.server.wm.WindowManagerService.onTransac[REDACTED_PATH] 
+09-14 12:24:52.395  5319  5649 D WindowManager: takeScreenshotToTargetWindow: targetSurface=Surface(name=cfd3fda com.android.systemui.ImageWallpaper)/@0x33ef686, sourceCrop=Rect(0, 400 - 0, 240)
+09-14 12:24:52.404  5319  5649 D WindowManager: takeScreenshotToTargetWindow, bitmap=android.graphics.Bitmap@85f8a1f, failedReason=, caller=com.android.server.wm.WindowManagerService.takeScreenshotToTargetWindo[REDACTED_PATH] android.view.IWindowManager$Stub.onTransac[REDACTED_PATH] com.android.server.wm.WindowManagerService.onTransac[REDACTED_PATH] android.os.Binder.execTransactInterna[REDACTED_PATH] android.os.Binder.execTransac[REDACTED_PATH] <bottom of call stack> 
+09-14 12:24:52.410  5965  5965 I CapturedBlur: takeScreenShot bitmap width = 400, height = 240
+09-14 12:24:52.410  5965  5965 I CapturedBlur: capture end
+09-14 12:24:52.410  5965  5965 I StateManager: onAnimationStart state : AllApps
+09-14 12:24:52.410  5965  5965 I StateManager: onStateTransitionStart mState = AllApps
+09-14 12:24:52.412  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:24:52.412  5965  5965 I CustomPageIndicator: setPageIndicatorSize : 28
+09-14 12:24:52.414  5319  5482 D InputReader: Btn_touch(9): value=0 when=17621.097393
+09-14 12:24:52.414  5319  5482 I InputReader: Touch event's action is 0x1 (id=4, t=0) [pCnt=1, s=] when=17621.097393
+09-14 12:24:52.414  5965  5965 I Launcher: onStateSetEnd for widget host, state : AllApps
+09-14 12:24:52.414  5965  5965 W LauncherAppWidgetHost: setShouldListenFlag, mFlag[REDACTED_PATH] fla[REDACTED_PATH] o[REDACTED_PATH] isFron[REDACTED_PATH]
+09-14 12:24:52.414  5965  5965 I BaseActivity: addActivityFlags, flags : 64
+09-14 12:24:52.414  5319  5481 I InputDispatcher: Delivering touch to (5965): action: 0x1, f=0x0, d=0, 'ea8fa7e', t=1 +(0,1200)
+09-14 12:24:52.415  5319  5319 I SemDvfsHyPerManager: acquire hyper - SMOOTH_SCROLL/5319@23, type = -999
+09-14 12:24:52.416  4998  5033 I HYPER-HAL: [RequestManager.cpp]acquire(): Acquired ID : 14271176  [5319 / 23]    HINT : SMOOTH_SCROLL    list : 
+09-14 12:24:52.416  5965  5965 I RecentsView: setOverviewStateEnabled false
+09-14 12:24:52.416  5965  5965 I RecentsOrientedState: current RecentsOrientedState: [this=RecentsOrientedState@135282051 mOrientationHandler=PortraitPagedViewHandler@133843712 mDisplayRotation=0 mTouchRotation=0 mRecentsActivityRotation=1 mRecentsRotation=1 isRecentsActivityRotationAllowed=true mSystemRotation=false mStateId=37505 mFlags=293]
+09-14 12:24:52.417  4998  5033 I HYPER-HAL: [RequestManager.cpp]releaseLocked(): Released ID : 14271176
+09-14 12:24:52.417  5319  5319 D SG[REDACTED_PATH] identifyGamePackage. com.sec.android.app.launcher, mCurrentUserId: 0, callerUserId: 0, callingMethodInfo: com.android.server.ssrm.fgapps.GameAppUtils.isGame(GameAppUtils.jav[REDACTED_PATH]
+09-14 12:24:52.417  5319  5319 D SG[REDACTED_PATH] getGamePkgData(). com.sec.android.app.launcher
+09-14 12:24:52.418  5319  5319 I SemDvfsHyPerManager: acquire hyper - GESTURE_DETECTED/5319@24, type = -999
+09-14 12:24:52.418  4998  5033 I HYPER-HAL: [RequestManager.cpp]acquire(): Acquired ID : 14276520  [5319 / 24]    HINT : GESTURE_DETECTED    list : [TIMEOUT / 2768] 
+09-14 12:24:52.418  5319  5319 D SG[REDACTED_PATH] identifyGamePackage. com.sec.android.app.launcher, mCurrentUserId: 0, callerUserId: 0, callingMethodInfo: com.android.server.ssrm.fgapps.GameAppUtils.isGame(GameAppUtils.jav[REDACTED_PATH]
+09-14 12:24:52.419  5319  5319 D SG[REDACTED_PATH] getGamePkgData(). com.sec.android.app.launcher
+09-14 12:24:52.419  5319  5319 I SemDvfsHyPerManager: acquire hyper - GESTURE_DETECTED/5319@24, type = -999
+09-14 12:24:52.419  4998  5033 I HYPER-HAL: [RequestManager.cpp]acquire(): Acquired ID : 14276520  [5319 / 24]    HINT : GESTURE_DETECTED    list : [TIMEOUT / 2768] 
+09-14 12:24:52.419  5965  5965 I BaseDragLayer: founded touch controller : com.android.launcher3.uioverrides.touchcontrollers.PortraitStatesTouchController@bb464a6
+09-14 12:24:52.419  5965  5965 I BaseDragLayer: findActiveController - com.android.launcher3.uioverrides.touchcontrollers.PortraitStatesTouchController
+09-14 12:24:52.420  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: ViewPostIme pointer 1
+09-14 12:24:52.421  5965  5965 W PortraitStatesTouchCtrl: updateSwipeCompleteAnimation, isFling = true, targetState = AllApps
+09-14 12:24:52.421  5965  5965 I StateManager: onAnimationStart state : AllApps
+09-14 12:24:52.421  5965  5965 I StateManager: onStateTransitionStart mState = AllApps
+09-14 12:24:52.421  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:24:52.422  5965  5965 I CustomPageIndicator: setPageIndicatorSize : 28
+09-14 12:24:52.422  5965  5965 I Launcher: onStateSetEnd for widget host, state : AllApps
+09-14 12:24:52.422  5965  5965 W LauncherAppWidgetHost: setShouldListenFlag, mFlag[REDACTED_PATH] fla[REDACTED_PATH] o[REDACTED_PATH] isFron[REDACTED_PATH]
+09-14 12:24:52.423  5965  5965 I BaseActivity: addActivityFlags, flags : 64
+09-14 12:24:52.423  5965  5965 I RecentsView: setOverviewStateEnabled false
+09-14 12:24:52.423  5965  5965 I RecentsOrientedState: current RecentsOrientedState: [this=RecentsOrientedState@135282051 mOrientationHandler=PortraitPagedViewHandler@133843712 mDisplayRotation=0 mTouchRotation=0 mRecentsActivityRotation=1 mRecentsRotation=1 isRecentsActivityRotationAllowed=true mSystemRotation=false mStateId=37505 mFlags=293]
+09-14 12:24:52.424  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:24:52.424  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:24:52.425  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:24:52.425  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:24:52.425  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:24:52.425  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:24:52.425  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:24:52.425  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:24:52.425  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:24:52.425  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:24:52.425  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:24:52.425  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:24:52.425  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:24:52.425  5965  5965 I Launcher.AppsPagedView: setLayout(), l: 138, r: 138, b: 65, spacing: 278
+09-14 12:24:52.428  5911  5911 I Zygote  : Process 26830 exited due to signal 9 (Killed)
+09-14 12:24:52.429  5319  5356 D BatteryExternalStatsWorker: update stats : remove-uid (1)
+09-14 12:24:52.437  5965  6061 I SPayUpdater: updateSpayHandler, show = false, defaultPage = false
+09-14 12:24:52.437  5965  5965 I InputMethodManager: startInputInner - mService.startInputOrWindowGainedFocus
+09-14 12:24:52.438  5319  7079 D InputMethodManagerService: DESKTOP MODE! : 2
+09-14 12:24:52.438  5319  7079 D InputMethodManagerService: NOT IN KNOX DESKTOP MODE!
+09-14 12:24:52.438  5319  7079 V InputMethodManagerService: getDisplayIdOfInputMethodWindowToBeAdded: displayId=0
+09-14 12:24:52.438  5319  7079 D InputMethodManagerService: isImeSwitcherDisabledPackage : false
+09-14 12:24:52.438  5319  7079 D InputMethodManagerService: shouldShowImeSwitcherLocked : checking vis : 3
+09-14 12:24:52.439  5319  7079 D InputMethodManagerService: checkDisplayOfStartInputAndUpdateKeyboard: displayId=0, mFocusedDisplayId=0
+09-14 12:24:52.439  5319  7079 D InputTransport: Input channel constructed: 'ClientS', fd=872
+09-14 12:24:52.439  5319  7079 D InputTransport: Input channel destroyed: 'ClientS', fd=872
+09-14 12:24:52.440  9212  9212 I HBD     : HoneyBoardService onFinishInput 
+09-14 12:24:52.441  9212  9212 I HBD     : a IC have been unbinding,  RemoteInputConnection{idHash=#aeb7901}
+09-14 12:24:52.441  9212  9212 I HBD     : HoneyBoardService [PF_CL][onFinishInput]  1 ms 
+09-14 12:24:52.441  9212  9212 I HBD     : HoneyBoardService [IMI] onStartInput - caller pid : 5965 , caller uid : 10083 
+09-14 12:24:52.442  9212  9212 I HBD     : j updateConfigs 
+09-14 12:24:52.442  9212  9212 I HBD     : j isEnabledNightMode : true 
+09-14 12:24:52.442  9212  9212 I HBD     : a IC have been binding, RemoteInputConnection{idHash=#aeb7901} 
+09-14 12:24:52.443  9212  9212 I HBD     : h [EditorInputType]setPrivateImeOptionsToTable privateImeOptions ( null )
+09-14 12:24:52.443  9212  9212 I HBD     : b incognitoMode : false 
+09-14 12:24:52.443  9212  9212 I HBD     : b needOff = true , isForceOff = false, isNullInputClass : true 
+09-14 12:24:52.444  9212  9212 I HBD     : h getDefaultInputRange : UNKNOWN 
+09-14 12:24:52.444  9212  9212 I HBD     : h getDefaultInputRange : UNKNOWN 
+09-14 12:24:52.444  9212  9212 I HBD     : h getDefaultInputRange : UNKNOWN 
+09-14 12:24:52.454  9212  9212 I HBD     : b needOff = true , isForceOff = false, isNullInputClass : true 
+09-14 12:24:52.454  9212  9212 I HBD     : b update cached prediction status : false 
+09-14 12:24:52.454  9212  9212 I HBD     : h getDefaultInputRange : UNKNOWN 
+09-14 12:24:52.454  9212  9212 I HBD     : a currentState : 0 
+09-14 12:24:52.455  9212  9212 I HBD     : a [UpdatePolicy] [post] a: 0 cl: 65537 kit: [0/0] vt: 0 ir: 1 
+09-14 12:24:52.468  9212  9212 I HBD     : a [NRIC] resetNoResponseState 
+09-14 12:24:52.468  9212  9212 I HBD     : b needOff = true , isForceOff = false, isNullInputClass : true 
+09-14 12:24:52.468  9212  9212 I HBD     : b update cached prediction status : false 
+09-14 12:24:52.470  5965  5965 I RecentsView: resetTaskVisuals
+09-14 12:24:52.470  9212  9212 I HBD     : HoneyBoardService [PF_OP][onStartInput]  28 ms 
+09-14 12:24:52.470  5965  5965 I RecentsView: Skip loading task enabled : false  changeId : -1
+09-14 12:24:52.471  5965  5965 I StateManager: onAnimationSuccess state : AllApps
+09-14 12:24:52.471  5965  5965 I StateManager: onStateTransitionEnd mState : AllApps
+09-14 12:24:52.471  5965  5965 I BaseActivity: removeActivityFlags, flags : 64
+09-14 12:24:52.471  5965  5965 I RecentsView: reset
+09-14 12:24:52.472  5965  5965 I RecentsView: setCurrentTask, runningTaskId : -1
+09-14 12:24:52.472  5965  5965 I RecentsOrientedState: current RecentsOrientedState: [this=RecentsOrientedState@135282051 mOrientationHandler=PortraitPagedViewHandler@133843712 mDisplayRotation=0 mTouchRotation=0 mRecentsActivityRotation=1 mRecentsRotation=1 isRecentsActivityRotationAllowed=true mSystemRotation=false mStateId=37505 mFlags=293]
+09-14 12:24:52.472  5965  5965 I DecorView: notifyKeepScreenOnChanged: keepScreenOn=false
+09-14 12:24:52.473  5965  5965 I StateManager: goToStateAnimated mStateChanged is false
+09-14 12:24:52.473  5965  5965 I StateManager: End animation. mStateChanged is changed to False : AllApps
+09-14 12:24:52.474  5965  5965 W PortraitStatesTouchCtrl: onSwipeInteractionCompleted, targetState = AllApps
+09-14 12:24:52.475  5319  5319 I Pageboost: package null
+09-14 12:24:52.475  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: performTraversals params={(0,0)(fillxfill) sim={adjust=nothing} layoutInDisplayCutoutMode=shortEdges ty=BASE_APPLICATION fmt=TRANSPARENT wanim=0x10302f4
+09-14 12:24:52.475  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]:   fl=81910100
+09-14 12:24:52.475  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]:   pfl=1e020040
+09-14 12:24:52.475  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]:   vsysui=1700
+09-14 12:24:52.475  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]:   bhv=SHOW_TRANSIENT_BARS_BY_SWIPE
+09-14 12:24:52.475  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]:   fitSides= screenDimDuration=100000 naviIconColor=0}
+09-14 12:24:52.476  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: performTraversals mFirst=false windowShouldResize=false viewVisibilityChanged=false mForceNextWindowRelayout=false params={(0,0)(fillxfill) sim={adjust=nothing} layoutInDisplayCutoutMode=shortEdges ty=BASE_APPLICATION fmt=TRANSPARENT wanim=0x10302f4
+09-14 12:24:52.476  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]:   fl=81910100
+09-14 12:24:52.476  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]:   pfl=1e020040
+09-14 12:24:52.476  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]:   vsysui=1700
+09-14 12:24:52.476  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]:   bhv=SHOW_TRANSIENT_BARS_BY_SWIPE
+09-14 12:24:52.476  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]:   fitSides= screenDimDuration=100000 naviIconColor=0}
+09-14 12:24:52.476  6555  6555 E pageboostd: Received HALT command code 2
+09-14 12:24:52.476  5319  7079 V WindowManager: Relayout Window{ea8fa7e u0 com.sec.android.app.launcher/com.sec.android.app.launcher.activities.LauncherActivity}: viewVisibility=0 req=2000x1200 d0
+09-14 12:24:52.477  5319  7079 I ResourceType: [SWT] pull resource Id table from file
+09-14 12:24:52.480  5319  7079 V WindowManager: Relayout hash=ea8fa7e, pid=5965, syncId=-1: mAttrs={(0,0)(fillxfill) sim={adjust=nothing} layoutInDisplayCutoutMode=shortEdges ty=BASE_APPLICATION fmt=TRANSPARENT wanim=0x10302f4
+09-14 12:24:52.480  5319  7079 V WindowManager:   fl=81910100
+09-14 12:24:52.480  5319  7079 V WindowManager:   pfl=1e020040
+09-14 12:24:52.480  5319  7079 V WindowManager:   vsysui=1700
+09-14 12:24:52.480  5319  7079 V WindowManager:   bhv=SHOW_TRANSIENT_BARS_BY_SWIPE
+09-14 12:24:52.480  5319  7079 V WindowManager:   fitSides= screenDimDuration=100000 naviIconColor=0}
+09-14 12:24:52.481  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: updateBlastSurfaceIfNeeded mBlastBufferQueue=0x7b362b6400 isSameSurfaceControl=true
+09-14 12:24:52.482  5965  5965 I BLASTBufferQueue: update, w= 2000 h= 1200 mName = ViewRootImpl@3af503f[LauncherActivity] mNativeObject= 0x7b362b6400 sc.mNativeObject= 0x7a7984afc0 format= -2 caller= android.view.ViewRootImpl.updateBlastSurfaceIfNeede[REDACTED_PATH] android.view.ViewRootImpl.relayoutWindo[REDACTED_PATH] android.view.ViewRootImpl.performTraversal[REDACTED_PATH] android.view.ViewRootImpl.doTraversa[REDACTED_PATH] android.view.ViewRootImpl$TraversalRunnable.ru[REDACTED_PATH] android.view.Choreographer$CallbackRecord.ru[REDACTED_PATH] 
+09-14 12:24:52.482  5965  5965 I ViewRootImpl@3af503f[LauncherActivity]: Relayout returned: old=(0,0,2000,1200) new=(0,0,2000,1200) req=(2000,1200)0 dur=5 res=0x0 s={true 0x7b21ee8800} ch=false seqId=0
+09-14 12:24:52.483  5965  5965 I RecentsOrientedState: current RecentsOrientedState: [this=RecentsOrientedState@135282051 mOrientationHandler=PortraitPagedViewHandler@133843712 mDisplayRotation=0 mTouchRotation=0 mRecentsActivityRotation=1 mRecentsRotation=1 isRecentsActivityRotationAllowed=true mSystemRotation=false mStateId=37505 mFlags=293]
+09-14 12:24:52.485  5965  6061 I SPayUpdater: updateSpayHandler, show = false, defaultPage = false
+09-14 12:24:52.493  5319  6034 D InputMethodManagerService: removeClient
+09-14 12:24:52.493  5319  6034 D InputTransport: Input channel destroyed: 'ClientS', fd=346
+09-14 12:24:52.495  5319  5341 W ActivityManager: setHasOverlayUi called on unknown pid: 26659
+09-14 12:24:52.496  5319  6389 V ActivityManager: Got obituary of 26659:com.paperrockets.v22.debug
+09-14 12:24:52.497  4956  4956 I Zygote  : Process 26659 exited due to signal 9 (Killed)
+09-14 12:24:52.497  5319  5350 I libprocessgroup: Successfully killed process cgroup uid 99013 pid 26830 in 0ms
+09-14 12:24:52.499  9572  9572 W Finsky  : [2] STU: Failed to get storage stats for package 'com.google.android.tzdata4' (1601: Error getting stats: android.content.pm.PackageManager.NameNotFoundException)
+09-14 12:24:52.524  5319  5356 D BatteryExternalStatsWorker: Update CPU state
+09-14 12:24:52.524  5319  5356 D BatteryExternalStatsWorker: mStats lock released
+09-14 12:24:52.524  5319  5356 D BatteryExternalStatsWorker: done updateExternalStatsLocked
+09-14 12:24:52.582  9572  9572 W Finsky  : [2] STU: Failed to get storage stats for package 'com.google.android.permission' (1601: Error getting stats: android.content.pm.PackageManager.NameNotFoundException)
+09-14 12:24:52.711  4998 29608 I HYPER-HAL: [RequestManager.cpp]releaseLocked(): Released ID : 24384649
+09-14 12:24:52.723  5965  6061 I QuickstepModelDelegate: Widget predictions updated
+09-14 12:24:52.727  5319  6389 D ActivityManager: force stop from com.android.server.am.ActivityManagerService.forceStopPackag[REDACTED_PATH] com.android.server.am.ActivityManagerShellCommand.runForceSto[REDACTED_PATH] 
+09-14 12:24:52.727  5319  6389 I ActivityManager: Force stopping com.paperrockets.v22.benchmark appid=10384 user=0: from pid 29638
+09-14 12:24:52.729  5319  6389 I ActivityManager: Killing 29405:com.paperrockets.v22.benchmark/u0a384 (adj 700): stop com.paperrockets.v22.benchmark due to from pid 29638
+09-14 12:24:52.732  6709  6709 D BoundBrokerSvc: onUnbind: Intent { act=com.google.android.gms.safebrowsing.SafeBrowsingService.START dat=chimera-actio[REDACTED_PATH] cmp=com.google.android.gms/.chimera.GmsBoundBrokerService }
+09-14 12:24:52.733  5319  6389 I ActivityManager: Killing 29453:com.google.android.webvie[REDACTED_PATH] (adj 0): isolated not needed
+09-14 12:24:52.734  5319  6389 D ActivityManager: proc ProcessRecord{4f0fd56 29405:com.paperrockets.v22.benchmark/u0a384} already removed. so we skip next process.
+09-14 12:24:52.735  5319  6389 W ActivityTaskManager: Force removing ActivityRecord{2df4e39 u0 com.paperrockets.v22.benchmark/com.paperrockets.v22.MainActivity} t448 f}}: app died, no saved state
+09-14 12:24:52.735  5319  6389 D InputTransport: Input channel destroyed: '62d9c49', fd=1104
+09-14 12:24:52.735  5319  6389 W InputManager-JNI: Input channel object '62d9c49 com.paperrockets.v22.benchmark/com.paperrockets.v22.MainActivity (client)' was disposed without first being removed with the input manager!
+09-14 12:24:52.735  5319  6389 D InputTransport: Input channel destroyed: '62d9c49', fd=1105
+09-14 12:24:52.735  5319  5350 I libprocessgroup: Successfully killed process cgroup uid 10384 pid 29405 in 5ms
+09-14 12:24:52.735  5319  5347 W UsageStatsService: Unexpected activity event reported! (com.paperrockets.v22.benchmark/com.paperrockets.v22.MainActivity event : 23 instanceId : 143881695)
+09-14 12:24:52.735  5319  6389 V WindowManager: Remove Window{62d9c49 u0 com.paperrockets.v22.benchmark/com.paperrockets.v22.MainActivity}: mSurfaceController=null mAnimatingExit=false mRemoveOnExit=false mHasSurface=false surfaceShowing=false animating=false app-animation=false mWillReplaceWindow=false mDisplayFrozen=false callers=com.android.server.wm.WindowState.removeIfPossibl[REDACTED_PATH] com.android.server.wm.WindowToken.removeAllWindowsIfPossibl[REDACTED_PATH] com.android.server.wm.ActivityRecord.removeIfPossibl[REDACTED_PATH] com.android.server.wm.ActivityRecord.onRemovedFromDispla[REDACTED_PATH] com.android.server.wm.DisplayContent.removeAppToke[REDACTED_PATH] com.android.server.wm.ActivityRecord.removeFromHistor[REDACTED_PATH] 
+09-14 12:24:52.736  5319  6389 D RestrictionPolicy: isScreenCaptureEnabled : ret=true userId=0
+09-14 12:24:52.736  5319  6389 V WindowManager: Nulling last startingData
+09-14 12:24:52.736  5319  6389 I ResourceType: [SWT] pull resource Id table from file
+09-14 12:24:52.739  5065  6490 I SurfaceFlinger: id=1878 createSurf flag=24004, Task=448#1878
+09-14 12:24:52.743  5965  5965 I RecentsView: onTaskRemoved() taskId : 448
+09-14 12:24:52.743  5965  5965 I TopTaskTracker: onTaskRemoved : taskId = 448
+09-14 12:24:52.743  5965  5965 I RecentsView: onTaskRemoved() taskId : 448
+09-14 12:24:52.743  5965  5965 I TopTaskTracker: onTaskRemoved : taskId = 448
+09-14 12:24:52.752  5065  5065 I Layer   : id=1862 removeFromCurrentState 62d9c49 com.paperrockets.v22.benchmark/com.paperrockets.v22.MainActivity#1862 (127)
+09-14 12:24:52.752  5065  5065 I Layer   : id=1851 removeFromCurrentState ActivityRecord{2df4e39 u0 com.paperrockets.v22.benchmark/com.paperrockets.v22.MainActivity} t448}#1851 (127)
+09-14 12:24:52.752  5065  5065 I Layer   : id=1850 removeFromCurrentState Task=448#1850 (127)
+09-14 12:24:52.752  5065  5065 I Layer   : id=1878 removeFromCurrentState Task=448#1878 (127)
+09-14 12:24:52.753  5065  5065 I SurfaceFlinger: id=1851 Removed ActivityRecord{2df4e39 u0 com.paperrockets.v22.benchmark/com.paperrockets.v22.MainActivity} t448}#1851 (127)
+09-14 12:24:52.753  5065  5065 I SurfaceFlinger: id=1878 Removed Task=448#1878 (127)
+09-14 12:24:52.753  5065  5065 I SurfaceFlinger: id=1862 Removed 62d9c49 com.paperrockets.v22.benchmark/com.paperrockets.v22.MainActivity#1862 (127)
+09-14 12:24:52.753  5065  5065 I Layer   : id=1878 Destroyed Task=448#1878
+09-14 12:24:52.753  5065  5065 I Layer   : id=1851 Destroyed ActivityRecord{2df4e39 u0 com.paperrockets.v22.benchmark/com.paperrockets.v22.MainActivity} t448}#1851
+09-14 12:24:52.753  5065  5065 I Layer   : id=1862 Destroyed 62d9c49 com.paperrockets.v22.benchmark/com.paperrockets.v22.MainActivity#1862
+09-14 12:24:52.753  5319  6389 W ActivityManager: Invalid packageName: com.paperrockets.v22.benchmark
+09-14 12:24:52.760  5663  5663 D CarrierSvcBindHelper: onHandleForceStop: [com.paperrockets.v22.benchmark]
+09-14 12:24:52.761  5663  5663 D CarrierSvcBindHelper: No carrier app for: 0
+09-14 12:24:52.761  5319  5348 W BroadcastQueue: Background execution not allowed: receiving Intent { act=android.intent.action.PACKAGE_RESTARTED dat=package: flg=0x10 (has extras) } to android/com.kddi.android.CpaNotiReceiver
+09-14 12:24:52.821  5965  5965 I GestureDetector: handleMessage LONG_PRESS
+09-14 12:24:52.831  5319  5356 D BatteryExternalStatsWorker: update stats : remove-uid (1)
+09-14 12:24:52.833  5911  5911 I Zygote  : Process 29453 exited due to signal 9 (Killed)
+09-14 12:24:52.833  5319  5356 D BatteryExternalStatsWorker: Update CPU state
+09-14 12:24:52.833  5319  5356 D BatteryExternalStatsWorker: mStats lock released
+09-14 12:24:52.833  5319  5356 D BatteryExternalStatsWorker: done updateExternalStatsLocked
+09-14 12:24:52.876  5319  7368 D InputMethodManagerService: removeClient
+09-14 12:24:52.877  5319  7368 D InputTransport: Input channel destroyed: 'ClientS', fd=929
+09-14 12:24:52.877  5319  6389 V ActivityManager: Got obituary of 29405:com.paperrockets.v22.benchmark
+09-14 12:24:52.877  5319  5341 W ActivityManager: setHasOverlayUi called on unknown pid: 29405
+09-14 12:24:52.879  4956  4956 I Zygote  : Process 29405 exited due to signal 9 (Killed)
+09-14 12:24:52.881  5319  5350 I libprocessgroup: Successfully killed process cgroup uid 99016 pid 29453 in 0ms
+09-14 12:24:53.014  4635  4635 D io_stats: !@   8,0 r 6459276 158748148 w 1277976 42787400 d 0 0 f 0 0 iot 1663436 0 th 0 0 0 pt 0 inp 0 8 17621.697

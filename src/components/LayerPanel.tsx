@@ -364,7 +364,7 @@ export const LayerPanelComponent: React.FC<LayerPanelProps> = ({
              /* Mobile: bottom sheet anchored at bottom */
              inset-x-2 bottom-2 max-h-[46dvh] rounded-2xl p-3 space-y-2.5 slide-in-from-bottom-3
              /* Desktop: top-right floating */
-             sm:inset-x-auto sm:bottom-auto sm:top-16 sm:right-6 sm:w-96 sm:max-w-[400px] sm:max-h-[80vh] sm:rounded-2xl sm:p-4 sm:space-y-3 sm:slide-in-from-right-2 ${
+             sm:inset-x-auto sm:bottom-auto sm:top-16 sm:right-6 sm:w-[var(--studio-menu-wide)] sm:max-w-[var(--studio-menu-wide)] sm:max-h-[80vh] sm:rounded-2xl sm:p-4 sm:space-y-3 sm:slide-in-from-right-2 ${
               isLight
                 ? 'bg-white border-black/10 text-neutral-800 shadow-[0_20px_50px_rgba(0,0,0,0.12)]'
                 : 'bg-[#18191d] border-[#2c2e36] text-neutral-200 shadow-2xl shadow-black/50'
@@ -399,7 +399,7 @@ export const LayerPanelComponent: React.FC<LayerPanelProps> = ({
         <button
           type="button"
           onClick={() => handleAddLayer(null)}
-          className="h-8 min-h-[32px] py-1 px-2.5 rounded-lg bg-neutral-900 dark:bg-white hover:bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-semibold flex items-center justify-center gap-1.5 shadow transition-all active:scale-98"
+          className="h-11 min-h-[44px] py-1 px-2.5 rounded-lg bg-neutral-900 dark:bg-white hover:bg-neutral-900 dark:bg-white text-white dark:text-neutral-900 text-xs font-semibold flex items-center justify-center gap-1.5 shadow transition-all active:scale-98"
         >
           <Plus className="w-3.5 h-3.5" />
           <span>New Layer</span>
@@ -407,7 +407,7 @@ export const LayerPanelComponent: React.FC<LayerPanelProps> = ({
         <button
           type="button"
           onClick={() => handleAddGroup(null)}
-          className={`h-8 min-h-[32px] py-1 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow transition-all active:scale-98 border ${
+          className={`h-11 min-h-[44px] py-1 px-2.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1.5 shadow transition-all active:scale-98 border ${
             isLight
               ? 'bg-neutral-100 hover:bg-neutral-200 border-black/10 text-neutral-800'
               : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-neutral-200'

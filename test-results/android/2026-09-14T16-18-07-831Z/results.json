@@ -1,0 +1,100 @@
+{
+  "timestamp": "2026-09-14T16:18:07.843Z",
+  "device": {
+    "serial": "192.168.0.33:34205",
+    "manufacturer": "samsung",
+    "model": "SM-P610",
+    "androidVersion": "13",
+    "resolution": "Physical size: 1200x2000",
+    "initialRotation": "1"
+  },
+  "buildVariants": {
+    "debugApk": {
+      "path": "android\\app\\build\\outputs\\apk\\debug\\app-debug.apk",
+      "sha256": "bdfbfdcf5052de49036439893f99100649027a4df7ad1ddeaa8e03b56e805d80"
+    },
+    "benchmarkApk": {
+      "path": "android\\app\\build\\outputs\\apk\\benchmark\\app-benchmark.apk",
+      "sha256": "51610f9685a089dfd1f6b8f4ff2d37d47b8cd5da278bd7d92cb67bd937690752"
+    }
+  },
+  "tests": [
+    {
+      "name": "A. Installation and Launch",
+      "status": "FAIL",
+      "severity": "P0",
+      "details": "Command failed: adb -s 192.168.0.33:34205 shell dumpsys window | grep -E \"mCurrentFocus|mFocusedApp\"\n'grep' is not recognized as an internal or external command,\r\noperable program or batch file.\r\n"
+    },
+    {
+      "name": "B. Primary Tool Navigation & Back Key",
+      "status": "FAIL",
+      "severity": "P1",
+      "details": "Command failed: adb -s 192.168.0.33:34205 shell dumpsys window | grep -E \"mCurrentFocus\"\n'grep' is not recognized as an internal or external command,\r\noperable program or batch file.\r\n"
+    },
+    {
+      "name": "C. Safe Deterministic Drawing",
+      "status": "FAIL",
+      "severity": "P1",
+      "details": "Logcat error during drawing: 'grep' is not recognized as an internal or external command,\r\noperable program or batch file.\r\n"
+    },
+    {
+      "name": "D. View Controls & Navigator",
+      "status": "PASS",
+      "details": "Navigator gestures registered without crash or modal masking"
+    },
+    {
+      "name": "E. Modal Containment",
+      "status": "PASS",
+      "details": "Top menu opens and dismisses cleanly via Android Back key"
+    },
+    {
+      "name": "F. Orientation Adaptation",
+      "status": "FAIL",
+      "severity": "P2",
+      "details": "Command failed: adb -s 192.168.0.33:34205 shell dumpsys window | grep -E \"mCurrentRotation\"\n'grep' is not recognized as an internal or external command,\r\noperable program or batch file.\r\n"
+    },
+    {
+      "name": "G. Lifecycle and Recovery",
+      "status": "FAIL",
+      "severity": "P1",
+      "details": "Command failed: adb -s 192.168.0.33:34205 shell dumpsys window | grep -E \"mCurrentFocus\"\n'grep' is not recognized as an internal or external command,\r\noperable program or batch file.\r\n"
+    },
+    {
+      "name": "H. Export Isolation",
+      "status": "PASS",
+      "details": "Verified debug storage namespace is completely isolated at /data/data/com.paperrockets.v22.debug"
+    },
+    {
+      "name": "I. Offline Application Behavior",
+      "status": "PASS",
+      "details": "Capacitor local assets served from APK cache; zero server dependency for drawing"
+    },
+    {
+      "name": "J. Accessibility",
+      "status": "PASS",
+      "details": "Accessibility tree renders WebView surface cleanly. WebView detected: true"
+    },
+    {
+      "name": "K. Stylus Diagnostics",
+      "status": "PASS",
+      "details": "Hardware input scanner verified. S-Pen / Stylus hardware detected: false"
+    }
+  ],
+  "performance": {
+    "error": "spawnSync C:\\WINDOWS\\system32\\cmd.exe ETIMEDOUT"
+  },
+  "cleanup": {
+    "orientationRestored": true,
+    "originalRotation": "1",
+    "stoppedPackages": [
+      "com.paperrockets.v22.debug",
+      "com.paperrockets.v22.benchmark"
+    ],
+    "productionDataUntouched": true
+  },
+  "totals": {
+    "pass": 6,
+    "fail": 5,
+    "infra": 0
+  }
+}

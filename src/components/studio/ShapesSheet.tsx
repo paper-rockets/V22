@@ -5,7 +5,7 @@ import { haptics } from '../../utils/haptics';
 import { Check, Compass, Magnet, Ruler, Spline, Waves } from 'lucide-react';
 
 /**
- * Drawing aids: Steady Stroke, Predictive Stroke, and the Ruler.
+ * Stroke assist: steadying, finish-stroke cleanup, and straight lines.
  *
  * The two stroke aids do different jobs and are worth keeping apart:
  *
@@ -25,17 +25,19 @@ interface ShapesSheetProps {
   theme?: 'light' | 'dark';
 }
 
-const RECOGNISES = ['Lines', 'Circles', 'Ovals', 'Arcs', 'Triangles', 'Rectangles'];
+const STEADY_PRESETS = [
+  { value: 0, label: 'Off' },
+  { value: 25, label: 'Low' },
+  { value: 60, label: 'Medium' },
+  { value: 181, label: 'High' },
+];
 
-const PREDICTIVE_HINTS: Record<number, string> = {
-  1: 'Barely tidies. Keeps almost every wiggle you drew.',
-  2: 'Light tidying. Good for small detail work.',
-  3: 'Smooths the line without changing what you drew.',
-  4: 'Smooths more. Small detail gets rounded off.',
-  5: 'Smooths hard. Keeps the sweep, drops the detail.',
-};
-
-const STEADY_PRESETS = [0, 25, 60, 120, 181];
+const CLEANUP_PRESETS = [
+  { value: 0, label: 'Off' },
+  { value: 1, label: 'Low' },
+  { value: 3, label: 'Medium' },
+  { value: 5, label: 'High' },
+];
 
 export const ShapesSheet: React.FC<ShapesSheetProps> = ({
   brushSettings,
@@ -46,6 +48,7 @@ export const ShapesSheet: React.FC<ShapesSheetProps> = ({
   const predictiveOn = brushSettings.shapeSnapping ?? false;
   const straightOnly = brushSettings.straightLineMode ?? false;
   const level = Math.round(brushSettings.predictiveLevel ?? 3);
+  const cleanupStrength = !predictiveOn || straightOnly ? 0 : level <= 1 ? 1 : level <= 3 ? 3 : 5;
   const steadyLevel = Math.round(brushSettings.steadyStrokeLevel ?? 0);
   const shapesOn = brushSettings.shapeRecognition === true;
 
@@ -60,53 +63,32 @@ export const ShapesSheet: React.FC<ShapesSheetProps> = ({
   };
 
   return (
-    <StudioSheet id="shapes" title="Drawing Aids" theme={theme} tall>
+    <StudioSheet id="shapes" title="Stroke Assist" theme={theme} tall compact>
       <p className="pb-2 text-[11px] leading-4 opacity-65">
-        These steady your hand as you draw. 3D Forms are separate surfaces you can draw on.
+        One place to steady a stroke, clean it up, or make it straight.
       </p>
 
       {/* ---------------------------------------------------------------- */}
       {/* Steady Stroke                                                     */}
       {/* ---------------------------------------------------------------- */}
-      <div className={`rounded-2xl border p-3 ${steadyLevel > 0 ? accent : soft}`}>
+      <div className={`rounded-xl border px-3 py-2.5 ${steadyLevel > 0 ? accent : soft}`}>
         <div className="flex items-center gap-2">
           <Waves className="h-5 w-5 shrink-0" strokeWidth={1.8} />
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-bold">Steady Stroke</div>
-            <div className="text-[10px] leading-4 opacity-65">
-              The brush trails behind your pen on a leash, so a shaky hand cannot push the line
-              around.
-            </div>
-          </div>
-          <div className="shrink-0 text-right">
-            <div className="text-lg font-bold leading-none tabular-nums">{steadyLevel}</div>
-            <div className="text-[9px] uppercase tracking-wide opacity-55">
-              {steadyLevel === 0 ? 'off' : 'offset'}
-            </div>
+            <div className="text-sm font-bold">Steady while drawing</div>
+            <div className="text-[10px] leading-4 opacity-65">Stabilizes the brush as you draw.</div>
           </div>
         </div>
 
-        <input
-          type="range"
-          min={0}
-          max={200}
-          step={1}
-          value={steadyLevel}
-          aria-label="Steady Stroke offset"
-          onChange={(e) => setBrushSettings((p) => ({ ...p, steadyStrokeLevel: Number(e.target.value) }))}
-          onPointerUp={() => haptics.trigger('light')}
-          className="mt-3 h-9 w-full accent-sky-500"
-        />
-
-        <div className="mt-1 flex items-center justify-between gap-1">
-          {STEADY_PRESETS.map((preset) => (
+        <div className="mt-2 grid grid-cols-4 gap-1.5">
+          {STEADY_PRESETS.map(({ value, label }) => (
             <button
-              key={preset}
+              key={value}
               type="button"
-              aria-pressed={steadyLevel === preset}
-              onClick={() => update({ steadyStrokeLevel: preset })}
-              className={`min-h-[32px] flex-1 rounded-lg border text-[11px] font-bold tabular-nums transition-colors ${
-                steadyLevel === preset
+              aria-pressed={steadyLevel === value}
+              onClick={() => update({ steadyStrokeLevel: value })}
+              className={`min-h-[40px] rounded-lg border px-1 text-[10px] font-bold transition-colors ${
+                steadyLevel === value
                   ? isLight
                     ? 'border-neutral-900 bg-neutral-900 text-white'
                     : 'border-white bg-white text-neutral-950'
@@ -115,60 +97,41 @@ export const ShapesSheet: React.FC<ShapesSheetProps> = ({
                   : 'border-neutral-700 bg-white/5'
               }`}
             >
-              {preset === 0 ? 'Off' : preset}
+              {label}
             </button>
           ))}
-        </div>
-        <div className="mt-1.5 text-[10px] leading-4 opacity-60">
-          {steadyLevel === 0
-            ? 'Off: the brush sits exactly where your pen is.'
-            : steadyLevel < 70
-            ? 'Short leash: steadier, and still turns tightly.'
-            : 'Long leash: long sweeping curves, hard to turn sharply.'}
         </div>
       </div>
 
       {/* ---------------------------------------------------------------- */}
       {/* Predictive Stroke                                                 */}
       {/* ---------------------------------------------------------------- */}
-      <div className={`mt-2 rounded-2xl border p-3 ${predictiveOn && !straightOnly ? accent : soft}`}>
-        <button
-          type="button"
-          aria-pressed={predictiveOn && !straightOnly}
-          onClick={() =>
-            update({
-              shapeSnapping: !(predictiveOn && !straightOnly),
-              straightLineMode: false,
-            })
-          }
-          className="flex w-full items-center gap-2 text-left"
-        >
+      <div className={`mt-2 rounded-xl border px-3 py-2.5 ${predictiveOn && !straightOnly ? accent : soft}`}>
+        <div className="flex w-full items-center gap-2 text-left">
           <Spline className="h-5 w-5 shrink-0" strokeWidth={1.8} />
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-bold">Predictive Stroke</div>
-            <div className="text-[10px] leading-4 opacity-65">
-              Smooths your line after you lift your pen, so a shaky hand still draws a clean
-              stroke and nothing lags while you draw.
-            </div>
+            <div className="text-sm font-bold">Clean up after drawing</div>
+            <div className="text-[10px] leading-4 opacity-65">Smooths the stroke after you lift the pen.</div>
           </div>
-          {predictiveOn && !straightOnly && <Check className="h-4 w-4 shrink-0" strokeWidth={2.5} />}
-        </button>
+        </div>
 
-        <div className={predictiveOn && !straightOnly ? 'mt-3' : 'mt-3 opacity-40'}>
-          <div className="flex items-center justify-between">
-            <span className="text-[11px] font-bold uppercase tracking-wide opacity-70">Level</span>
-            <span className="text-sm font-bold tabular-nums">{level}</span>
-          </div>
-          <div className="mt-1.5 grid grid-cols-5 gap-1.5">
-            {[1, 2, 3, 4, 5].map((value) => (
+        <div className="mt-2 grid grid-cols-4 gap-1.5">
+          {CLEANUP_PRESETS.map(({ value, label }) => (
               <button
                 key={value}
                 type="button"
-                aria-pressed={level === value}
-                disabled={!predictiveOn || straightOnly}
-                onClick={() => update({ predictiveLevel: value, shapeSnapTolerance: undefined })}
-                className={`min-h-[44px] rounded-xl border text-sm font-bold tabular-nums transition-colors ${
-                  level === value
+                aria-pressed={cleanupStrength === value}
+                onClick={() => update(value === 0
+                  ? { shapeSnapping: false }
+                  : {
+                      shapeSnapping: true,
+                      straightLineMode: false,
+                      predictiveLevel: value,
+                      shapeSnapTolerance: undefined,
+                    }
+                )}
+                className={`min-h-[40px] rounded-lg border px-1 text-[10px] font-bold transition-colors ${
+                  cleanupStrength === value
                     ? isLight
                       ? 'border-neutral-900 bg-neutral-900 text-white'
                       : 'border-white bg-white text-neutral-950'
@@ -177,19 +140,18 @@ export const ShapesSheet: React.FC<ShapesSheetProps> = ({
                     : 'border-neutral-700 bg-white/5'
                 }`}
               >
-                {value}
+                {label}
               </button>
-            ))}
-          </div>
-          <div className="mt-1.5 text-[10px] leading-4 opacity-60">{PREDICTIVE_HINTS[level]}</div>
+          ))}
+        </div>
 
+        {cleanupStrength > 0 && (
           <button
             type="button"
             role="switch"
             aria-checked={shapesOn}
-            disabled={!predictiveOn || straightOnly}
             onClick={() => update({ shapeRecognition: !shapesOn })}
-            className={`mt-2 flex w-full items-center gap-2 rounded-xl border p-2 text-left transition-colors ${
+            className={`mt-2 flex min-h-[44px] w-full items-center gap-2 rounded-lg border px-2.5 py-1.5 text-left transition-colors ${
               shapesOn
                 ? isLight
                   ? 'border-neutral-900 bg-neutral-900 text-white'
@@ -202,14 +164,11 @@ export const ShapesSheet: React.FC<ShapesSheetProps> = ({
             <Magnet className="h-4 w-4 shrink-0" strokeWidth={1.8} />
             <div className="min-w-0 flex-1">
               <div className="text-xs font-bold">Also turn strokes into shapes</div>
-              <div className="text-[10px] leading-4 opacity-70">
-                Off by default. Turn it on and a rough circle becomes a circle, a rough box becomes
-                a box. Anything else is left as you drew it.
-              </div>
+              <div className="text-[10px] leading-4 opacity-70">Recognizes lines, circles, and basic shapes.</div>
             </div>
+            {shapesOn && <Check className="h-4 w-4 shrink-0" strokeWidth={2.5} />}
           </button>
-
-        </div>
+        )}
       </div>
 
       {/* ---------------------------------------------------------------- */}
@@ -260,18 +219,6 @@ export const ShapesSheet: React.FC<ShapesSheetProps> = ({
         {brushSettings.angleSnapping !== false && <Check className="h-4 w-4 shrink-0" strokeWidth={2.5} />}
       </button>
 
-      <div className="pb-1 pt-3">
-        <div className="mb-1.5 text-[11px] font-bold opacity-60">
-          Shapes it can read, when that is turned on
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {RECOGNISES.map((r) => (
-            <span key={r} className={`rounded-lg border px-2.5 py-1 text-[11px] ${soft}`}>
-              {r}
-            </span>
-          ))}
-        </div>
-      </div>
     </StudioSheet>
   );
 };
