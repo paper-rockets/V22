@@ -70,6 +70,10 @@ interface ViewportProps {
   onSelectModel?: (modelId: string | null) => void;
   /** What a one-finger or mouse drag on the selection does. */
   transformMode?: 'move' | 'rotate' | 'look' | 'scale';
+  /** Auto select: a tap decides for itself what it picked, and a tap on nothing lets go. */
+  autoSelect?: boolean;
+  /** Keeps a model that was dragged downwards sitting on the ground instead of sinking in. */
+  keepModelsOnGround?: boolean;
   /** Shows the selection frame outside the Select tool, e.g. while the controller is in Move. */
   showSelectionFrame?: boolean;
 }
@@ -127,6 +131,8 @@ export const Viewport: React.FC<ViewportProps> = ({
   onSelectModel,
   transformMode = 'move',
   showSelectionFrame = false,
+  autoSelect = true,
+  keepModelsOnGround = true,
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const engineRef = useRef<StudioEngine | null>(null);
@@ -197,6 +203,19 @@ export const Viewport: React.FC<ViewportProps> = ({
   const [activeSelection, setActiveSelection] = useState<SelectionInfo | null>(null);
   const targetScopeRef = useRef(targetScope);
   targetScopeRef.current = targetScope;
+  // A tap that picks something also changes "what to select" in App, but that
+  // only lands on the next render. The rest of the gesture has to move the
+  // thing that was just picked, so the new scope is remembered here and used
+  // until the prop catches up.
+  const pendingScopeRef = useRef<TransformTargetScope | null>(null);
+  const scopeNow = (): TransformTargetScope => pendingScopeRef.current ?? targetScopeRef.current;
+  const setScopeNow = (scope: TransformTargetScope) => {
+    pendingScopeRef.current = scope;
+    onSelectTargetScope?.(scope);
+  };
+  useEffect(() => {
+    pendingScopeRef.current = null;
+  }, [targetScope]);
   const isSelectToolRef = useRef(isSelectTool);
   isSelectToolRef.current = isSelectTool;
 
@@ -256,8 +275,9 @@ export const Viewport: React.FC<ViewportProps> = ({
     engine.setSelectedStrokes([]);
     engine.setActiveSelectedModel(null);
     onSelectModel?.(null);
+    onSelectTargetScope?.('none');
     onSelectTool?.('brush');
-  }, [onSelectModel, onSelectTool]);
+  }, [onSelectModel, onSelectTool, onSelectTargetScope]);
 
   // Delete / Backspace removes the selection, only while selecting.
   useEffect(() => {
@@ -491,7 +511,7 @@ export const Viewport: React.FC<ViewportProps> = ({
   };
 
   const isOverSelection = (engine: StudioEngine, clientX: number, clientY: number, pad: number) => {
-    const scope = targetScope;
+    const scope = scopeNow();
     if (engine.getSelectionSummary(scope).isEmpty) return false;
     const r = engine.getSelectionScreenRect(scope);
     if (!r) return false;
@@ -499,24 +519,38 @@ export const Viewport: React.FC<ViewportProps> = ({
     return p.x >= r.x - pad && p.x <= r.x + r.width + pad && p.y >= r.y - pad && p.y <= r.y + r.height + pad;
   };
 
-  const dragActionForMode = (shiftKey: boolean): 'move' | 'turn' | 'scale' => {
-    if (shiftKey || transformMode === 'rotate') return 'turn';
-    if (transformMode === 'scale') return 'scale';
-    return 'move';
-  };
+  /**
+   * One finger always moves. Turning and resizing are gestures rather than
+   * modes: two fingers twist to turn and pinch to resize, and on a mouse it is
+   * Shift-drag to turn and the wheel to resize. Nothing to switch on first.
+   */
+  const dragActionForMode = (shiftKey: boolean): 'move' | 'turn' | 'scale' => (shiftKey ? 'turn' : 'move');
 
-  /** Picks what is under a tap and makes it the selection, switching "What to select" when needed. */
+  /**
+   * Picks what is under a tap and makes it the selection.
+   *
+   * With Auto on (the normal way to work) the tap decides for itself: a line
+   * hands you the whole layer it is drawn on, the canvas or a model hands you
+   * that object, and a tap on empty space lets go of everything. Pinning a row
+   * in "What to select" by hand turns that off and keeps the old behaviour,
+   * where a tap can only pick the kind of thing that is pinned.
+   */
   const selectAtPoint = (engine: StudioEngine, clientX: number, clientY: number, isTouch: boolean, additive: boolean): boolean => {
     const rect = getRect();
     if (!rect) return false;
     const point = getSafeNormalizedPoint(clientX, clientY, rect);
     if (!point) return false;
+    const scope = scopeNow();
     const hit = engine.pickSelectable(point.x, point.y, isTouch ? PICK_RADIUS_TOUCH : PICK_RADIUS_MOUSE);
 
-    if (targetScope === 'all') return hit !== null;
+    // Pinned to "Everything": the whole scene moves as one, so a tap inside it
+    // never changes what is picked.
+    if (!autoSelect && scope === 'all') return hit !== null;
 
     if (hit?.type === 'stroke') {
-      if (targetScope === 'selected_strokes') {
+      // Tapping single lines together is only for the pinned "Lines" row. In
+      // Auto a tap hands over the whole layer, which is what a drawing is.
+      if (!autoSelect && scope === 'selected_strokes') {
         const current = engine.getSelectedStrokeIds();
         const next = additive
           ? current.includes(hit.id) ? current.filter((id) => id !== hit.id) : [...current, hit.id]
@@ -524,9 +558,12 @@ export const Viewport: React.FC<ViewportProps> = ({
         engine.setSelectedStrokes(next);
         showGestureToast(`${next.length} line${next.length === 1 ? '' : 's'} picked`, 'Drag to move it');
       } else {
+        engine.setSelectedStrokes([]);
+        engine.setActiveSelectedModel(null);
+        onSelectModel?.(null);
         engine.setActiveLayer(hit.layerId);
         onSelectLayer?.(hit.layerId);
-        onSelectTargetScope?.('active_layer');
+        setScopeNow('active_layer');
         const layerName = layers.find((l) => l.id === hit.layerId)?.name || 'Layer';
         showGestureToast(`${layerName} selected`, 'Drag to move the whole layer');
       }
@@ -535,9 +572,10 @@ export const Viewport: React.FC<ViewportProps> = ({
     }
 
     if (hit?.type === 'model' || hit?.type === 'canvas') {
+      engine.setSelectedStrokes([]);
       engine.setActiveSelectedModel(hit.id);
       onSelectModel?.(hit.id);
-      onSelectTargetScope?.('model');
+      setScopeNow('model');
       showGestureToast(
         hit.type === 'canvas' ? 'Canvas selected' : '3D model selected',
         hit.type === 'canvas' ? 'Drag to move it · lines stay put' : 'Drag to move it'
@@ -546,18 +584,27 @@ export const Viewport: React.FC<ViewportProps> = ({
       return true;
     }
 
-    // Tapping empty space clears picked lines or a picked model. A layer stays
-    // selected: it is always what the controller moves in "Current layer".
-    if (targetScope === 'selected_strokes') engine.setSelectedStrokes([]);
-    if (targetScope === 'model') {
+    // Auto deselect: a tap on empty space lets go of everything, leaving the
+    // next tap free to pick anything. With a row pinned by hand the pin stays
+    // put and only the picked lines and model are dropped.
+    const hadSomething = !engine.getSelectionSummary(scope).isEmpty;
+    engine.setSelectedStrokes([]);
+    if (engine.getActiveSelectedModelId()) {
       engine.setActiveSelectedModel(null);
       onSelectModel?.(null);
+    }
+    if (autoSelect && scope !== 'none') {
+      setScopeNow('none');
+      if (hadSomething) {
+        triggerHaptic(8);
+        showGestureToast('Let go', 'Tap anything to pick it');
+      }
     }
     return false;
   };
 
   const startSelectTransform = (engine: StudioEngine, pointerId: number, x: number, y: number, action: 'move' | 'turn' | 'scale') => {
-    engine.beginTransform(targetScope);
+    engine.beginTransform(scopeNow());
     selectGestureRef.current = { kind: 'transform', pointerId, lastX: x, lastY: y, action };
   };
 
@@ -568,7 +615,7 @@ export const Viewport: React.FC<ViewportProps> = ({
     const ndc = (x: number, y: number) => [((x - rect.left) / rect.width) * 2 - 1, -(((y - rect.top) / rect.height) * 2 - 1)];
     const [fx, fy] = ndc(fromX, fromY);
     const [tx, ty] = ndc(toX, toY);
-    engine.dragSelection(fx, fy, tx, ty, targetScope);
+    engine.dragSelection(fx, fy, tx, ty, scopeNow());
   };
 
   const applySelectTransform = (
@@ -580,8 +627,8 @@ export const Viewport: React.FC<ViewportProps> = ({
     toY: number
   ) => {
     if (action === 'move') dragSelectionBetween(engine, fromX, fromY, toX, toY);
-    else if (action === 'turn') engine.rotateTrackball(toX - fromX, toY - fromY, targetScope);
-    else engine.scaleAxis('uniform', Math.exp(-(toY - fromY) * 0.006), targetScope, false);
+    else if (action === 'turn') engine.rotateTrackball(toX - fromX, toY - fromY, scopeNow());
+    else engine.scaleAxis('uniform', Math.exp(-(toY - fromY) * 0.006), scopeNow(), false);
   };
 
   const pinchValues = () => {
@@ -601,7 +648,16 @@ export const Viewport: React.FC<ViewportProps> = ({
 
   const finishGesture = (engine: StudioEngine) => {
     const g = selectGestureRef.current;
-    if (g.kind === 'transform' || (g.kind === 'pinch' && g.onSelection)) engine.endTransform();
+    if (g.kind === 'transform' || (g.kind === 'pinch' && g.onSelection)) {
+      // What people expect of a thing on a floor: let go and it sits on the
+      // floor. This only ever lifts, so a model raised into the air stays up.
+      // The drawing canvas is a surface you place where you like, so it is
+      // never pulled back to the ground; only real models are.
+      if (keepModelsOnGround && scopeNow() === 'model' && !engine.isCanvasSelected() && engine.liftOntoGround('model')) {
+        showGestureToast('Set down on the ground', 'Undo puts it back');
+      }
+      engine.endTransform();
+    }
     if (g.kind === 'lasso') setIsLassoVisible(false);
   };
 
@@ -624,7 +680,7 @@ export const Viewport: React.FC<ViewportProps> = ({
       const onSelection =
         (g.kind === 'pending' && g.onSelection) || (g.kind === 'transform');
       if (g.kind === 'lasso') setIsLassoVisible(false);
-      if (onSelection && g.kind !== 'transform') engine.beginTransform(targetScope);
+      if (onSelection && g.kind !== 'transform') engine.beginTransform(scopeNow());
       const v = pinchValues();
       selectGestureRef.current = { kind: 'pinch', onSelection, lastDist: v.dist, lastAngle: v.angle, lastMidX: v.midX, lastMidY: v.midY };
       return true;
@@ -670,11 +726,11 @@ export const Viewport: React.FC<ViewportProps> = ({
       const dMidX = v.midX - g.lastMidX;
       const dMidY = v.midY - g.lastMidY;
       if (g.onSelection) {
-        if (g.lastDist > 4 && v.dist > 4) engine.scaleAxis('uniform', Math.max(0.5, Math.min(2, v.dist / g.lastDist)), targetScope, false);
+        if (g.lastDist > 4 && v.dist > 4) engine.scaleAxis('uniform', Math.max(0.5, Math.min(2, v.dist / g.lastDist)), scopeNow(), false);
         let dAngle = v.angle - g.lastAngle;
         while (dAngle > Math.PI) dAngle -= Math.PI * 2;
         while (dAngle < -Math.PI) dAngle += Math.PI * 2;
-        engine.rotateAroundViewAxis(dAngle, targetScope);
+        engine.rotateAroundViewAxis(dAngle, scopeNow());
         dragSelectionBetween(engine, g.lastMidX, g.lastMidY, v.midX, v.midY);
       } else {
         engine.zoom((g.lastDist - v.dist) * 2.2);
@@ -702,10 +758,10 @@ export const Viewport: React.FC<ViewportProps> = ({
       if (Math.hypot(e.clientX - g.startX, e.clientY - g.startY) < threshold) return true;
       let grab = g.onSelection;
       // Grab-and-drag: pressing on something new picks it and moves it in one motion.
-      if (!grab && targetScope !== 'all') {
+      if (!grab && (autoSelect || targetScope !== 'all')) {
         grab = selectAtPoint(engine, g.startX, g.startY, e.pointerType === 'touch', false);
       }
-      if (grab && !engine.getSelectionSummary(targetScope).isEmpty) {
+      if (grab && !engine.getSelectionSummary(scopeNow()).isEmpty) {
         startSelectTransform(engine, e.pointerId, g.startX, g.startY, dragActionForMode(e.shiftKey));
       } else {
         selectGestureRef.current = {
@@ -758,10 +814,10 @@ export const Viewport: React.FC<ViewportProps> = ({
     if (g.kind === 'pending' && g.pointerId === e.pointerId && e.type !== 'pointercancel') {
       selectAtPoint(engine, g.startX, g.startY, e.pointerType === 'touch', e.shiftKey);
     } else if (g.kind === 'lasso' && g.pointerId === e.pointerId) {
-      const lassoScope = targetScope === 'model' ? 'model' : 'selected_strokes';
+      const lassoScope = scopeNow() === 'model' ? 'model' : 'selected_strokes';
       const result = g.points.length >= 3 ? engine.lassoSelect(g.points, lassoScope) : { count: 0, type: 'none' as const };
       if (result.count > 0) {
-        if (lassoScope === 'selected_strokes') onSelectTargetScope?.('selected_strokes');
+        if (lassoScope === 'selected_strokes') setScopeNow('selected_strokes');
         else onSelectModel?.((result as { ids: string[] }).ids[0] ?? null);
         showGestureToast(
           lassoScope === 'model' ? '3D model picked' : `${result.count} line${result.count === 1 ? '' : 's'} picked`,
@@ -1503,9 +1559,9 @@ export const Viewport: React.FC<ViewportProps> = ({
     const engine = engineRef.current;
     // Over the selection, the wheel resizes it; one wheel burst is one undo step.
     if (engine && isSelectTool && isOverSelection(engine, e.clientX, e.clientY, 6)) {
-      if (wheelTransformTimerRef.current === null) engine.beginTransform(targetScope);
+      if (wheelTransformTimerRef.current === null) engine.beginTransform(scopeNow());
       else window.clearTimeout(wheelTransformTimerRef.current);
-      engine.scaleAxis('uniform', Math.max(0.8, Math.min(1.25, Math.exp(-e.deltaY * 0.0015))), targetScope, false);
+      engine.scaleAxis('uniform', Math.max(0.8, Math.min(1.25, Math.exp(-e.deltaY * 0.0015))), scopeNow(), false);
       wheelTransformTimerRef.current = window.setTimeout(() => {
         wheelTransformTimerRef.current = null;
         engineRef.current?.endTransform();

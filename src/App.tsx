@@ -630,7 +630,24 @@ export function App() {
   // Multi-Model & Target Scope State
   const [loadedModels, setLoadedModels] = useState<LoadedModelInfo[]>([]);
   const [activeModelId, setActiveModelId] = useState<string | null>(null);
-  const [targetScope, setTargetScope] = useState<TransformTargetScope>('active_layer');
+  const [targetScope, setTargetScope] = useState<TransformTargetScope>('none');
+  // Auto select: a tap picks whatever it landed on and a tap on nothing lets
+  // go, so there is no "what am I selecting" step before touching the artwork.
+  const [autoSelect, setAutoSelect] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('remix3d.autoSelect') !== 'false';
+    } catch {
+      return true;
+    }
+  });
+  // Models sit on the ground when you let go of them instead of sinking in.
+  const [keepModelsOnGround, setKeepModelsOnGround] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('remix3d.keepModelsOnGround') !== 'false';
+    } catch {
+      return true;
+    }
+  });
   const [selectionMode, setSelectionMode] = useState<'pointer' | 'lasso'>('pointer');
   const [navigatorTransformMode, setNavigatorTransformMode] = useState<'move' | 'rotate' | 'look' | 'scale'>('move');
   const [activeGuide, setActiveGuide] = useState<ActiveGuideReference | null>(null);
@@ -1018,6 +1035,46 @@ export function App() {
       engine.setActiveLayer(layerId);
     }
   }, [engine]);
+
+  const handleSetAutoSelect = useCallback((next: boolean) => {
+    setAutoSelect(next);
+    try {
+      localStorage.setItem('remix3d.autoSelect', String(next));
+    } catch {}
+    // Going back to Auto starts from a clean slate: the next tap decides.
+    if (next) {
+      engine?.setSelectedStrokes([]);
+      engine?.setActiveSelectedModel(null);
+      setTargetScope('none');
+    }
+  }, [engine]);
+
+  const handleSetKeepModelsOnGround = useCallback((next: boolean) => {
+    setKeepModelsOnGround(next);
+    try {
+      localStorage.setItem('remix3d.keepModelsOnGround', String(next));
+    } catch {}
+  }, []);
+
+  /** Lets go of everything. Used when leaving the Select tool. */
+  const handleClearSelection = useCallback(() => {
+    engine?.setSelectedStrokes([]);
+    engine?.setActiveSelectedModel(null);
+    if (autoSelect) setTargetScope('none');
+  }, [engine, autoSelect]);
+
+  /**
+   * Switching away from Select lets go of the selection, so the frame and the
+   * action bar do not hang around over a drawing that is being worked on.
+   */
+  const handleSetTool = useCallback((next: ToolType) => {
+    setTool((prev) => {
+      if ((prev === 'select' || prev === 'pointer') && next !== 'select' && next !== 'pointer') {
+        queueMicrotask(handleClearSelection);
+      }
+      return next;
+    });
+  }, [handleClearSelection]);
 
   const handleSelectTargetScope = useCallback((scope: TransformTargetScope) => {
     setTargetScope(scope);
@@ -1616,6 +1673,8 @@ export function App() {
         selectionMode={selectionMode}
         targetScope={targetScope}
         onSelectTargetScope={handleSelectTargetScope}
+        autoSelect={autoSelect}
+        keepModelsOnGround={keepModelsOnGround}
         onSelectLayer={handleSelectLayer}
         onSelectModel={handleSelectModel}
         transformMode={navigatorTransformMode}
@@ -1625,7 +1684,7 @@ export function App() {
           activeController !== 'hidden' &&
           showStudioNavigator
         }
-        onSelectTool={setTool}
+        onSelectTool={handleSetTool}
         brushSettings={brushSettings}
         onUpdateBrushSettings={(newSettings) =>
           setBrushSettings((prev) => ({ ...prev, ...newSettings }))
@@ -1651,7 +1710,7 @@ export function App() {
             matcapTexture: undefined,
             activeLookName: 'Flat Paint',
           }));
-          setTool('brush');
+          handleSetTool('brush');
         }}
         onUndo={handleUndo}
         onRedo={handleRedo}
@@ -1724,13 +1783,17 @@ export function App() {
         theme={theme}
             engine={engine}
             tool={tool}
-            setTool={setTool}
+            setTool={handleSetTool}
             brushSettings={brushSettings}
             setBrushSettings={setBrushSettings}
             isGizmoActive={gizmoMode !== 'Hidden' && activeController !== 'hidden' && showStudioNavigator}
             onToggleGizmo={handleToggleGizmo}
             targetScope={targetScope}
             onSelectTargetScope={handleSelectTargetScope}
+            autoSelect={autoSelect}
+            onSetAutoSelect={handleSetAutoSelect}
+            keepModelsOnGround={keepModelsOnGround}
+            onSetKeepModelsOnGround={handleSetKeepModelsOnGround}
             selectionMode={selectionMode}
             onSelectSelectionMode={setSelectionMode}
             transformMode={navigatorTransformMode}
@@ -1758,7 +1821,7 @@ export function App() {
             setLiquifySettings={setLiquifySettings}
             isLiquifyOpen={isLiquifyOpen}
             onOpenLiquify={() => {
-              setTool('liquify');
+              handleSetTool('liquify');
               setIsLiquifyOpen(true);
               engine?.startLiquifySession();
             }}
@@ -1770,12 +1833,12 @@ export function App() {
             onApplyLiquify={() => {
               engine?.commitLiquify();
               setIsLiquifyOpen(false);
-              setTool('brush');
+              handleSetTool('brush');
             }}
             onCancelLiquify={() => {
               engine?.cancelLiquify();
               setIsLiquifyOpen(false);
-              setTool('brush');
+              handleSetTool('brush');
             }}
             onOpenBentGuide={() => {
               closeSheet();
@@ -1905,7 +1968,7 @@ export function App() {
         onToggleGizmo={handleToggleGizmo}
         onOpenBentGuide={() => setIsBentGuideOpen(true)}
         onOpenScaffolding={() => setIsScaffoldingOpen(true)}
-        setTool={setTool}
+        setTool={handleSetTool}
         onGuideDone={() => {
           setSnappedShapeNotice('Surface snap active: strokes will draw across this 3D guide!');
           setTimeout(() => setSnappedShapeNotice(null), 3000);
@@ -1960,7 +2023,7 @@ export function App() {
         onColorStudioInteractionModeChange={setColorStudioAllowsWorkspaceInteraction}
         brushSettings={brushSettings}
         setBrushSettings={setBrushSettings}
-        setTool={setTool}
+        setTool={handleSetTool}
         activeDNA={activeDNA}
         setActiveDNA={setActiveDNA}
         snappedShapeNotice={snappedShapeNotice}

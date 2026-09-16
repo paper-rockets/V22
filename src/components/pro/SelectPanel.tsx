@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { CircleDot } from 'lucide-react';
+import { CircleDot, Wand2, X } from 'lucide-react';
 import {
   IcPointer as MousePointer2,
   IcLasso as CircleDashed,
@@ -31,6 +31,10 @@ interface SelectPanelProps {
   onSelectSelectionMode?: (mode: 'pointer' | 'lasso') => void;
   transformMode?: 'move' | 'rotate' | 'look' | 'scale';
   onSelectTransformMode?: (mode: 'move' | 'rotate' | 'look' | 'scale') => void;
+  autoSelect?: boolean;
+  onSetAutoSelect?: (next: boolean) => void;
+  keepModelsOnGround?: boolean;
+  onSetKeepModelsOnGround?: (next: boolean) => void;
 }
 
 const SCOPES: { id: TransformTargetScope; label: string }[] = [
@@ -41,6 +45,7 @@ const SCOPES: { id: TransformTargetScope; label: string }[] = [
 ];
 
 const SCOPE_HINTS: Partial<Record<TransformTargetScope, string>> = {
+  none: 'Tap anything to pick it.',
   active_layer: 'Tap a line to pick its whole layer.',
   selected_strokes: 'Tap a line, Shift-tap to add more, or lasso several.',
   model: 'Tap a 3D model to pick it.',
@@ -59,8 +64,10 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
   theme = 'dark',
   selectionMode = 'pointer',
   onSelectSelectionMode,
-  transformMode = 'move',
-  onSelectTransformMode,
+  autoSelect = true,
+  onSetAutoSelect,
+  keepModelsOnGround = true,
+  onSetKeepModelsOnGround,
 }) => {
   const isLight = theme === 'light';
   const isSelecting = tool === 'pointer' || tool === 'select';
@@ -91,12 +98,6 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
     haptics.trigger('light');
     onSelectSelectionMode?.(mode);
     setTool('select');
-  };
-
-  const pickTransformMode = (mode: 'move' | 'rotate' | 'scale') => {
-    haptics.trigger('light');
-    onSelectTransformMode?.(mode);
-    if (!isSelecting) setTool('select');
   };
 
   const nothingToActOn = !summary || summary.isEmpty;
@@ -211,53 +212,82 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
 
       <div className={cardClass}>
         <div className={subHeadingClass}>What to select</div>
-        <div className="grid grid-cols-2 gap-1.5" role="group" aria-label="What to select">
+        <button
+          type="button"
+          aria-pressed={autoSelect}
+          onClick={() => {
+            haptics.trigger('light');
+            onSetAutoSelect?.(true);
+            if (!isSelecting) setTool('select');
+          }}
+          className={`w-full ${segmentClass(autoSelect)}`}
+        >
+          <Wand2 className="w-3.5 h-3.5" />
+          <span>Auto · whatever I tap</span>
+        </button>
+        <p className={hintClass}>
+          {autoSelect
+            ? 'Tap a drawing and you get its layer. Tap the canvas or a model and you get that. Tap empty space to let go.'
+            : 'Locked to one kind of thing. Tap Auto above to go back to picking whatever you touch.'}
+        </p>
+        <div className="grid grid-cols-2 gap-1.5 pt-0.5" role="group" aria-label="Always select one kind of thing">
           {scopes.map((scope) => (
             <button
               key={scope.id}
               type="button"
-              aria-pressed={targetScope === scope.id}
+              aria-pressed={!autoSelect && targetScope === scope.id}
               onClick={() => {
                 haptics.trigger('light');
+                onSetAutoSelect?.(false);
                 onSelectTargetScope(scope.id);
                 if (!isSelecting) setTool('select');
               }}
-              className={segmentClass(targetScope === scope.id)}
+              className={segmentClass(!autoSelect && targetScope === scope.id)}
             >
               {scope.label}
             </button>
           ))}
         </div>
-        <p className={hintClass}>{SCOPE_HINTS[targetScope]}</p>
+        {!autoSelect && <p className={hintClass}>{SCOPE_HINTS[targetScope]}</p>}
       </div>
 
       <div className={cardClass}>
-        <div className={subHeadingClass}>Dragging the selection</div>
-        <div className="grid grid-cols-3 gap-1.5" role="group" aria-label="What dragging the selection does">
-          {(
-            [
-              { id: 'move', label: 'Move', Icon: Compass },
-              { id: 'rotate', label: 'Rotate', Icon: RotateCcw },
-              { id: 'scale', label: 'Resize', Icon: CircleDot },
-            ] as const
-          ).map(({ id, label, Icon }) => (
-            <button
-              key={id}
-              type="button"
-              aria-pressed={transformMode === id}
-              onClick={() => pickTransformMode(id)}
-              className={segmentClass(transformMode === id)}
-            >
-              <Icon className="w-3.5 h-3.5" />
-              <span>{label}</span>
-            </button>
-          ))}
-        </div>
-        <p className={hintClass}>
-          {transformMode === 'look'
-            ? 'The View controls are set to Orbit. Pick one to start editing.'
-            : 'Also: corner handles resize, the round handle rotates. Two fingers pinch and twist.'}
-        </p>
+        <div className={subHeadingClass}>Moving what you picked</div>
+        <ul className={`${hintClass} space-y-1`}>
+          <li className="flex items-center gap-1.5">
+            <Compass className="w-3.5 h-3.5 shrink-0 opacity-70" />
+            <span>One finger drags it anywhere.</span>
+          </li>
+          <li className="flex items-center gap-1.5">
+            <CircleDot className="w-3.5 h-3.5 shrink-0 opacity-70" />
+            <span>Two fingers pinch to resize.</span>
+          </li>
+          <li className="flex items-center gap-1.5">
+            <RotateCcw className="w-3.5 h-3.5 shrink-0 opacity-70" />
+            <span>Two fingers twist to turn it.</span>
+          </li>
+        </ul>
+
+        <button
+          type="button"
+          role="switch"
+          aria-checked={keepModelsOnGround}
+          onClick={() => {
+            haptics.trigger('light');
+            onSetKeepModelsOnGround?.(!keepModelsOnGround);
+          }}
+          className={`w-full min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center justify-between font-medium text-xs transition-colors ${
+            isLight
+              ? 'bg-white border-black/10 text-neutral-700 hover:bg-neutral-200/40'
+              : 'bg-black/30 border-white/10 text-neutral-300 hover:bg-white/5'
+          }`}
+        >
+          <span className="flex items-center gap-1.5">
+            <ArrowDownToLine className="w-3.5 h-3.5" />
+            Models sit on the ground
+          </span>
+          <span className="text-[11px]">{keepModelsOnGround ? 'On' : 'Off'}</span>
+        </button>
 
         <button
           type="button"
@@ -284,7 +314,7 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
       </div>
 
       <div className={cardClass}>
-        <div className="grid grid-cols-3 gap-1.5">
+        <div className="grid grid-cols-2 gap-1.5">
           <button
             type="button"
             disabled={nothingToActOn}
@@ -323,6 +353,21 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
           >
             <Trash2 className="w-3.5 h-3.5" />
             <span>Delete</span>
+          </button>
+          <button
+            type="button"
+            disabled={nothingToActOn}
+            onClick={() => {
+              haptics.trigger('light');
+              engine?.setSelectedStrokes([]);
+              engine?.setActiveSelectedModel(null);
+              if (autoSelect) onSelectTargetScope('none');
+            }}
+            className={actionClass('neutral', nothingToActOn)}
+            title="Let go of the selection"
+          >
+            <X className="w-3.5 h-3.5" />
+            <span>Let go</span>
           </button>
         </div>
       </div>

@@ -398,7 +398,7 @@ export type TransformJoystickMode = '2d' | '3d';
  * picked by tap or lasso; 'strokes' (every line in the scene) is kept for
  * saved undo history.
  */
-export type TransformTargetScope = 'all' | 'strokes' | 'active_layer' | 'model' | 'guide' | 'selected_strokes';
+export type TransformTargetScope = 'none' | 'all' | 'strokes' | 'active_layer' | 'model' | 'guide' | 'selected_strokes';
 
 /** The one description of the current selection shared by the frame, panel and controller. */
 export interface SelectionSummary {

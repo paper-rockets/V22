@@ -1,8 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { RotateCw } from 'lucide-react';
 import type { StudioEngine } from '../../core/studioEngine';
 import type { SelectionSummary, TransformTargetScope } from '../../types';
-import { haptics } from '../../utils/haptics';
 import './selectionFrame.css';
 
 interface SelectionFrameProps {
@@ -11,28 +9,18 @@ interface SelectionFrameProps {
   /** Always shown while the Select tool is on. */
   visible: boolean;
   /**
-   * Outside the Select tool, flash the frame while the View controls are being
-   * dragged (in Move, Rotate or Resize) so it is clear what they are moving.
+   * Outside the Select tool, flash the outline while the View controls are
+   * being dragged (in Move, Rotate or Resize) so it is clear what they move.
    */
   followController?: boolean;
   theme?: 'light' | 'dark';
 }
 
-/** How long the frame lingers after the View controls are released. */
+/** How long the outline lingers after the View controls are released. */
 const CONTROLLER_LINGER_MS = 900;
-
-type HandleDrag = {
-  pointerId: number;
-  kind: 'scale' | 'turn';
-  centerX: number;
-  centerY: number;
-  lastDist: number;
-  lastAngle: number;
-};
-
-/** Space between the selection bounds and the drawn frame, in CSS pixels. */
-const FRAME_PAD = 10;
-/** Keeps handles reachable when the selection is larger than the screen. */
+/** How long the "drag to move" reminder stays up after the selection changes. */
+const HINT_MS = 3000;
+/** Keeps the label on screen when the selection runs past the edges. */
 const EDGE_INSET = 12;
 /** On-screen controls the label must never sit on top of. */
 const OBSTACLE_SELECTOR = [
@@ -50,9 +38,11 @@ const overlaps = (a: ScreenBox, b: ScreenBox) =>
   a.left < b.right && a.right > b.left && a.top < b.bottom && a.bottom > b.top;
 
 /**
- * The single on-screen highlight for the current selection: a frame that
- * follows the selection every frame, corner handles that resize it, a round
- * handle that turns it, and a label naming what is selected.
+ * The single on-screen highlight for the current selection: an outline drawn
+ * around the selection as it actually sits in 3D, so it lies on a tilted
+ * canvas instead of boxing it in, plus a small label naming what is selected.
+ * Moving, resizing and turning are direct — drag, pinch or wheel, twist or
+ * Shift-drag — so there are no handles to hunt for.
  */
 export const SelectionFrame: React.FC<SelectionFrameProps> = ({
   engine,
@@ -62,12 +52,12 @@ export const SelectionFrame: React.FC<SelectionFrameProps> = ({
   theme = 'dark',
 }) => {
   const rootRef = useRef<HTMLDivElement>(null);
-  const boxRef = useRef<HTMLDivElement>(null);
+  const shapeRef = useRef<SVGPolygonElement>(null);
   const labelRef = useRef<HTMLDivElement>(null);
-  const dragRef = useRef<HandleDrag | null>(null);
   const [summary, setSummary] = useState<SelectionSummary | null>(null);
   const [isCoarse] = useState(() => typeof window !== 'undefined' && window.matchMedia?.('(pointer: coarse)').matches);
   const [controllerActive, setControllerActive] = useState(false);
+  const [showHint, setShowHint] = useState(true);
 
   useEffect(() => {
     if (!followController) {
@@ -89,6 +79,14 @@ export const SelectionFrame: React.FC<SelectionFrameProps> = ({
   }, [followController]);
 
   const shown = visible || (followController && controllerActive);
+
+  // The reminder shows when the selection changes, then gets out of the way.
+  useEffect(() => {
+    if (!shown) return;
+    setShowHint(true);
+    const timer = window.setTimeout(() => setShowHint(false), HINT_MS);
+    return () => window.clearTimeout(timer);
+  }, [shown, scope, summary?.label, summary?.detail]);
 
   // Follow the selection. Measuring is skipped unless the camera, the
   // container size or the selection itself changed since the last frame.
@@ -154,46 +152,36 @@ export const SelectionFrame: React.FC<SelectionFrameProps> = ({
     };
 
     const layout = (width: number, height: number) => {
-      const box = boxRef.current;
+      const shape = shapeRef.current;
       const label = labelRef.current;
-      if (!box || !label) return;
-      const rect = engine.getSelectionScreenRect(scope);
+      if (!shape || !label) return;
+      const selection = engine.getSelectionScreenShape(scope);
       root.hidden = false;
-      if (!rect) {
-        box.hidden = true;
+      if (!selection) {
+        shape.setAttribute('points', '');
         // "Tap a line" style hints only make sense while the Select tool is on.
         label.hidden = !visible;
         label.dataset.placement = 'top-center';
         label.style.transform = `translate(${Math.round(width / 2)}px, 72px) translateX(-50%)`;
         return;
       }
-      box.hidden = false;
       label.hidden = false;
-      const left = Math.max(EDGE_INSET, rect.x - FRAME_PAD);
-      // Leave room above for the turn handle, which sits 60px over the frame,
-      // and keep that handle clear of a toolbar pinned to the top of the screen.
-      let topLimit = EDGE_INSET + 62;
-      for (const o of obstacles) {
-        if (o.top < height * 0.25 && o.left < width / 2 && o.right > width / 2) topLimit = Math.max(topLimit, o.bottom + 62);
-      }
-      const top = Math.max(topLimit, rect.y - FRAME_PAD);
-      const right = Math.min(width - EDGE_INSET, rect.x + rect.width + FRAME_PAD);
-      const bottom = Math.min(height - EDGE_INSET, rect.y + rect.height + FRAME_PAD);
-      const w = Math.max(24, right - left);
-      const h = Math.max(24, bottom - top);
-      box.style.transform = `translate(${Math.round(left)}px, ${Math.round(top)}px)`;
-      box.style.width = `${Math.round(w)}px`;
-      box.style.height = `${Math.round(h)}px`;
-      // The label prefers the spot under the frame (the turn handle owns the
-      // space above), then the frame's inner edges, and skips any spot that
-      // would cover the View controls, the toolbars or the tool rail.
+      shape.setAttribute('points', selection.points.map((p) => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' '));
+
+      const left = selection.rect.x;
+      const top = selection.rect.y;
+      const w = selection.rect.width;
+      const h = selection.rect.height;
+
+      // The label prefers the spot under the outline, then its inner edges, and
+      // skips any spot that would cover the View controls or the toolbars.
       const place = () => {
         const labelW = label.offsetWidth || 240;
         const labelH = label.offsetHeight || 46;
         const clampX = (x: number) => Math.min(Math.max(EDGE_INSET, x), Math.max(EDGE_INSET, width - labelW - EDGE_INSET));
         const candidates = [
-          { placement: 'below', x: clampX(left), y: top + h + 14 },
-          { placement: 'below', x: clampX(left + w - labelW), y: top + h + 14 },
+          { placement: 'below', x: clampX(left), y: top + h + 12 },
+          { placement: 'below', x: clampX(left + w - labelW), y: top + h + 12 },
           { placement: 'inside', x: clampX(left + 10), y: top + h - labelH - 10 },
           { placement: 'inside', x: clampX(left + 10), y: top + 10 },
         ];
@@ -203,8 +191,8 @@ export const SelectionFrame: React.FC<SelectionFrameProps> = ({
         });
         return { fit, fallback: candidates[top + h + labelH + 20 < height ? 0 : 2] };
       };
-      // Full label outside the frame first; if the controls leave no room there,
-      // drop the gesture hint and try again before covering the drawing.
+      // Full label outside the outline first; if the controls leave no room
+      // there, drop the reminder and try again before covering the drawing.
       label.dataset.compact = 'false';
       const full = place();
       let chosen = full.fit;
@@ -219,75 +207,23 @@ export const SelectionFrame: React.FC<SelectionFrameProps> = ({
       label.style.transform = `translate(${Math.round(chosen.x)}px, ${Math.round(chosen.y)}px)`;
     };
 
+    // Picking something new does not move the camera, so listen for it too.
+    const forceRemeasure = () => { lastRevision = -1; };
+    window.addEventListener('STUDIO_SELECTION_TARGET_CHANGED', forceRemeasure);
+
     root.hidden = false;
     setSummary(engine.getSelectionSummary(scope));
     frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
+    return () => {
+      cancelAnimationFrame(frame);
+      window.removeEventListener('STUDIO_SELECTION_TARGET_CHANGED', forceRemeasure);
+    };
   }, [engine, scope, shown, visible]);
 
   // A scope change must re-measure immediately, even if nothing else moved.
   useEffect(() => {
     if (engine) setSummary(engine.getSelectionSummary(scope));
   }, [engine, scope]);
-
-  const beginHandleDrag = (kind: HandleDrag['kind']) => (e: React.PointerEvent<HTMLElement>) => {
-    if (!engine || !boxRef.current) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const r = boxRef.current.getBoundingClientRect();
-    const centerX = r.left + r.width / 2;
-    const centerY = r.top + r.height / 2;
-    dragRef.current = {
-      pointerId: e.pointerId,
-      kind,
-      centerX,
-      centerY,
-      lastDist: Math.max(1, Math.hypot(e.clientX - centerX, e.clientY - centerY)),
-      lastAngle: Math.atan2(e.clientY - centerY, e.clientX - centerX),
-    };
-    try { e.currentTarget.setPointerCapture(e.pointerId); } catch (_) {}
-    engine.beginTransform(scope);
-    haptics.trigger('light');
-  };
-
-  const moveHandleDrag = (e: React.PointerEvent<HTMLElement>) => {
-    const drag = dragRef.current;
-    if (!engine || !drag || drag.pointerId !== e.pointerId) return;
-    e.preventDefault();
-    e.stopPropagation();
-    const dx = e.clientX - drag.centerX;
-    const dy = e.clientY - drag.centerY;
-    if (drag.kind === 'scale') {
-      const dist = Math.hypot(dx, dy);
-      if (dist < 6) return;
-      const factor = Math.max(0.5, Math.min(2, dist / drag.lastDist));
-      engine.scaleAxis('uniform', factor, scope, false);
-      drag.lastDist = dist;
-    } else {
-      const angle = Math.atan2(dy, dx);
-      let delta = angle - drag.lastAngle;
-      while (delta > Math.PI) delta -= Math.PI * 2;
-      while (delta < -Math.PI) delta += Math.PI * 2;
-      engine.rotateAroundViewAxis(delta, scope);
-      drag.lastAngle = angle;
-    }
-  };
-
-  const endHandleDrag = (e: React.PointerEvent<HTMLElement>) => {
-    const drag = dragRef.current;
-    if (!engine || !drag || drag.pointerId !== e.pointerId) return;
-    e.stopPropagation();
-    dragRef.current = null;
-    try { e.currentTarget.releasePointerCapture(e.pointerId); } catch (_) {}
-    engine.endTransform();
-  };
-
-  const handleProps = (kind: HandleDrag['kind']) => ({
-    onPointerDown: beginHandleDrag(kind),
-    onPointerMove: moveHandleDrag,
-    onPointerUp: endHandleDrag,
-    onPointerCancel: endHandleDrag,
-  });
 
   const hint = summary?.isEmpty
     ? summary.detail
@@ -300,29 +236,13 @@ export const SelectionFrame: React.FC<SelectionFrameProps> = ({
       ref={rootRef}
       className="selection-frame"
       data-theme={theme}
-      data-handles={visible ? 'true' : 'false'}
+      data-hint={visible && showHint ? 'true' : 'false'}
       hidden
       aria-live="polite"
     >
-      <div ref={boxRef} className="selection-frame-box">
-        {(['nw', 'ne', 'sw', 'se'] as const).map((corner) => (
-          <div
-            key={corner}
-            className="selection-frame-corner"
-            data-corner={corner}
-            role="slider"
-            aria-label="Resize selection"
-            {...handleProps('scale')}
-          >
-            <span />
-          </div>
-        ))}
-        <div className="selection-frame-turn" role="slider" aria-label="Rotate selection" {...handleProps('turn')}>
-          <span>
-            <RotateCw size={14} strokeWidth={2.4} />
-          </span>
-        </div>
-      </div>
+      <svg className="selection-frame-shape" aria-hidden="true">
+        <polygon ref={shapeRef} points="" />
+      </svg>
       <div ref={labelRef} className="selection-frame-label" data-empty={summary?.isEmpty ? 'true' : 'false'}>
         {summary && !summary.isEmpty && (
           <strong>

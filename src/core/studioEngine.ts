@@ -125,6 +125,25 @@ const _viewDirScratch = new THREE.Vector3();
 const _worldNormalScratch = new THREE.Vector3();
 
 /** Pixel distance from (px, py) to the segment (ax, ay)-(bx, by). */
+/** Smallest outline that wraps a set of screen points (Andrew's monotone chain). */
+const convexHull2D = (input: { x: number; y: number }[]): { x: number; y: number }[] => {
+  if (input.length < 4) return input;
+  const pts = [...input].sort((a, b) => (a.x === b.x ? a.y - b.y : a.x - b.x));
+  const cross = (o: { x: number; y: number }, a: { x: number; y: number }, b: { x: number; y: number }) =>
+    (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x);
+  const half = (source: { x: number; y: number }[]) => {
+    const out: { x: number; y: number }[] = [];
+    for (const p of source) {
+      while (out.length >= 2 && cross(out[out.length - 2], out[out.length - 1], p) <= 0) out.pop();
+      out.push(p);
+    }
+    out.pop();
+    return out;
+  };
+  const hull = [...half(pts), ...half([...pts].reverse())];
+  return hull.length >= 3 ? hull : input;
+};
+
 function distanceToSegment(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {
   const dx = bx - ax;
   const dy = by - ay;
@@ -480,6 +499,11 @@ export class StudioEngine {
   private selectionChangeCount = 0;
   private readonly selectionBoxScratch = new THREE.Box3();
   private readonly selectionCornerScratch = new THREE.Vector3();
+  private readonly selectionShapeMatrix = new THREE.Matrix4();
+  private readonly selectionShapeBox = new THREE.Box3();
+  private readonly selectionShapeVec = new THREE.Vector3();
+  private readonly selectionShapeQuat = new THREE.Quaternion();
+  private readonly selectionShapeQuatInv = new THREE.Quaternion();
   private guideHelperMesh: THREE.Mesh | null = null;
   private cachedRect: DOMRect | null = null;
   private drawingPlaneMesh: THREE.Mesh | null = null;
@@ -1405,6 +1429,7 @@ export class StudioEngine {
 
     this.activeSelectedModelId = obj.uuid;
     this.activeModelName = name;
+    this.notifySelectionTargetChanged();
 
     // Record into unified history
     this.historyUndoStack.push({
@@ -1425,6 +1450,14 @@ export class StudioEngine {
    */
   public snapActiveToGround(targetScope: TransformTargetScope = 'model'): void {
     this.transformController.snapActiveToGround(targetScope);
+  }
+
+  /**
+   * Lifts a selection that has been dragged through the ground back onto it.
+   * Anything resting on or floating above the ground is left alone.
+   */
+  public liftOntoGround(targetScope: TransformTargetScope = 'model'): boolean {
+    return this.transformController.liftOntoGround(targetScope);
   }
 
   /**
@@ -1593,6 +1626,138 @@ export class StudioEngine {
     return { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
   }
 
+  /**
+   * The selection's outline as it really sits in 3D: the corners of the
+   * selected objects projected to the screen, so the outline lies on a tilted
+   * canvas or model instead of boxing it in with a flat rectangle.
+   */
+  public getSelectionScreenShape(
+    scope: TransformTargetScope
+  ): { points: { x: number; y: number }[]; rect: { x: number; y: number; width: number; height: number } } | null {
+    const corners: THREE.Vector3[] = [];
+    const lines: StrokeDescriptor[] = [];
+    const modelChildren = () => this.modelRoot.children.filter((c) => c !== this.strokeRoot);
+
+    if (scope === 'model') {
+      const picked = this.activeSelectedModelId
+        ? this.modelRoot.children.find((c) => c.uuid === this.activeSelectedModelId)
+        : undefined;
+      if (picked) this.pushObjectCorners(picked, corners);
+      else if (this.activeSelectedModelId === null) modelChildren().forEach((c) => this.pushObjectCorners(c, corners));
+      if (corners.length === 0) this.targetMeshes.forEach((m) => this.pushObjectCorners(m, corners));
+    } else if (scope === 'all') {
+      modelChildren().forEach((c) => this.pushObjectCorners(c, corners));
+      this.strokes.forEach(({ descriptor }) => lines.push(descriptor));
+    } else if (scope === 'strokes') {
+      this.strokes.forEach(({ descriptor }) => lines.push(descriptor));
+    } else if (scope === 'active_layer') {
+      this.strokes.forEach(({ descriptor }) => {
+        if (descriptor.layerId === this.activeLayerId) lines.push(descriptor);
+      });
+    } else if (scope === 'selected_strokes') {
+      for (const id of this.getSelectedStrokeIds()) {
+        const entry = this.strokes.get(id);
+        if (entry) lines.push(entry.descriptor);
+      }
+    } else if (scope === 'guide') {
+      const guideMesh = this.getActiveGuideMesh();
+      if (guideMesh) this.pushObjectCorners(guideMesh, corners);
+      else {
+        const guideRoot = this.loftEngine.getGuideRoot();
+        const scaffoldRoot = this.scaffoldingEngine.getScaffoldRoot();
+        if (guideRoot && guideRoot.children.length > 0) this.pushObjectCorners(guideRoot, corners);
+        else if (scaffoldRoot && scaffoldRoot.children.length > 0) this.pushObjectCorners(scaffoldRoot, corners);
+      }
+    }
+
+    if (lines.length > 0) this.pushLineCorners(lines, corners);
+    if (corners.length === 0) return null;
+
+    const width = this.container.clientWidth;
+    const height = this.container.clientHeight;
+    this.camera.updateMatrixWorld();
+    const projected: { x: number; y: number }[] = [];
+    for (const corner of corners) {
+      const p = this.selectionCornerScratch.copy(corner).project(this.camera);
+      if (p.z > 1) continue;
+      projected.push({ x: (p.x + 1) * 0.5 * width, y: (1 - p.y) * 0.5 * height });
+    }
+    if (projected.length === 0) return null;
+
+    const points = convexHull2D(projected);
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const p of points) {
+      minX = Math.min(minX, p.x); maxX = Math.max(maxX, p.x);
+      minY = Math.min(minY, p.y); maxY = Math.max(maxY, p.y);
+    }
+    return { points, rect: { x: minX, y: minY, width: maxX - minX, height: maxY - minY } };
+  }
+
+  /** World corners of an object's own bounds, kept in the object's own tilt. */
+  private pushObjectCorners(object: THREE.Object3D, out: THREE.Vector3[]): void {
+    object.updateMatrixWorld(true);
+    const toLocal = this.selectionShapeMatrix.copy(object.matrixWorld).invert();
+    const local = this.selectionShapeBox.makeEmpty();
+    const v = this.selectionShapeVec;
+    object.traverse((child) => {
+      const mesh = child as THREE.Mesh;
+      if (!(mesh as any).isMesh || !mesh.geometry) return;
+      if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
+      const bounds = mesh.geometry.boundingBox;
+      if (!bounds) return;
+      for (let i = 0; i < 8; i++) {
+        v.set(
+          i & 1 ? bounds.max.x : bounds.min.x,
+          i & 2 ? bounds.max.y : bounds.min.y,
+          i & 4 ? bounds.max.z : bounds.min.z
+        );
+        v.applyMatrix4(mesh.matrixWorld).applyMatrix4(toLocal);
+        local.expandByPoint(v);
+      }
+    });
+    if (local.isEmpty()) return;
+    for (let i = 0; i < 8; i++) {
+      out.push(
+        new THREE.Vector3(
+          i & 1 ? local.max.x : local.min.x,
+          i & 2 ? local.max.y : local.min.y,
+          i & 4 ? local.max.z : local.min.z
+        ).applyMatrix4(object.matrixWorld)
+      );
+    }
+  }
+
+  /**
+   * Corners around a set of lines, measured along the canvas's own tilt, so a
+   * drawing made on the canvas gets an outline that lies flat on it.
+   */
+  private pushLineCorners(descriptors: StrokeDescriptor[], out: THREE.Vector3[]): void {
+    const tilt = this.selectionShapeQuat;
+    if (this.drawingPlaneMesh) this.drawingPlaneMesh.getWorldQuaternion(tilt);
+    else tilt.identity();
+    const toLocal = this.selectionShapeQuatInv.copy(tilt).invert();
+    const v = this.selectionShapeVec;
+    let minX = Infinity, minY = Infinity, minZ = Infinity;
+    let maxX = -Infinity, maxY = -Infinity, maxZ = -Infinity;
+    let found = false;
+    for (const descriptor of descriptors) {
+      const pad = Math.max(0.01, (descriptor.settings?.size ?? 0.02) / 2);
+      for (const point of descriptor.points) {
+        v.copy(point.position).applyQuaternion(toLocal);
+        minX = Math.min(minX, v.x - pad); maxX = Math.max(maxX, v.x + pad);
+        minY = Math.min(minY, v.y - pad); maxY = Math.max(maxY, v.y + pad);
+        minZ = Math.min(minZ, v.z - pad); maxZ = Math.max(maxZ, v.z + pad);
+        found = true;
+      }
+    }
+    if (!found) return;
+    for (let i = 0; i < 8; i++) {
+      out.push(
+        new THREE.Vector3(i & 1 ? maxX : minX, i & 2 ? maxY : minY, i & 4 ? maxZ : minZ).applyQuaternion(tilt)
+      );
+    }
+  }
+
   /** Plain-language description of the current selection for labels. */
   public getSelectionSummary(scope: TransformTargetScope): SelectionSummary {
     const plural = (n: number, one: string) => `${n} ${one}${n === 1 ? '' : 's'}`;
@@ -1602,6 +1767,10 @@ export class StudioEngine {
       return n;
     };
     switch (scope) {
+      // Nothing is picked: the frame hides and every action button greys out
+      // until the next tap lands on something.
+      case 'none':
+        return { scope, label: 'Nothing selected', detail: 'Tap anything to pick it', isEmpty: true };
       case 'active_layer': {
         const layer = this.currentLayers.find((l) => l.id === this.activeLayerId);
         const lines = countLayerLines(this.activeLayerId);

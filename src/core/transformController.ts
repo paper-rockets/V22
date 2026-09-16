@@ -882,6 +882,24 @@ export class TransformController {
   }
 
   /**
+   * Lifts a selection that has sunk through the ground back onto it, and does
+   * nothing at all to one that is resting on the ground or floating above it.
+   *
+   * Meant to be called while a drag is still open, so settling down is part of
+   * the same undo step as the move rather than a second one.
+   */
+  public liftOntoGround(scope: TransformTargetScope = 'model'): boolean {
+    const groundY = -1.2;
+    const box = this.getSelectionBox(scope);
+    if (box.isEmpty()) return false;
+    const deltaY = groundY - box.min.y;
+    if (deltaY <= 0.0005) return false;
+    this.applyTransformMatrix(new THREE.Matrix4().makeTranslation(0, deltaY, 0), scope);
+    this.ctx.markDirty();
+    return true;
+  }
+
+  /**
    * Smoothly orients the actual 3D model or drawing canvas plane directly (WITHOUT moving camera)
    */
   public orientModelOrSurface(view: PerfectViewType, scope: TransformTargetScope = 'all'): void {

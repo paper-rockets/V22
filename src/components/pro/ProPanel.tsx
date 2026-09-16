@@ -42,6 +42,10 @@ export interface ProPanelProps {
   onOpenImporter?: () => void;
   targetScope?: TransformTargetScope;
   onSelectTargetScope?: (scope: TransformTargetScope) => void;
+  autoSelect?: boolean;
+  onSetAutoSelect?: (next: boolean) => void;
+  keepModelsOnGround?: boolean;
+  onSetKeepModelsOnGround?: (next: boolean) => void;
   selectionMode?: 'pointer' | 'lasso';
   onSelectSelectionMode?: (mode: 'pointer' | 'lasso') => void;
   transformMode?: 'move' | 'rotate' | 'look' | 'scale';
@@ -96,6 +100,10 @@ export const ProPanel: React.FC<ProPanelProps> = ({
   onOpenImporter = () => {},
   targetScope = 'all',
   onSelectTargetScope = () => {},
+  autoSelect = true,
+  onSetAutoSelect,
+  keepModelsOnGround = true,
+  onSetKeepModelsOnGround,
   selectionMode = 'pointer',
   onSelectSelectionMode,
   transformMode = 'move',
@@ -214,6 +222,10 @@ export const ProPanel: React.FC<ProPanelProps> = ({
             onOpenNumpad={onOpenNumpad}
             targetScope={targetScope}
             onSelectTargetScope={onSelectTargetScope}
+            autoSelect={autoSelect}
+            onSetAutoSelect={onSetAutoSelect}
+            keepModelsOnGround={keepModelsOnGround}
+            onSetKeepModelsOnGround={onSetKeepModelsOnGround}
             selectionMode={selectionMode}
             onSelectSelectionMode={onSelectSelectionMode}
             transformMode={transformMode}
