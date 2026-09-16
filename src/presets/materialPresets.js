@@ -1,39 +1,130 @@
-﻿import { DESKTOP_SHADERS_MATERIAL } from './desktopShaders';
-import { GODOT_MATERIAL_PRESETS } from './godotShaders';
-import { BLOBMIXER_MATERIAL_PRESETS } from './blobmixerShaders';
-import { WAYFINDER_MATERIAL_PRESETS } from './wayfinderShaders';
-import { GRASSWORKS_MATERIAL_PRESETS } from './grassworksShaders';
-import { REZE_MATERIAL_PRESETS } from './rezeShaders';
+// ============================================================================
+// Master Material Presets Library - 100% Procedural & Code-Generated
+// All materials are mathematically generated with zero third-party image assets.
+// Safe for commercial distribution.
+// ============================================================================
 
-// High-Quality Procedural MatCap Canvas Generator
-export function createMatCap(drawFn) {
-  const canvas = document.createElement('canvas');
-  canvas.width = 512;
-  canvas.height = 512;
-  const ctx = canvas.getContext('2d');
-  drawFn(ctx, 512, 512);
-  return canvas.toDataURL('image/png');
-}
-
-// Visual Presets with Real-Time Shaders
+import { DOPAMINE_PRESETS } from './dopaminePresets.js';
+import { PROCEDURAL_MATCAP_PRESETS } from './proceduralMatcaps.js';
+import { GLASS_PRESETS } from './glassPresets.js';
+import { ANIMATED_PRESETS } from './animatedPresets.js';
+import { PLAYDOH_PRESETS } from './playdohPresets.js';
 import {
-  SUMMER_SHADERS,
   TOON_PRESETS,
   FLAT_COLOR_PRESETS,
-  GLASS_PRESETS,
   BRIGHT_COLOR_PRESETS,
   METAL_PRESETS,
   CLAY_PRESETS,
   GEMS_PRESETS,
-} from './materials/summerShaders';
-import { FUN_MAGIC_SHADERS } from './materials/funMagicShaders';
-import { WONDERLUST_PRESETS } from './materials/wonderlustPresets';
+} from './materials/summerShaders.js';
+import { FUN_MAGIC_SHADERS } from './materials/funMagicShaders.js';
+import { WONDERLUST_PRESETS } from './materials/wonderlustPresets.js';
+import { MARBLE_PRESETS } from './materials/marbleShaders.js';
+
+// Shared canvas for memory-efficient MatCap generation
+let sharedCanvas = null;
+
+export function createMatCap(drawFn, width = 256, height = 256) {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return '';
+  if (!drawFn || typeof drawFn !== 'function') return '';
+  
+  if (!sharedCanvas) {
+    sharedCanvas = document.createElement('canvas');
+  }
+  sharedCanvas.width = width;
+  sharedCanvas.height = height;
+  const ctx = sharedCanvas.getContext('2d');
+  if (!ctx) return '';
+  
+  ctx.clearRect(0, 0, width, height);
+  drawFn(ctx, width, height);
+  return sharedCanvas.toDataURL('image/png');
+}
+
+// Wrap a preset so its data URL is lazily computed on first access (0ms boot overhead)
+function makeLazyPreset(p) {
+  let cachedUrl = p.url || null;
+  return {
+    ...p,
+    get url() {
+      if (cachedUrl) return cachedUrl;
+      if (typeof p.generate === 'function') {
+        cachedUrl = createMatCap(p.generate, 256, 256);
+      }
+      return cachedUrl;
+    }
+  };
+}
+
+const RAW_PRESETS = [
+  // 1. Real Play-Doh Shaders (Directly from V23 Kids)
+  ...PLAYDOH_PRESETS,
+
+  // 2. Live Animated Shaders (High-Dopamine, Zero Water)
+  ...ANIMATED_PRESETS,
+
+  // 2. Glass & Crystal Shaders
+  ...GLASS_PRESETS,
+
+  // 3. Marble & Natural Stone Shaders (10-Piece Master Collection)
+  ...MARBLE_PRESETS,
+
+  // 4. Dopamine, Iridescent, Dichroic, Stars, Space, Candy & Kids Presets
+  ...DOPAMINE_PRESETS,
+
+  // 5. High-Performance Procedural Color Library (641 Materials)
+  ...PROCEDURAL_MATCAP_PRESETS,
+
+  // 6. Creative & Stylized Procedural Collections (Non-Water)
+  ...WONDERLUST_PRESETS,
+  ...FUN_MAGIC_SHADERS,
+  ...TOON_PRESETS,
+  ...FLAT_COLOR_PRESETS,
+  ...BRIGHT_COLOR_PRESETS,
+  ...METAL_PRESETS,
+  ...CLAY_PRESETS,
+  ...GEMS_PRESETS,
+];
+
+export const ALL_MATERIAL_PRESETS = RAW_PRESETS.map(makeLazyPreset);
+
+export const PRESET_CATEGORIES = [
+  'All',
+  '🏛️ Marble & Natural Stone',
+  '⚡ Animated Shaders',
+  '🔮 Glass & Crystal',
+  '✨ Iridescent & Dichroic',
+  '🍬 Candy & Gummy',
+  '⭐ Stars & Space',
+  '🌈 Holographic & Rainbow',
+  '🧸 Kids Toy & Clay',
+  '💎 MatCaps: Metals & Chrome',
+  '👑 MatCaps: Gold & Amber',
+  '🌊 MatCaps: Blue & Cyan',
+  '🌿 MatCaps: Green & Emerald',
+  '🔥 MatCaps: Red & Crimson',
+  '🔥 MatCaps: Orange & Coral',
+  '🔮 MatCaps: Purple & Velvet',
+  '🏺 MatCaps: Clay, Skin & Earth',
+  '🌑 MatCaps: Obsidian & Dark',
+  '⚪ MatCaps: Pearl & Ceramic',
+  'Toon Shaders',
+  'Flat Colors',
+  'Bright Colors',
+  'Metals',
+  'Clay & Matte',
+  'Gems & Organics'
+];
 
 export {
-  SUMMER_SHADERS,
+  PLAYDOH_PRESETS,
+  ANIMATED_PRESETS,
+  GLASS_PRESETS,
+  MARBLE_PRESETS,
+  DOPAMINE_PRESETS,
+  PROCEDURAL_MATCAP_PRESETS,
   TOON_PRESETS,
   FLAT_COLOR_PRESETS,
-  GLASS_PRESETS,
   BRIGHT_COLOR_PRESETS,
   METAL_PRESETS,
   CLAY_PRESETS,
@@ -41,41 +132,3 @@ export {
   FUN_MAGIC_SHADERS,
   WONDERLUST_PRESETS,
 };
-
-export const ALL_MATERIAL_PRESETS = [
-  ...BLOBMIXER_MATERIAL_PRESETS.map(p => ({ ...p, url: createMatCap(p.generate) })),
-  ...SUMMER_SHADERS.map(p => ({ ...p, url: createMatCap(p.generate) })),
-  ...GODOT_MATERIAL_PRESETS.map(p => ({ ...p, url: createMatCap(p.generate) })),
-  ...WONDERLUST_PRESETS.map(p => ({ ...p, url: createMatCap(p.generate) })),
-  ...WAYFINDER_MATERIAL_PRESETS.map(p => ({ ...p, url: createMatCap(p.generate) })),
-  ...GRASSWORKS_MATERIAL_PRESETS.map(p => ({ ...p, url: createMatCap(p.generate) })),
-  ...REZE_MATERIAL_PRESETS.map(p => ({ ...p, url: createMatCap(p.generate) })),
-  ...DESKTOP_SHADERS_MATERIAL.map(p => ({ ...p, url: createMatCap(p.generate) })),
-  ...FUN_MAGIC_SHADERS.map(p => ({ ...p, url: createMatCap(p.generate) })),
-  ...TOON_PRESETS.map(p => p.generate ? { ...p, url: createMatCap(p.generate) } : p),
-  ...FLAT_COLOR_PRESETS.map(p => p.generate ? { ...p, url: createMatCap(p.generate) } : p),
-  ...GLASS_PRESETS.map(p => p.generate ? { ...p, url: createMatCap(p.generate) } : p),
-  ...BRIGHT_COLOR_PRESETS.map(p => p.generate ? { ...p, url: createMatCap(p.generate) } : p),
-  ...METAL_PRESETS.map(p => p.generate ? { ...p, url: createMatCap(p.generate) } : p),
-  ...CLAY_PRESETS.map(p => p.generate ? { ...p, url: createMatCap(p.generate) } : p),
-  ...GEMS_PRESETS.map(p => p.generate ? { ...p, url: createMatCap(p.generate) } : p)
-];
-
-export const PRESET_CATEGORIES = [
-  'All',
-  '🎨 Blobmixer MatCaps',
-  '☀️ Summer Afternoon',
-  '🌿 Godot Water & Grass',
-  '🌍 Wonderlust',
-  '🍃 Wayfinder & Grassworks',
-  '⚡ WebGPU & Cyber',
-  '🌊 Live Desktop Shaders',
-  '✨ Fun & Magic',
-  'Toon Shaders',
-  'Flat Colors',
-  'Glass & Crystal',
-  'Bright Colors',
-  'Metals',
-  'Clay & Matte',
-  'Gems & Organics'
-];

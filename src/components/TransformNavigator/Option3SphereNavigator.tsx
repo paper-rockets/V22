@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import { StudioEngine } from '../../core/studioEngine';
 import { TransformTargetScope } from '../../types';
 import { haptics } from '../../utils/haptics';
-import { ChevronDown, SlidersHorizontal } from 'lucide-react';
+import { Check, ChevronDown, Move, Orbit, RotateCw, Scaling, SlidersHorizontal } from 'lucide-react';
 import { NavigatorSettings } from './NavigatorSettings';
 import './navigatorStyles.css';
 
@@ -70,12 +70,12 @@ const MOVE_STEPS = [
 
 type NavMode = 'move' | 'rotate' | 'look' | 'scale';
 
-const MODE_LABELS: Record<NavMode, string> = { look: 'Orbit', move: 'Move', rotate: 'Rotate', scale: 'Resize' };
+const MODE_LABELS: Record<NavMode, string> = { look: 'Orbit', move: 'Move', rotate: 'Rotate', scale: 'Scale' };
 
 const DEG = Math.PI / 180;
 const CROP = 0.055;
 const MIN_RAD = 0.55;
-const STORE = 'nv.layout.v1';
+const STORE = 'nv.layout.v2';
 
 export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
   engine,
@@ -99,6 +99,7 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
   onTransformModeChange,
 }: Option3SphereNavigatorProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+  const [modeMenuOpen, setModeMenuOpen] = useState<boolean>(false);
   const [isListOpen, setIsListOpen] = useState<boolean>(false);
   const [showAdvanced, setShowAdvanced] = useState<boolean>(false);
   const [targetsList, setTargetsList] = useState<TargetItem[]>([]);
@@ -112,6 +113,8 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
   const nvRef = useRef<HTMLDivElement | null>(null);
   const dockRef = useRef<HTMLDivElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
+  const modeMenuRef = useRef<HTMLDivElement | null>(null);
+  const modeTriggerRef = useRef<HTMLButtonElement | null>(null);
   const tabRef = useRef<HTMLButtonElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const labelRef = useRef<HTMLDivElement | null>(null);
@@ -138,7 +141,7 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
   const targetObjRef = useRef<THREE.Object3D | null>(null);
   const targetsRef = useRef<TargetItem[]>([]);
   const currentRef = useRef<number>(0);
-  const anchorRef = useRef({ ax: 1, ay: 1 });
+  const anchorRef = useRef({ ax: 0, ay: 1 });
 
   const camRef = useRef({
     radius: engine?.cameraSpherical?.radius ?? 7.85,
@@ -325,6 +328,8 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
     const top = Math.max(minTop, Math.min(maxTop, y));
     dock.style.left = Math.round(left) + 'px';
     dock.style.top = Math.round(top) + 'px';
+    dock.style.right = 'auto';
+    dock.style.bottom = 'auto';
     if (remember) {
       const denomW = Math.max(1, maxLeft - minLeft);
       const denomH = Math.max(1, maxTop - minTop);
@@ -1565,16 +1570,29 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
   // Keep gizmo active and fully visible when painting, close dropdown menu when tapping outside
   useEffect(() => {
     const onDocDown = (e: PointerEvent) => {
-      if (nvRef.current && !nvRef.current.contains(e.target as Node)) {
+      const target = e.target as Node;
+      if (nvRef.current && !nvRef.current.contains(target)) {
         setMenu(false);
+        setModeMenuOpen(false);
       } else if (e.target === canvasRef.current) {
         setMenu(false);
+        setModeMenuOpen(false);
+      } else if (modeMenuRef.current && !modeMenuRef.current.contains(target) && modeTriggerRef.current && !modeTriggerRef.current.contains(target)) {
+        setModeMenuOpen(false);
+      }
+    };
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setMenu(false);
+        setModeMenuOpen(false);
       }
     };
     document.addEventListener('pointerdown', onDocDown, true);
+    document.addEventListener('keydown', onKeyDown);
 
     return () => {
       document.removeEventListener('pointerdown', onDocDown, true);
+      document.removeEventListener('keydown', onKeyDown);
     };
   }, [setMenu]);
 
@@ -1675,7 +1693,7 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
       id="nv"
       ref={nvRef}
       data-menu={isMenuOpen ? 'open' : 'closed'}
-      data-corner="br"
+      data-corner="bl"
       data-mode={mode}
     >
       <div className="nv-dock" id="nv-dock" ref={dockRef}>
@@ -1683,18 +1701,78 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
 
         {/* One discreet rail; presets and targeting live in the shared menu. */}
         <div className="nv-control-rail">
-          <button type="button" className="nv-mode-badge"
-            onClick={(event) => { event.stopPropagation(); setMenu(!isMenuOpen); }}
-            aria-label="Choose navigator mode and target" aria-expanded={isMenuOpen}>
+          <button
+            ref={modeTriggerRef}
+            type="button"
+            className={`nv-mode-badge ${modeMenuOpen ? 'jn-btn-active' : ''}`}
+            onClick={(event) => {
+              event.stopPropagation();
+              haptics.trigger('light');
+              setMenu(false);
+              setModeMenuOpen((prev) => !prev);
+            }}
+            aria-label="Choose navigator mode"
+            aria-expanded={modeMenuOpen}
+          >
             {MODE_LABELS[mode]}
-            <ChevronDown size={11} />
+            <ChevronDown size={11} className={modeMenuOpen ? 'jn-chevron-up' : ''} />
           </button>
-          <button type="button" className="nv-view-btn nv-view-btn--more"
-            ref={tabRef} id="nv-tab" data-testid="nav-more" aria-expanded={isMenuOpen}
-            onClick={(event) => { event.stopPropagation(); haptics.trigger('light'); setMenu(!isMenuOpen); }}
-            aria-label="View controls menu" title="Target, layer and navigator settings">
+          <button
+            type="button"
+            className={`nv-view-btn nv-view-btn--more ${isMenuOpen ? 'jn-btn-active' : ''}`}
+            ref={tabRef}
+            id="nv-tab"
+            data-testid="nav-more"
+            aria-expanded={isMenuOpen}
+            onClick={(event) => {
+              event.stopPropagation();
+              haptics.trigger('light');
+              setModeMenuOpen(false);
+              setMenu(!isMenuOpen);
+            }}
+            aria-label="View controls menu"
+            title="Target, layer and navigator settings"
+          >
             <SlidersHorizontal size={13} />
           </button>
+
+          {modeMenuOpen && (
+            <div
+              ref={modeMenuRef}
+              className={`jn-mode-menu ${nvRef.current && nvRef.current.getBoundingClientRect().top < 160 ? 'jn-mode-menu--down' : 'jn-mode-menu--up'}`}
+              role="menu"
+              aria-label="Transform mode options"
+            >
+              {(['look', 'move', 'rotate', 'scale'] as const).map((m) => {
+                const isSelected = mode === m;
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    role="menuitem"
+                    aria-checked={isSelected}
+                    className={`jn-mode-menu-item ${isSelected ? 'jn-mode-menu-item--active' : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      stopTour();
+                      setMode(m);
+                      setModeMenuOpen(false);
+                      haptics.trigger('light');
+                    }}
+                  >
+                    <span className="jn-mode-item-icon">
+                      {m === 'look' && <Orbit size={13} />}
+                      {m === 'move' && <Move size={13} />}
+                      {m === 'rotate' && <RotateCw size={13} />}
+                      {m === 'scale' && <Scaling size={13} />}
+                    </span>
+                    <span className="jn-mode-item-label">{MODE_LABELS[m]}</span>
+                    {isSelected && <Check size={12} className="jn-mode-item-check" />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
         <div className="nv-label" id="nv-label" ref={labelRef}></div>
       </div>

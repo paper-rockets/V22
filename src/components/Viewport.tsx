@@ -336,7 +336,7 @@ export const Viewport: React.FC<ViewportProps> = ({
     setGestureToast({ title, subtitle });
     gestureToastTimerRef.current = setTimeout(() => {
       setGestureToast(null);
-    }, 1800);
+    }, 1500);
   };
 
   const triggerHaptic = (ms: number = 15) => {
@@ -687,8 +687,9 @@ export const Viewport: React.FC<ViewportProps> = ({
     }
     if (selectPointersRef.current.size > 2) return true;
 
-    const onSelection = isOverSelection(engine, e.clientX, e.clientY, isTouch ? 16 : 6);
-    if (selectionMode === 'lasso' && !onSelection) {
+    const isPen = e.pointerType === 'pen';
+    const onSelection = !isPen && isOverSelection(engine, e.clientX, e.clientY, isTouch ? 16 : 6);
+    if (selectionMode === 'lasso' && (!onSelection || isPen)) {
       const p = toContainerPoint(e.clientX, e.clientY);
       selectGestureRef.current = { kind: 'lasso', pointerId: e.pointerId, points: [p] };
       updateLassoPath([p]);
@@ -754,8 +755,20 @@ export const Viewport: React.FC<ViewportProps> = ({
     }
 
     if (g.kind === 'pending' && g.pointerId === e.pointerId) {
-      const threshold = e.pointerType === 'touch' ? DRAG_THRESHOLD_TOUCH : DRAG_THRESHOLD_MOUSE;
+      const isPen = e.pointerType === 'pen';
+      const threshold = isPen ? 6 : (e.pointerType === 'touch' ? DRAG_THRESHOLD_TOUCH : DRAG_THRESHOLD_MOUSE);
       if (Math.hypot(e.clientX - g.startX, e.clientY - g.startY) < threshold) return true;
+
+      // Stylus on tablet: DO NOT move/transform the selection. Stylus is dedicated exclusively to selecting.
+      if (isPen) {
+        const p1 = toContainerPoint(g.startX, g.startY);
+        const p2 = toContainerPoint(e.clientX, e.clientY);
+        selectGestureRef.current = { kind: 'lasso', pointerId: e.pointerId, points: [p1, p2] };
+        updateLassoPath([p1, p2]);
+        setIsLassoVisible(true);
+        return true;
+      }
+
       let grab = g.onSelection;
       // Grab-and-drag: pressing on something new picks it and moves it in one motion.
       if (!grab && (autoSelect || targetScope !== 'all')) {
@@ -812,7 +825,7 @@ export const Viewport: React.FC<ViewportProps> = ({
     if (remaining > 0 && g.kind === 'finished') return true;
 
     if (g.kind === 'pending' && g.pointerId === e.pointerId && e.type !== 'pointercancel') {
-      selectAtPoint(engine, g.startX, g.startY, e.pointerType === 'touch', e.shiftKey);
+      selectAtPoint(engine, g.startX, g.startY, e.pointerType === 'touch' || e.pointerType === 'pen', e.shiftKey);
     } else if (g.kind === 'lasso' && g.pointerId === e.pointerId) {
       const lassoScope = scopeNow() === 'model' ? 'model' : 'selected_strokes';
       const result = g.points.length >= 3 ? engine.lassoSelect(g.points, lassoScope) : { count: 0, type: 'none' as const };

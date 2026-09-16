@@ -14,7 +14,7 @@
 /* Container */
 .jn-wrap {
   position: fixed;
-  right: max(24px, env(safe-area-inset-right));
+  left: max(24px, env(safe-area-inset-left));
   bottom: max(32px, env(safe-area-inset-bottom));
   z-index: 44;
   display: flex;
@@ -24,7 +24,7 @@
   user-select: none;
   -webkit-user-select: none;
   touch-action: none;
-  transform-origin: right bottom;
+  transform-origin: left bottom;
   transition: transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 

@@ -1,0 +1,74 @@
+{
+  "suites": [
+    {
+      "id": "v22-remix-studio",
+      "name": "V22 Remix Studio",
+      "devices": [
+        "galaxy-s25-ultra",
+        "galaxy-tab-s6-lite",
+        "desktop-laptop",
+        "iphone-16-pro-max",
+        "ipad-pro-11"
+      ]
+    }
+  ],
+  "devices": [
+    {
+      "id": "galaxy-s25-ultra",
+      "name": "Samsung Galaxy S25 Ultra",
+      "width": 412,
+      "height": 893,
+      "dpr": 3.5,
+      "type": "phone",
+      "capabilities": [
+        "touch",
+        "mobile"
+      ]
+    },
+    {
+      "id": "galaxy-tab-s6-lite",
+      "name": "Samsung Galaxy Tab S6 Lite",
+      "width": 600,
+      "height": 1000,
+      "dpr": 2.0,
+      "type": "tablet",
+      "capabilities": [
+        "touch",
+        "tablet"
+      ]
+    },
+    {
+      "id": "desktop-laptop",
+      "name": "Desktop (1440 × 900)",
+      "width": 1440,
+      "height": 900,
+      "dpr": 1.0,
+      "type": "desktop",
+      "capabilities": []
+    },
+    {
+      "id": "iphone-16-pro-max",
+      "name": "iPhone 16 Pro Max",
+      "width": 440,
+      "height": 956,
+      "dpr": 3.0,
+      "type": "phone",
+      "capabilities": [
+        "touch",
+        "mobile"
+      ]
+    },
+    {
+      "id": "ipad-pro-11",
+      "name": "iPad Pro 11-inch",
+      "width": 834,
+      "height": 1194,
+      "dpr": 2.0,
+      "type": "tablet",
+      "capabilities": [
+        "touch",
+        "tablet"
+      ]
+    }
+  ]
+}

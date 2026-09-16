@@ -21,10 +21,8 @@ import {
   Check,
   ChevronRight,
   ChevronDown,
-  FolderArchive,
   PanelLeft,
   EyeOff,
-  SunMedium,
   Trash2,
   Droplets,
   Palette,
@@ -46,12 +44,6 @@ export interface StudioSettingsSheetProps {
   // UI Scale
   uiScale?: number;
   onUiScaleChange?: (scale: number) => void;
-  // Sensitivity
-  navigatorSensitivity?: number;
-  onSensitivityChange?: (sens: number) => void;
-  // Camera Projection
-  projectionMode?: 'perspective' | 'orthographic';
-  onToggleProjection?: () => void;
   // Touch drawing
   fingerDraw: boolean;
   onToggleFingerDraw: (on: boolean) => void;
@@ -78,10 +70,8 @@ export interface StudioSettingsSheetProps {
   onClearCanvas?: () => void;
   modelDisplayMode: 'texture' | 'clay';
   onSetModelDisplayMode: (mode: 'texture' | 'clay') => void;
-  onOpenIllumination?: () => void;
   onOpenRenderSettings?: () => void;
   // Share & Export
-  onOpenSessions?: () => void;
   onOpenExport?: () => void;
   onOpenARViewer?: () => void;
   // Reference Images
@@ -92,12 +82,7 @@ export interface StudioSettingsSheetProps {
   storageEstimate?: StorageEstimateInfo | null;
   autoSaveMeta?: AutoSaveMetaInfo;
   onRestoreAutoSave?: () => void;
-  // Navigator Style & Toggle
-  navigatorStyle?: 'sphere' | 'disc' | 'petal' | 'collar';
-  onNavigatorStyleChange?: (style: 'sphere' | 'disc' | 'petal' | 'collar') => void;
-  // Navigator & Stats
-  showNavigator?: boolean;
-  onToggleNavigator?: (show: boolean) => void;
+  // Stats
   showStats?: boolean;
   onToggleStats?: (show: boolean) => void;
 }
@@ -158,10 +143,6 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
   onSetTheme,
   uiScale = 1.0,
   onUiScaleChange,
-  navigatorSensitivity = 1.0,
-  onSensitivityChange,
-  projectionMode = 'perspective',
-  onToggleProjection,
   fingerDraw,
   onToggleFingerDraw,
   disableContextMenu = false,
@@ -184,9 +165,7 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
   onClearCanvas,
   modelDisplayMode,
   onSetModelDisplayMode,
-  onOpenIllumination,
   onOpenRenderSettings,
-  onOpenSessions,
   onOpenExport,
   onOpenARViewer,
   onOpenClipboard,
@@ -195,10 +174,6 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
   storageEstimate,
   autoSaveMeta,
   onRestoreAutoSave,
-  navigatorStyle = 'sphere',
-  onNavigatorStyleChange,
-  showNavigator = true,
-  onToggleNavigator,
   showStats = false,
   onToggleStats,
 }) => {
@@ -275,9 +250,10 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
           <div className="paperrocket-stepper flex items-center gap-1">
             <button
               type="button"
+              aria-label="Decrease UI scale"
               onClick={() => {
                 haptics.trigger('light');
-                onUiScaleChange(Math.max(0.7, uiScale - 0.1));
+                onUiScaleChange(Math.max(0.7, Math.round((uiScale - 0.1) * 10) / 10));
               }}
               className={`min-h-[44px] min-w-[44px] px-2 rounded-lg border text-sm font-bold flex items-center justify-center transition-colors ${
                 isLight ? 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-800' : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white'
@@ -287,6 +263,8 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
             </button>
             <button
               type="button"
+              title="Reset to 100%"
+              aria-label={`UI scale ${Math.round(uiScale * 100)}%, tap to reset to 100%`}
               onClick={() => {
                 haptics.trigger('light');
                 onUiScaleChange(1.0);
@@ -295,13 +273,14 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
                 isLight ? 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-700' : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-neutral-300'
               }`}
             >
-              100%
+              {Math.round(uiScale * 100)}%
             </button>
             <button
               type="button"
+              aria-label="Increase UI scale"
               onClick={() => {
                 haptics.trigger('light');
-                onUiScaleChange(Math.min(1.5, uiScale + 0.1));
+                onUiScaleChange(Math.min(1.5, Math.round((uiScale + 0.1) * 10) / 10));
               }}
               className={`min-h-[44px] min-w-[44px] px-2 rounded-lg border text-sm font-bold flex items-center justify-center transition-colors ${
                 isLight ? 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-800' : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white'
@@ -520,15 +499,6 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
             </Row>
           )}
 
-          {onOpenIllumination && (
-            <Row icon={SunMedium} label="Lighting Setup" hint="Light direction, soft shadows, and lighting presets" isLight={isLight}>
-              <button type="button" onClick={onOpenIllumination} className={actionBtn}>
-                <SunMedium className="w-4 h-4 text-amber-400" />
-                <span>Lighting Setup</span>
-              </button>
-            </Row>
-          )}
-
           {onOpenRenderSettings && (
             <Row icon={Sliders} label="Picture Quality" hint="How good your drawing looks, plus glow" isLight={isLight}>
               <button type="button" onClick={onOpenRenderSettings} className={actionBtn}>
@@ -538,24 +508,8 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
             </Row>
           )}
 
-          <Row icon={Box} label="Model Appearance" hint="Show a model's original colors or plain white clay" isLight={isLight}>
-            <div className="flex gap-1 shrink-0">
-              <button type="button" onClick={() => onSetModelDisplayMode('texture')} className={`${pill(modelDisplayMode === 'texture')} whitespace-nowrap`}>Original Colors</button>
-              <button type="button" onClick={() => onSetModelDisplayMode('clay')} className={`${pill(modelDisplayMode === 'clay')} whitespace-nowrap`}>White Clay</button>
-            </div>
-          </Row>
-
           {/* 3. SHARE & EXPORT */}
           <SectionHeader title="Share & Export" isLight={isLight} />
-
-          {onOpenSessions && (
-            <Row icon={FolderArchive} label="Projects" hint="Open, save, or restore" isLight={isLight}>
-              <button type="button" onClick={onOpenSessions} className={actionBtn}>
-                <FolderArchive className="w-4 h-4" />
-                <span>Manage Projects</span>
-              </button>
-            </Row>
-          )}
 
           {onOpenExport && (
             <Row icon={Download} label="Export 3D Artwork" hint="Save model as GLB, OBJ, STL, or image capture" isLight={isLight}>
@@ -579,10 +533,10 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
           {onOpenClipboard && (
             <>
               <SectionHeader title="Reference Images" isLight={isLight} />
-              <Row icon={Image} label="Reference Images" hint="Pin 2D concept art and blueprint photos on screen" isLight={isLight}>
+              <Row icon={Image} label="Floating Board" hint="Pin 2D concept art and blueprint photos on screen" isLight={isLight}>
                 <button type="button" onClick={onOpenClipboard} className={actionBtn}>
                   <Image className="w-4 h-4" />
-                  <span>Reference Images</span>
+                  <span>Open Board</span>
                 </button>
               </Row>
             </>

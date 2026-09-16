@@ -106,8 +106,8 @@ export function cumulativeLengths(positions: THREE.Vector3[]): number[] {
  */
 export function detectCorners(
   points: THREE.Vector3[],
-  thresholdRad: number = Math.PI / 4,
-  spanRatio: number = 0.035
+  thresholdRad: number = THREE.MathUtils.degToRad(68),
+  spanRatio: number = 0.04
 ): number[] {
   const n = points.length;
   if (n < 8) return [];
@@ -117,18 +117,33 @@ export function detectCorners(
   const span = pathLength * spanRatio;
 
   const turns = new Float64Array(n);
+  const sharpness = new Float64Array(n);
+
   for (let i = 0; i < n; i++) {
     let back = i;
     while (back > 0 && cum[i] - cum[back] < span) back--;
     let fwd = i;
     while (fwd < n - 1 && cum[fwd] - cum[i] < span) fwd++;
-    if (cum[i] - cum[back] < span * 0.6 || cum[fwd] - cum[i] < span * 0.6) continue;
+    if (cum[i] - cum[back] < span * 0.5 || cum[fwd] - cum[i] < span * 0.5) continue;
     const inDir = points[i].clone().sub(points[back]);
     const outDir = points[fwd].clone().sub(points[i]);
     if (inDir.lengthSq() < 1e-14 || outDir.lengthSq() < 1e-14) continue;
-    turns[i] = Math.acos(
+    const wideTurn = Math.acos(
       THREE.MathUtils.clamp(inDir.normalize().dot(outDir.normalize()), -1, 1)
     );
+    turns[i] = wideTurn;
+
+    // Narrow window around i (2 samples on either side) to test if the turn is localized at a vertex
+    const nBack = Math.max(0, i - 2);
+    const nFwd = Math.min(n - 1, i + 2);
+    const nIn = points[i].clone().sub(points[nBack]);
+    const nOut = points[nFwd].clone().sub(points[i]);
+    if (nIn.lengthSq() > 1e-14 && nOut.lengthSq() > 1e-14) {
+      const narrowTurn = Math.acos(
+        THREE.MathUtils.clamp(nIn.normalize().dot(nOut.normalize()), -1, 1)
+      );
+      sharpness[i] = wideTurn > 1e-4 ? narrowTurn / wideTurn : 0;
+    }
   }
 
   // Keep only the sharpest sample in each turn, so one corner is one corner.
@@ -140,6 +155,9 @@ export function detectCorners(
     if (hi < i) hi = i;
     while (hi < n - 1 && cum[hi + 1] - cum[i] <= span) hi++;
     if (turns[i] < thresholdRad) continue;
+    // A genuine corner has the turn concentrated at this vertex (sharpness >= 0.55 or very sharp acute turn >= 110°)
+    if (sharpness[i] < 0.55 && turns[i] < THREE.MathUtils.degToRad(110)) continue;
+
     let isPeak = true;
     for (let k = lo; k <= hi; k++) {
       if (k === i) continue;
@@ -345,9 +363,13 @@ function generateBezier(
     alphaL = (x0 * c11 - x1 * c01) / det;
     alphaR = (c00 * x1 - c01 * x0) / det;
   }
+  const maxAlpha = Math.max(1e-7, chord * 1.25);
   if (alphaL < 1e-7 || alphaR < 1e-7) {
     alphaL = chord / 3;
     alphaR = chord / 3;
+  } else {
+    alphaL = Math.min(alphaL, maxAlpha);
+    alphaR = Math.min(alphaR, maxAlpha);
   }
 
   return {

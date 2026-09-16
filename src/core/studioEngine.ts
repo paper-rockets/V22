@@ -50,11 +50,11 @@ import { refitStrokePoints, RefitOptions } from './strokeFitting';
  * keeps only the gesture.
  */
 const REFIT_LEVELS: RefitOptions[] = [
-  { simplifyRatio: 0.006, errorRatio: 0.004, smoothRatio: 0.004, cornerAngle: Math.PI / 4 },
-  { simplifyRatio: 0.010, errorRatio: 0.006, smoothRatio: 0.008, cornerAngle: Math.PI / 4 },
-  { simplifyRatio: 0.014, errorRatio: 0.009, smoothRatio: 0.013, cornerAngle: Math.PI / 4 },
-  { simplifyRatio: 0.020, errorRatio: 0.013, smoothRatio: 0.019, cornerAngle: Math.PI / 4 },
-  { simplifyRatio: 0.028, errorRatio: 0.020, smoothRatio: 0.027, cornerAngle: Math.PI / 4 },
+  { simplifyRatio: 0.006, errorRatio: 0.004, smoothRatio: 0.004, cornerAngle: THREE.MathUtils.degToRad(68) },
+  { simplifyRatio: 0.010, errorRatio: 0.006, smoothRatio: 0.008, cornerAngle: THREE.MathUtils.degToRad(68) },
+  { simplifyRatio: 0.014, errorRatio: 0.009, smoothRatio: 0.013, cornerAngle: THREE.MathUtils.degToRad(68) },
+  { simplifyRatio: 0.020, errorRatio: 0.013, smoothRatio: 0.019, cornerAngle: THREE.MathUtils.degToRad(68) },
+  { simplifyRatio: 0.028, errorRatio: 0.020, smoothRatio: 0.027, cornerAngle: THREE.MathUtils.degToRad(68) },
 ];
 import { ConformalBeadGenerator } from './conformalBeadGenerator';
 import { MaterialCache, normalizeHexColor } from './materialCache';
@@ -2566,6 +2566,9 @@ export class StudioEngine {
 
     this.strokeSequenceIndex = (this.strokeSequenceIndex + 1) % 20000;
     settings.strokeSequenceIndex = this.strokeSequenceIndex;
+    if (typeof window !== 'undefined') {
+      window.dispatchEvent(new CustomEvent('STUDIO_STROKE_STARTED'));
+    }
 
     let startPointPos = rayResult.point.clone();
     this.activeStrokeSnappedStart = null;
@@ -2863,7 +2866,7 @@ export class StudioEngine {
       const newPoint: StrokePoint = {
         position: rayResult.point.clone(),
         normal: rayResult.normal.clone(),
-        surfaceOffset: settings.surfaceOffset || 0.002,
+        surfaceOffset: settings.surfaceOffset || 0.0045,
         pressure: currPressure,
         isSurfaceHit,
         uv: rayResult.uv ? rayResult.uv.clone() : undefined,

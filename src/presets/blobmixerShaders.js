@@ -2,11 +2,11 @@
 
 export const BLOBMIXER_MATERIAL_PRESETS = [
   {
-    id: 'blobmixer_deep_ocean_live',
-    name: 'Blobmixer: Deep Ocean Blue',
-    category: '?? Blobmixer MatCaps',
+    id: 'blobmixer_deep_nebula_live',
+    name: 'Blobmixer: Cosmic Blue Nebula',
+    category: '🌌 Space & Dopamine',
     type: 'shader',
-    description: 'Deep abyss blue with aqua highlights and metallic reflection.',
+    description: 'Deep cosmic space blue with vibrant aqua starlight and metallic glow.',
     generate: (ctx, w, h) => {
       const cx = w * 0.5, cy = h * 0.5, r = w * 0.5;
       const grad = ctx.createRadialGradient(cx * 0.65, cy * 0.35, 10, cx, cy, r);

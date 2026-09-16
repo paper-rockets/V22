@@ -193,7 +193,7 @@
 /* ── the gizmo itself: no panel, no background ── */
 .nv-dock {
   position: absolute;
-  right: calc(12px + env(safe-area-inset-right));
+  left: calc(16px + env(safe-area-inset-left));
   bottom: calc(90px + env(safe-area-inset-bottom));
   pointer-events: none;
 }
@@ -710,8 +710,4 @@
   pointer-events: auto !important;
   touch-action: none !important;
 }
-#nv[data-menu='open'] .nv-canvas,
-#nv[data-menu='open'] .nv-label {
-  visibility: hidden;
-  pointer-events: none;
-}
+

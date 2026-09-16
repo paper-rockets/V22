@@ -13,3 +13,4 @@ scripts/*.png
 scripts/screenshots/
 screenshots/
 ALL_SCREENSHOTS/
+test-results/

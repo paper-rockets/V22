@@ -15,6 +15,7 @@ import {
   FileCode,
   Box,
   Sliders,
+  Star,
   HelpCircle,
   ExternalLink,
 } from 'lucide-react';
@@ -31,6 +32,7 @@ function getPresetSourceFile(id: string): string {
   if (id.startsWith('grassworks_')) return 'grassworksShaders.js';
   if (id.startsWith('reze_')) return 'rezeShaders.js';
   if (id.startsWith('wayfinder_')) return 'wayfinderShaders.js';
+  if (id.startsWith('marble_')) return 'marbleShaders.js';
   return 'materialPresets.js';
 }
 
@@ -348,9 +350,38 @@ export const ShaderPresetManager: React.FC<ShaderPresetManagerProps> = ({ onSwit
 
   // Selected preset IDs (checked for deletion)
   const [checkedIds, setCheckedIds] = useState<Set<string>>(() => new Set());
+  const [favoriteIds, setFavoriteIds] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('remix3d.favoriteShaderIds');
+      if (stored) return JSON.parse(stored);
+    } catch {}
+    return [
+      'dopamine_dichroic_sunset_cyan',
+      'dopamine_cyber_opal',
+      'dopamine_soap_bubble',
+      'dopamine_cherry_gummy',
+      'dopamine_bubblegum_gloss',
+      'dopamine_holo_foil',
+      'dopamine_sunny_playdough',
+      'dopamine_laser_neon',
+    ];
+  });
+
+  const toggleFavorite = useCallback((id: string, e?: React.MouseEvent) => {
+    if (e) e.stopPropagation();
+    setFavoriteIds((prev) => {
+      const next = prev.includes(id) ? prev.filter((x) => x !== id) : [id, ...prev];
+      try {
+        localStorage.setItem('remix3d.favoriteShaderIds', JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
   const [activeCategory, setActiveCategory] = useState<string>('All');
+  const [activeColorDot, setActiveColorDot] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
-  const [filterView, setFilterView] = useState<'all' | 'checked' | 'unchecked'>('all');
+  const [filterView, setFilterView] = useState<'all' | 'checked' | 'unchecked' | 'favorites'>('all');
   const [inspectedPreset, setInspectedPreset] = useState<any | null>(null);
 
   // Deletion in-progress state
@@ -379,6 +410,13 @@ export const ShaderPresetManager: React.FC<ShaderPresetManagerProps> = ({ onSwit
   // Filtered presets
   const filteredPresets = useMemo(() => {
     return presets.filter((p) => {
+      // Exclude water shaders per user requirement
+      const lowerName = p.name.toLowerCase();
+      const lowerCat = (p.category || '').toLowerCase();
+      if (lowerName.includes('water') || lowerName.includes('ocean') || lowerName.includes('sea') || lowerCat.includes('water')) {
+        return false;
+      }
+
       const matchCat = activeCategory === 'All' || p.category === activeCategory;
       const matchSearch =
         !searchQuery.trim() ||
@@ -386,11 +424,30 @@ export const ShaderPresetManager: React.FC<ShaderPresetManagerProps> = ({ onSwit
         p.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
         p.category?.toLowerCase().includes(searchQuery.toLowerCase());
       const isChecked = checkedIds.has(p.id);
-      const matchView =
-        filterView === 'all' ? true : filterView === 'checked' ? isChecked : !isChecked;
-      return matchCat && matchSearch && matchView;
+      const isFav = favoriteIds.includes(p.id);
+
+      let matchView = true;
+      if (filterView === 'checked') matchView = isChecked;
+      else if (filterView === 'unchecked') matchView = !isChecked;
+      else if (filterView === 'favorites') matchView = isFav;
+
+      let matchColor = true;
+      if (activeColorDot !== 'all') {
+        const text = `${p.category || ''} ${p.name || ''} ${p.id || ''}`.toLowerCase();
+        if (activeColorDot === 'red' && !text.includes('red') && !text.includes('crimson') && !text.includes('rose') && !text.includes('ruby')) matchColor = false;
+        else if (activeColorDot === 'orange' && !text.includes('orange') && !text.includes('coral') && !text.includes('terracotta') && !text.includes('amber')) matchColor = false;
+        else if (activeColorDot === 'gold' && !text.includes('gold') && !text.includes('amber') && !text.includes('travertine') && !text.includes('yellow')) matchColor = false;
+        else if (activeColorDot === 'green' && !text.includes('green') && !text.includes('emerald') && !text.includes('jade') && !text.includes('sage')) matchColor = false;
+        else if (activeColorDot === 'blue' && !text.includes('blue') && !text.includes('cyan') && !text.includes('lapis') && !text.includes('azure') && !text.includes('navy')) matchColor = false;
+        else if (activeColorDot === 'purple' && !text.includes('purple') && !text.includes('velvet') && !text.includes('violet')) matchColor = false;
+        else if (activeColorDot === 'dark' && !text.includes('obsidian') && !text.includes('dark') && !text.includes('nero') && !text.includes('black')) matchColor = false;
+        else if (activeColorDot === 'white' && !text.includes('pearl') && !text.includes('ceramic') && !text.includes('white') && !text.includes('carrara') && !text.includes('terrazzo')) matchColor = false;
+        else if (activeColorDot === 'rainbow' && !text.includes('iridescent') && !text.includes('holographic') && !text.includes('ebru') && !text.includes('rainbow')) matchColor = false;
+      }
+
+      return matchCat && matchSearch && matchView && matchColor;
     });
-  }, [presets, activeCategory, searchQuery, filterView, checkedIds]);
+  }, [presets, activeCategory, searchQuery, filterView, checkedIds, favoriteIds, activeColorDot]);
 
   // Bulk actions
   const selectAllVisible = () => {
@@ -588,6 +645,15 @@ export const ShaderPresetManager: React.FC<ShaderPresetManagerProps> = ({ onSwit
                 All
               </button>
               <button
+                onClick={() => setFilterView('favorites')}
+                className={`px-2.5 py-1 rounded-lg font-medium flex items-center gap-1.5 transition-colors ${
+                  filterView === 'favorites' ? 'bg-amber-400 text-black font-bold' : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                <Star className={`w-3 h-3 ${filterView === 'favorites' ? 'fill-black' : 'fill-amber-400 text-amber-400'}`} />
+                <span>Favs ({favoriteIds.length})</span>
+              </button>
+              <button
                 onClick={() => setFilterView('checked')}
                 className={`px-2.5 py-1 rounded-lg font-medium flex items-center gap-1.5 transition-colors ${
                   filterView === 'checked' ? 'bg-rose-600 text-white font-bold' : 'text-neutral-400 hover:text-white'
@@ -628,6 +694,46 @@ export const ShaderPresetManager: React.FC<ShaderPresetManagerProps> = ({ onSwit
             </div>
           </div>
         </div>
+
+        {/* Color Dot Filter Strip */}
+        <div className="max-w-7xl mx-auto w-full flex items-center gap-2 pt-2.5 border-t border-neutral-800/70 mt-2">
+          <span className="text-[11px] text-neutral-400 font-semibold shrink-0">Color Filter:</span>
+          <div className="flex items-center gap-1.5 overflow-x-auto pb-0.5">
+            {[
+              { id: 'all', label: 'All Colors', bg: 'linear-gradient(135deg, #ff007f, #00f0ff, #ffe600)' },
+              { id: 'rainbow', label: 'Rainbow / Iridescent', bg: 'radial-gradient(circle, #fff, #ff69b4, #00f2fe)' },
+              { id: 'red', label: 'Red & Crimson', bg: '#ef4444' },
+              { id: 'orange', label: 'Orange & Coral', bg: '#f97316' },
+              { id: 'gold', label: 'Gold & Amber', bg: '#eab308' },
+              { id: 'green', label: 'Green & Emerald', bg: '#22c55e' },
+              { id: 'blue', label: 'Blue & Cyan', bg: '#06b6d4' },
+              { id: 'purple', label: 'Purple & Velvet', bg: '#a855f7' },
+              { id: 'dark', label: 'Obsidian & Dark', bg: '#1e293b' },
+              { id: 'white', label: 'Pearl & White', bg: '#f8fafc', border: true },
+            ].map((dot) => {
+              const active = activeColorDot === dot.id;
+              return (
+                <button
+                  key={dot.id}
+                  onClick={() => setActiveColorDot(active ? 'all' : dot.id)}
+                  title={dot.label}
+                  className={`w-5 h-5 rounded-full shrink-0 transition-transform cursor-pointer relative ${
+                    active ? 'scale-125 ring-2 ring-sky-400 ring-offset-1 ring-offset-black z-10' : 'hover:scale-110 opacity-75 hover:opacity-100'
+                  } ${dot.border ? 'border border-neutral-400' : ''}`}
+                  style={{ background: dot.bg }}
+                />
+              );
+            })}
+          </div>
+          {activeColorDot !== 'all' && (
+            <button
+              onClick={() => setActiveColorDot('all')}
+              className="text-[10px] text-sky-400 hover:underline ml-1 shrink-0 cursor-pointer"
+            >
+              Reset Color
+            </button>
+          )}
+        </div>
       </section>
 
       {/* Main Grid Scroll Area */}
@@ -652,6 +758,7 @@ export const ShaderPresetManager: React.FC<ShaderPresetManagerProps> = ({ onSwit
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4">
             {filteredPresets.map((preset) => {
               const isChecked = checkedIds.has(preset.id);
+              const isFav = favoriteIds.includes(preset.id);
               const sourceFile = getPresetSourceFile(preset.id);
 
               return (
@@ -663,7 +770,7 @@ export const ShaderPresetManager: React.FC<ShaderPresetManagerProps> = ({ onSwit
                       : 'bg-[#131622] border-neutral-800/80 hover:border-neutral-700 hover:bg-[#161a28]'
                   }`}
                 >
-                  {/* Top action row: Checkbox and 3D preview button */}
+                  {/* Top action row: Checkbox, Star Favorite, and 3D preview button */}
                   <div className="flex items-center justify-between p-2.5 pb-1">
                     {/* Checkbox: Check to Delete */}
                     <button
@@ -689,15 +796,31 @@ export const ShaderPresetManager: React.FC<ShaderPresetManagerProps> = ({ onSwit
                       <span className="text-[10px] tracking-wide">Delete</span>
                     </button>
 
-                    {/* Inspect in 3D button */}
-                    <button
-                      type="button"
-                      onClick={() => setInspectedPreset(preset)}
-                      className="w-7 h-7 rounded-lg bg-neutral-800/80 hover:bg-sky-500 hover:text-black text-neutral-400 flex items-center justify-center transition-colors cursor-pointer"
-                      title="Inspect 3D rotating sphere preview"
-                    >
-                      <Eye className="w-3.5 h-3.5" />
-                    </button>
+                    <div className="flex items-center gap-1.5">
+                      {/* Star Favorite Button */}
+                      <button
+                        type="button"
+                        onClick={(e) => toggleFavorite(preset.id, e)}
+                        className={`w-7 h-7 rounded-lg flex items-center justify-center transition-colors cursor-pointer ${
+                          isFav
+                            ? 'bg-amber-400/20 text-amber-400 hover:bg-amber-400/30'
+                            : 'bg-neutral-800/80 text-neutral-400 hover:text-amber-400 hover:bg-neutral-700'
+                        }`}
+                        title={isFav ? 'Remove from favorites' : 'Add to favorites'}
+                      >
+                        <Star className={`w-3.5 h-3.5 ${isFav ? 'fill-amber-400 stroke-amber-400' : ''}`} />
+                      </button>
+
+                      {/* Inspect in 3D button */}
+                      <button
+                        type="button"
+                        onClick={() => setInspectedPreset(preset)}
+                        className="w-7 h-7 rounded-lg bg-neutral-800/80 hover:bg-sky-500 hover:text-black text-neutral-400 flex items-center justify-center transition-colors cursor-pointer"
+                        title="Inspect 3D rotating sphere preview"
+                      >
+                        <Eye className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
 
                   {/* Thumbnail Container (Matching App Look) */}

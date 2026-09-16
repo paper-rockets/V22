@@ -25,6 +25,10 @@
   z-index: 50;
   display: flex;
   width: 58px;
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
   padding: 4px 3px;
   flex-direction: column;
   gap: 2px;
@@ -35,6 +39,9 @@
   transform: translateY(-50%);
   transition: transform 180ms ease-out, opacity 180ms ease-out;
   pointer-events: auto;
+}
+.paperrocket-studio-mode-group::-webkit-scrollbar {
+  display: none;
 }
 
 .paperrocket-studio-rail[data-theme='light'] .paperrocket-studio-mode-group {
@@ -101,8 +108,8 @@
   left: 50%;
   bottom: max(7px, env(safe-area-inset-bottom));
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
-  width: min(calc(100% - 16px), 360px);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: min(calc(100% - 16px), 220px);
   min-height: 62px;
   padding: 4px;
   gap: 2px;
@@ -249,21 +256,34 @@
 
 .paperrocket-studio-shelf {
   position: fixed !important;
-  left: 50% !important;
+  left: max(72px, calc(env(safe-area-inset-left) + 72px)) !important;
   right: auto !important;
-  top: auto !important;
-  bottom: calc(78px + env(safe-area-inset-bottom)) !important;
-  width: min(calc(100% - 16px), var(--studio-menu-compact)) !important;
-  max-width: none !important;
+  top: 50% !important;
+  bottom: auto !important;
+  height: auto !important;
+  max-height: min(72dvh, calc(100dvh - 120px)) !important;
+  width: min(calc(100vw - 84px), var(--studio-menu-compact, 280px)) !important;
+  max-width: var(--studio-menu-compact, 280px) !important;
   margin-left: 0 !important;
-  transform: translateX(-50%) !important;
+  transform: translateY(-50%) !important;
+}
+
+.paperrocket-studio-shelf--size {
+  width: min(calc(100vw - 84px), 230px) !important;
+  max-width: 230px !important;
 }
 
 .paperrocket-studio-shelf--compact,
 .paperrocket-studio-shelf--wide,
 .paperrocket-studio-shelf--brush {
-  width: min(calc(100% - 16px), var(--studio-menu-wide)) !important;
-  max-width: var(--studio-menu-wide) !important;
+  width: min(calc(100vw - 84px), var(--studio-menu-wide, 320px)) !important;
+  max-width: var(--studio-menu-wide, 320px) !important;
+}
+
+.paperrocket-studio-rail[data-dock-position='right'] .paperrocket-studio-shelf {
+  left: auto !important;
+  right: max(72px, calc(env(safe-area-inset-right) + 72px)) !important;
+  transform: translateY(-50%) !important;
 }
 
 .paperrocket-context-panel {
@@ -278,6 +298,16 @@
 }
 
 @media (max-width: 639px) {
+  .paperrocket-studio-shelf {
+    left: max(58px, calc(env(safe-area-inset-left) + 58px)) !important;
+    right: auto !important;
+    top: 50% !important;
+    bottom: auto !important;
+    width: min(calc(100vw - 68px), 280px) !important;
+    max-width: 280px !important;
+    transform: translateY(-50%) !important;
+  }
+
   .paperrocket-context-panel,
   .paperrocket-pro-panel {
     left: 50% !important;
@@ -309,13 +339,9 @@
 /* Tablet portrait: lower sheet leaving 65-75% artwork area open, with >=18px clearance above bottom dock */
 @media (min-width: 640px) and (max-width: 1023px) and (orientation: portrait) {
   .paperrocket-studio-quick-group {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    width: min(calc(100% - 24px), 360px);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: min(calc(100% - 24px), 220px);
     min-height: 62px;
-  }
-
-  .paperrocket-studio-shelf {
-    bottom: calc(78px + env(safe-area-inset-bottom)) !important;
   }
 
   .paperrocket-studio-rail[data-dock-position='auto'] .paperrocket-studio-mode-group {
@@ -353,13 +379,9 @@
 /* Tablet landscape and desktop: side inspector alongside rail */
 @media (min-width: 1024px), ((min-width: 700px) and (orientation: landscape)) {
   .paperrocket-studio-quick-group {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
-    width: min(calc(100% - 24px), 360px);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    width: min(calc(100% - 24px), 220px);
     min-height: 62px;
-  }
-
-  .paperrocket-studio-shelf {
-    bottom: calc(78px + env(safe-area-inset-bottom)) !important;
   }
 
   .paperrocket-studio-rail[data-dock-position='auto'] .paperrocket-studio-mode-group {
@@ -379,22 +401,16 @@
 
   .paperrocket-context-panel,
   .paperrocket-pro-panel {
-    left: 72px !important;
+    left: 50% !important;
     right: auto !important;
     top: auto !important;
-    bottom: max(16px, calc(env(safe-area-inset-bottom) + 16px)) !important;
-    transform: none !important;
-    width: min(var(--studio-menu-width, var(--studio-menu-wide)), calc(100vw - 96px)) !important;
+    bottom: calc(78px + env(safe-area-inset-bottom)) !important;
+    transform: translateX(-50%) !important;
+    width: min(var(--studio-menu-width, var(--studio-menu-wide)), calc(100vw - 160px)) !important;
     max-width: var(--studio-menu-width, var(--studio-menu-wide)) !important;
     height: auto !important;
-    max-height: min(76dvh, calc(100dvh - 76px)) !important;
-    border-radius: 18px !important;
-  }
-
-  .paperrocket-context-panel[data-dock-position='right'],
-  .paperrocket-pro-panel[data-dock-position='right'] {
-    left: auto !important;
-    right: 72px !important;
+    max-height: min(48dvh, 420px) !important;
+    border-radius: 20px !important;
   }
 
   .paperrocket-context-backdrop { display: none; }

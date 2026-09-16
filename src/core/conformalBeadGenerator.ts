@@ -136,7 +136,8 @@ export class ConformalBeadGenerator {
     const isSurfaceStroke = filteredPoints.some((p) => p.isSurfaceHit);
 
     const seq = settings.strokeSequenceIndex ?? 0;
-    const seqElevation = (seq % 1000) * 0.00015;
+    // Adaptive normal-offset bias: p_offset = p_base + n_plane * (i * epsilon) where epsilon ~ 0.0005
+    const seqElevation = (seq % 2000) * 0.0005;
     const baseOffset = (settings.surfaceOffset ?? 0.0045) + seqElevation;
     const taperLength = Math.max(0.01, settings.taperLength ?? 0.05);
 
@@ -1046,7 +1047,9 @@ export class ConformalBeadGenerator {
     const normal = _scratchNorm.copy(point.normal).normalize();
     const pressureScale = settings.pressureSensitivity ? Math.max(0.3, point.pressure) : 1.0;
     const radius = settings.size * pressureScale;
-    const baseOffset = settings.surfaceOffset ?? 0.0015;
+    const seq = settings.strokeSequenceIndex ?? 0;
+    const seqElevation = (seq % 2000) * 0.0005;
+    const baseOffset = (settings.surfaceOffset ?? 0.0015) + seqElevation;
 
     let tangent = _scratchTan.set(0, 1, 0);
     if (Math.abs(normal.y) > 0.9) {

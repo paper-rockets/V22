@@ -7,7 +7,7 @@ import './navigatorControls.css';
 
 export type NavigatorTransformMode = 'look' | 'move' | 'rotate' | 'scale';
 
-const MODE_LABELS: Record<NavigatorTransformMode, string> = { look: 'Orbit', move: 'Move', rotate: 'Rotate', scale: 'Resize' };
+export const MODE_LABELS: Record<NavigatorTransformMode, string> = { look: 'Orbit', move: 'Move', rotate: 'Rotate', scale: 'Scale' };
 
 export interface NavigatorSettingsProps {
   theme?: 'light' | 'dark';
@@ -38,7 +38,7 @@ export function NavigatorSettings({
   theme = 'dark', targetScope = 'all', onSelectTargetScope,
   layers = [], activeLayerId, onSelectLayer, layout, onLayoutChange,
   sensitivity = 1, onSensitivityChange, projectionMode = 'perspective',
-  onToggleProjection, transformMode, onTransformModeChange, modes = ['look', 'move', 'rotate'],
+  onToggleProjection, transformMode, onTransformModeChange, modes = ['look', 'move', 'rotate', 'scale'],
   onSelectView, onResetView, onHide, onDismiss,
 }: NavigatorSettingsProps) {
   const tap = (action: () => void) => { haptics.trigger('light'); action(); };
@@ -55,17 +55,6 @@ export function NavigatorSettings({
           {modes.map((value) => <button key={value} type="button" aria-pressed={transformMode === value} onClick={() => tap(() => onTransformModeChange(value))}>{MODE_LABELS[value]}</button>)}
         </div>
       </fieldset>
-
-      {onSelectTargetScope && <fieldset className="navigator-field">
-        <legend>What to select</legend>
-        {/* Same choices, in the same words, as the Select panel. */}
-        <div className="navigator-target-grid" role="group" aria-label="What to select">
-          {([
-            ['active_layer', 'Current layer'], ['selected_strokes', 'Lines'],
-            ['model', '3D models'], ['all', 'Everything'],
-          ] as const).map(([scope, label]) => <button key={scope} type="button" aria-pressed={targetScope === scope} onClick={() => tap(() => onSelectTargetScope(scope))}>{label}</button>)}
-        </div>
-      </fieldset>}
 
       {onSelectLayer && layers.length > 0 && <label className="navigator-field">
         <span>Active layer</span>

@@ -1,48 +1,127 @@
 import React, { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import { getMenuSurfaceClasses } from '../ui/MenuPrimitives';
 import {
-  FolderOpen,
+  Box,
+  Compass,
+  Droplets,
+  Grid,
   Maximize2,
   Minimize2,
-  Settings,
+  Moon,
+  MoveDiagonal2,
+  Palette,
+  Sun,
   X,
+  ChevronRight,
 } from 'lucide-react';
+import { haptics } from '../../utils/haptics';
 
 interface StudioTopMoreMenuProps {
   open: boolean;
   theme: 'light' | 'dark';
   isFullscreen: boolean;
   onClose: () => void;
-  onOpenSessions?: () => void;
-  onOpenSettings: () => void;
+  onOpenIllumination?: () => void;
+  onToggleTheme?: () => void;
+  showGrid?: boolean;
+  onToggleGrid?: () => void;
   onToggleFullscreen: () => void;
+  isGizmoActive?: boolean;
+  onToggleGizmo?: () => void;
+  // Scene & Canvas controls (Image 3)
+  canvasFormat?: 'portrait' | 'square' | 'landscape' | 'custom';
+  onCanvasFormatChange?: (format: 'portrait' | 'square' | 'landscape') => void;
+  canvasWidth?: number;
+  canvasHeight?: number;
+  onCanvasSizeChange?: (width: number, height: number) => void;
+  canvasTransparency?: number;
+  onCanvasTransparencyChange?: (transparency: number) => void;
+  canvasColor?: string;
+  onCanvasColorChange?: (color: string) => void;
 }
 
-interface ActionButtonProps {
-  icon: React.ReactNode;
+const Row: React.FC<{
+  icon: React.FC<{ className?: string; strokeWidth?: number }>;
   label: string;
-  description: string;
-  onSelect: () => void;
+  hint?: string;
+  children: React.ReactNode;
   isLight: boolean;
-}
-
-const ActionButton: React.FC<ActionButtonProps> = ({ icon, label, description, onSelect, isLight }) => (
-  <button
-    type="button"
-    onClick={onSelect}
-    className={`min-h-[44px] sm:min-h-[56px] w-full rounded-xl px-3 py-1 sm:py-2 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 active:scale-[0.99] cursor-pointer ${
-      isLight ? 'bg-neutral-100 text-neutral-900 hover:bg-neutral-200' : 'bg-white/[0.07] text-white hover:bg-white/[0.12]'
+}> = ({ icon: Icon, label, hint, children, isLight }) => (
+  <div
+    className={`flex items-center gap-2.5 py-1.5 border-b last:border-b-0 min-h-[38px] ${
+      isLight ? 'border-neutral-200/70' : 'border-neutral-800/70'
     }`}
   >
-    <span className="flex items-center gap-3">
-      <span className="grid h-8 w-8 sm:h-9 sm:w-9 shrink-0 place-items-center" aria-hidden="true">{icon}</span>
-      <span className="min-w-0">
-        <span className="block text-sm font-semibold leading-5">{label}</span>
-        <span className={`block text-xs leading-4 ${isLight ? 'text-neutral-600' : 'text-white/60'}`}>
-          {description}
-        </span>
-      </span>
-    </span>
+    <Icon className="w-3.5 h-3.5 shrink-0 opacity-75" strokeWidth={1.75} />
+    <div className="flex-1 min-w-0 pr-1">
+      <div className="text-[12px] font-medium leading-tight">{label}</div>
+      {hint && (
+        <div className={`text-[10px] leading-tight mt-0.5 ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
+          {hint}
+        </div>
+      )}
+    </div>
+    <div className="shrink-0">{children}</div>
+  </div>
+);
+
+const ActionRow: React.FC<{
+  icon: React.FC<{ className?: string; strokeWidth?: number }>;
+  label: string;
+  hint?: string;
+  onClick: () => void;
+  isLight: boolean;
+  chevron?: boolean;
+}> = ({ icon: Icon, label, hint, onClick, isLight, chevron = false }) => (
+  <button
+    type="button"
+    onClick={onClick}
+    className={`w-full flex items-center gap-2.5 py-1.5 px-1.5 rounded-lg text-left transition-colors cursor-pointer min-h-[38px] ${
+      isLight ? 'hover:bg-neutral-100 text-neutral-900 active:bg-neutral-200' : 'hover:bg-white/[0.08] text-white active:bg-white/[0.12]'
+    }`}
+  >
+    <Icon className="w-3.5 h-3.5 shrink-0 opacity-80" strokeWidth={1.75} />
+    <div className="flex-1 min-w-0">
+      <div className="text-[12px] font-medium leading-tight">{label}</div>
+      {hint && (
+        <div className={`text-[10px] leading-tight mt-0.5 ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
+          {hint}
+        </div>
+      )}
+    </div>
+    {chevron && <ChevronRight className="w-3.5 h-3.5 shrink-0 opacity-45" />}
+  </button>
+);
+
+const SectionHeader: React.FC<{ title: string; isLight: boolean }> = ({ title, isLight }) => (
+  <div
+    className={`pt-2 pb-0.5 text-[10px] font-semibold uppercase tracking-wider ${
+      isLight ? 'text-neutral-500' : 'text-neutral-400'
+    }`}
+  >
+    {title}
+  </div>
+);
+
+const Toggle: React.FC<{ on: boolean; onChange: (v: boolean) => void; label: string }> = ({
+  on,
+  onChange,
+  label,
+}) => (
+  <button
+    type="button"
+    role="switch"
+    data-state={on ? 'on' : 'off'}
+    aria-checked={on}
+    aria-label={label}
+    onClick={() => {
+      haptics.trigger('light');
+      onChange(!on);
+    }}
+    className="paperrocket-toggle cursor-pointer relative bg-transparent border-0 outline-none p-0"
+  >
+    <span className="absolute rounded-full shadow transition-all duration-150 bg-white" />
   </button>
 );
 
@@ -51,9 +130,22 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
   theme,
   isFullscreen,
   onClose,
-  onOpenSessions,
-  onOpenSettings,
+  onOpenIllumination,
+  onToggleTheme,
+  showGrid = true,
+  onToggleGrid,
   onToggleFullscreen,
+  isGizmoActive = true,
+  onToggleGizmo,
+  canvasFormat = 'portrait',
+  onCanvasFormatChange,
+  canvasWidth = 2.7,
+  canvasHeight = 3.6,
+  onCanvasSizeChange,
+  canvasTransparency = 0,
+  onCanvasTransparencyChange,
+  canvasColor = '#ffffff',
+  onCanvasColorChange,
 }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
   const isLight = theme === 'light';
@@ -63,7 +155,9 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
 
     const previouslyFocused = document.activeElement as HTMLElement | null;
     const dialog = dialogRef.current;
-    const focusable = dialog?.querySelectorAll<HTMLElement>('button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])');
+    const focusable = dialog?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), [href], [tabindex]:not([tabindex="-1"])'
+    );
     focusable?.[0]?.focus();
 
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -106,13 +200,9 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
   }, [open, onClose]);
 
   if (!open) return null;
+  if (typeof document === 'undefined') return null;
 
-  const select = (action: () => void) => () => {
-    onClose();
-    action();
-  };
-
-  return (
+  return createPortal(
     <div className="pointer-events-none fixed inset-0 z-[70]">
       <div
         id="studio-top-more-menu"
@@ -121,38 +211,233 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
         role="dialog"
         aria-modal="false"
         aria-labelledby="studio-more-title"
-        className={`pointer-events-auto absolute right-3 top-2 sm:top-[calc(env(safe-area-inset-top)+3.25rem)] w-[min(var(--studio-menu-compact),calc(100vw-1.5rem))] flex flex-col rounded-2xl px-3 pb-3 pt-2 shadow-2xl ${
+        className={`pointer-events-auto absolute right-3 top-2 sm:top-[calc(env(safe-area-inset-top)+3.25rem)] w-[min(264px,calc(100vw-1.5rem))] flex flex-col rounded-2xl p-2.5 shadow-2xl ${
           getMenuSurfaceClasses(isLight)
         }`}
       >
-        <div className="shrink-0 mb-2 sm:mb-3 flex min-h-11 items-center justify-between gap-3 border-b border-black/5 dark:border-white/5 pb-1">
-          <h2 id="studio-more-title" className="text-base font-semibold">Menu</h2>
+        {/* Header */}
+        <div className="shrink-0 mb-0.5 flex min-h-8 items-center justify-between border-b border-black/5 dark:border-white/5 pb-1">
+          <div>
+            <h2 id="studio-more-title" className="text-xs font-semibold tracking-tight">
+              Canvas & View
+            </h2>
+            <span className={`block text-[10px] ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
+              Drawing surface and display
+            </span>
+          </div>
           <button
             type="button"
             onClick={onClose}
-            className={`grid h-11 w-11 place-items-center rounded-xl focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 ${
-              isLight ? 'hover:bg-neutral-100' : 'hover:bg-white/10'
+            className={`grid h-7 w-7 place-items-center rounded-lg transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-400 cursor-pointer ${
+              isLight ? 'hover:bg-neutral-100 text-neutral-600' : 'hover:bg-white/10 text-neutral-300'
             }`}
-            aria-label="Close more actions"
+            aria-label="Close menu"
           >
-            <X className="h-5 w-5" strokeWidth={1.6} />
+            <X className="h-3.5 w-3.5" strokeWidth={1.75} />
           </button>
         </div>
 
-        <div className="grid grid-cols-1 gap-1.5" aria-label="Workspace actions">
-          {onOpenSessions && (
-            <ActionButton icon={<FolderOpen className="h-5 w-5" strokeWidth={1.7} />} label="Projects" description="Save, open, and manage projects" onSelect={select(onOpenSessions)} isLight={isLight} />
-          )}
-          <ActionButton icon={<Settings className="h-5 w-5" strokeWidth={1.7} />} label="Studio settings" description="Canvas, appearance, and app preferences" onSelect={select(onOpenSettings)} isLight={isLight} />
-          <ActionButton
-            icon={isFullscreen ? <Minimize2 className="h-5 w-5" strokeWidth={1.7} /> : <Maximize2 className="h-5 w-5" strokeWidth={1.7} />}
-            label={isFullscreen ? 'Exit full screen' : 'Full screen'}
-            description={isFullscreen ? 'Return to browser' : 'Use the whole screen'}
-            onSelect={select(onToggleFullscreen)}
+        {/* 1. Canvas Dimensions & Appearance */}
+        <SectionHeader title="Canvas" isLight={isLight} />
+
+        {onCanvasFormatChange && (
+          <Row icon={Box} label="Canvas size" hint="Preset proportions" isLight={isLight}>
+            <div className="grid w-36 grid-cols-3 gap-1" role="group" aria-label="Canvas size presets">
+              {([
+                ['portrait', 'Portrait'],
+                ['square', 'Square'],
+                ['landscape', 'Wide'],
+              ] as const).map(([format, label]) => (
+                <button
+                  key={format}
+                  type="button"
+                  onClick={() => {
+                    haptics.trigger('light');
+                    onCanvasFormatChange(format);
+                  }}
+                  className={`min-h-[26px] h-[26px] rounded-md px-1 text-[11px] font-medium transition-colors cursor-pointer ${
+                    canvasFormat === format
+                      ? isLight ? 'bg-neutral-900 text-white shadow-sm' : 'bg-white text-zinc-950 shadow-sm'
+                      : isLight ? 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200' : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
+                  }`}
+                  aria-pressed={canvasFormat === format}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+          </Row>
+        )}
+
+        {onCanvasSizeChange && (
+          <div className={`border-b py-1.5 ${isLight ? 'border-neutral-200/70' : 'border-neutral-800/70'}`}>
+            <div className="mb-1.5 flex items-center gap-2">
+              <MoveDiagonal2 className="h-3.5 w-3.5 opacity-75" strokeWidth={1.75} />
+              <div className="text-[12px] font-medium">Manual size</div>
+              <div className="ml-auto text-[11px] font-mono tabular-nums opacity-65">
+                {(canvasWidth ?? 2.7).toFixed(1)} × {(canvasHeight ?? 3.6).toFixed(1)}
+              </div>
+            </div>
+            <div className="grid grid-cols-[16px_1fr] items-center gap-x-2 gap-y-1">
+              <label htmlFor="top-menu-canvas-w" className="text-[10px] font-medium opacity-70">W</label>
+              <input
+                id="top-menu-canvas-w"
+                type="range"
+                min="1"
+                max="8"
+                step="0.1"
+                value={canvasWidth ?? 2.7}
+                onChange={(event) => onCanvasSizeChange(Number(event.target.value), canvasHeight ?? 3.6)}
+                onPointerUp={() => haptics.trigger('light')}
+                className="h-5 w-full cursor-ew-resize accent-sky-500"
+                aria-label="Canvas width"
+              />
+              <label htmlFor="top-menu-canvas-h" className="text-[10px] font-medium opacity-70">H</label>
+              <input
+                id="top-menu-canvas-h"
+                type="range"
+                min="1"
+                max="8"
+                step="0.1"
+                value={canvasHeight ?? 3.6}
+                onChange={(event) => onCanvasSizeChange(canvasWidth ?? 2.7, Number(event.target.value))}
+                onPointerUp={() => haptics.trigger('light')}
+                className="h-5 w-full cursor-ns-resize accent-sky-500"
+                aria-label="Canvas height"
+              />
+            </div>
+          </div>
+        )}
+
+        {onCanvasColorChange && (
+          <Row icon={Palette} label="Canvas color" hint="Surface background" isLight={isLight}>
+            <label className={`flex h-7 items-center gap-1.5 rounded-md border px-2 cursor-pointer ${
+              isLight ? 'border-neutral-300 bg-neutral-100' : 'border-neutral-700 bg-neutral-800'
+            }`}>
+              <input
+                type="color"
+                value={canvasColor ?? '#ffffff'}
+                onInput={(event) => onCanvasColorChange((event.target as HTMLInputElement).value)}
+                onChange={(event) => onCanvasColorChange(event.target.value)}
+                className="h-4 w-5 cursor-pointer border-0 bg-transparent p-0"
+                aria-label="Canvas background color"
+              />
+              <span className="text-[10.5px] font-mono font-medium tabular-nums">
+                {(canvasColor ?? '#ffffff').toUpperCase()}
+              </span>
+            </label>
+          </Row>
+        )}
+
+        {onCanvasTransparencyChange && (
+          <Row icon={Droplets} label="Canvas transparency" hint="Show 3D space through" isLight={isLight}>
+            <div className="w-32">
+              <div className="mb-0.5 flex justify-between text-[10px] font-mono tabular-nums opacity-70">
+                <span>Opaque</span>
+                <span>{Math.round(canvasTransparency ?? 0)}%</span>
+              </div>
+              <input
+                type="range"
+                min="0"
+                max="100"
+                step="5"
+                value={canvasTransparency ?? 0}
+                onChange={(event) => onCanvasTransparencyChange(Number(event.target.value))}
+                onPointerUp={() => haptics.trigger('light')}
+                className="h-5 w-full cursor-pointer accent-sky-500"
+                aria-label="Canvas transparency"
+              />
+            </div>
+          </Row>
+        )}
+
+        {onToggleGrid && (
+          <Row icon={Grid} label="Ground Grid" hint="Floor reference plane" isLight={isLight}>
+            <Toggle on={Boolean(showGrid)} onChange={() => onToggleGrid()} label="Ground Grid" />
+          </Row>
+        )}
+
+        {/* 2. View & Display */}
+        <SectionHeader title="View" isLight={isLight} />
+
+        {onOpenIllumination && (
+          <ActionRow
+            icon={Sun}
+            label="Studio Lighting"
+            hint="Sunlight, angles, and shadows"
+            onClick={() => {
+              onClose();
+              onOpenIllumination();
+            }}
             isLight={isLight}
+            chevron
           />
-        </div>
+        )}
+
+        {onToggleTheme && (
+          <Row icon={isLight ? Sun : Moon} label="Studio Theme" hint="Color scheme" isLight={isLight}>
+            <div className="flex gap-1 w-32">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!isLight) {
+                    haptics.trigger('light');
+                    onToggleTheme();
+                  }
+                }}
+                className={`flex-1 h-[26px] rounded-md text-[11px] font-medium flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                  isLight ? 'bg-neutral-900 text-white shadow-sm' : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
+                }`}
+              >
+                <Sun className="w-3 h-3" /> Light
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (isLight) {
+                    haptics.trigger('light');
+                    onToggleTheme();
+                  }
+                }}
+                className={`flex-1 h-[26px] rounded-md text-[11px] font-medium flex items-center justify-center gap-1 transition-all cursor-pointer ${
+                  !isLight ? 'bg-white text-zinc-950 shadow-sm' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
+                }`}
+              >
+                <Moon className="w-3 h-3" /> Dark
+              </button>
+            </div>
+          </Row>
+        )}
+
+        {onToggleGizmo && (
+          <Row icon={Compass} label="3D Navigator" hint="Corner view controller" isLight={isLight}>
+            <Toggle on={Boolean(isGizmoActive)} onChange={() => onToggleGizmo()} label="3D Navigator" />
+          </Row>
+        )}
+
+        <Row
+          icon={isFullscreen ? Minimize2 : Maximize2}
+          label="Full Screen"
+          hint={isFullscreen ? 'Return to window' : 'Use whole screen'}
+          isLight={isLight}
+        >
+          <button
+            type="button"
+            onClick={() => {
+              haptics.trigger('light');
+              onToggleFullscreen();
+            }}
+            className={`h-[26px] px-2.5 rounded-md text-[11px] font-medium border transition-all cursor-pointer ${
+              isLight
+                ? 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-800'
+                : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-neutral-200'
+            }`}
+          >
+            {isFullscreen ? 'Exit' : 'Enter'}
+          </button>
+        </Row>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };

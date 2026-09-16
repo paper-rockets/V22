@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, SlidersHorizontal } from 'lucide-react';
+import { Check, ChevronDown, Move, Orbit, RotateCw, Scaling, SlidersHorizontal } from 'lucide-react';
 import * as THREE from 'three';
 import type { StudioEngine } from '../../core/studioEngine';
 import { haptics } from '../../utils/haptics';
@@ -9,7 +9,7 @@ import { DiscJoystick } from './joystick/DiscJoystick';
 import { CollarJoystick } from './joystick/CollarJoystick';
 import type { AxisScreenInfo, JoystickMode } from './joystick/conceptTypes';
 import type { Layer, TransformTargetScope } from '../../types';
-import { NavigatorSettings, type NavigatorTransformMode } from './NavigatorSettings';
+import { MODE_LABELS, NavigatorSettings, type NavigatorTransformMode } from './NavigatorSettings';
 import './joystickNavigator.css';
 
 export type NavigatorLayout = 'sphere' | 'disc' | 'petal' | 'collar';
@@ -31,6 +31,7 @@ interface JoystickNavigatorProps {
   /** Shared with the Select menu's Move / Rotate / Resize buttons. */
   transformMode?: NavigatorTransformMode;
   onTransformModeChange?: (mode: NavigatorTransformMode) => void;
+  onNavigatorLayoutChange?: (layout: NavigatorLayout) => void;
 }
 
 const VIEWS = {
@@ -48,6 +49,7 @@ export const JoystickNavigator: React.FC<JoystickNavigatorProps> = ({
   targetScope = 'all', onSelectTargetScope, layers = [], activeLayerId, onSelectLayer,
   navigatorSensitivity = 1, onSensitivityChange, projectionMode = 'perspective', onToggleProjection,
   transformMode: transformModeProp, onTransformModeChange,
+  onNavigatorLayoutChange,
 }: JoystickNavigatorProps) => {
   const [mode, setMode] = useState<JoystickMode>('3d');
   const [localTransformMode, setLocalTransformMode] = useState<NavigatorTransformMode>('look');
@@ -57,8 +59,19 @@ export const JoystickNavigator: React.FC<JoystickNavigatorProps> = ({
     onTransformModeChange?.(next);
   };
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [modeMenuOpen, setModeMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const modeMenuRef = useRef<HTMLDivElement>(null);
+  const modeTriggerRef = useRef<HTMLButtonElement>(null);
   const transformGestureRef = useRef(false);
+
+  const handleModeSelect = (next: NavigatorTransformMode) => {
+    if (transformGestureRef.current) engine?.endTransform();
+    transformGestureRef.current = false;
+    setTransformMode(next);
+    setModeMenuOpen(false);
+    haptics.trigger('light');
+  };
   const axisCarryRef = useRef(0);
   const [menuPosition, setMenuPosition] = useState({ left: 12, top: 56, maxHeight: 480 });
   const [locked, setLocked] = useState(false);
@@ -189,6 +202,8 @@ export const JoystickNavigator: React.FC<JoystickNavigatorProps> = ({
 
   const handleGripPointerDown = (e: React.PointerEvent) => {
     if (e.button !== 0) return;
+    setModeMenuOpen(false);
+    setSettingsOpen(false);
     pointerStartRef.current = { x: e.clientX, y: e.clientY };
 
     if (longPressTimerRef.current) {
@@ -375,7 +390,34 @@ export const JoystickNavigator: React.FC<JoystickNavigatorProps> = ({
     return () => { finish(); window.removeEventListener('pointerup', finish); window.removeEventListener('pointercancel', finish); };
   }, [engine]);
 
-  useEffect(() => { setSettingsOpen(false); }, [layout]);
+  useEffect(() => {
+    setSettingsOpen(false);
+    setModeMenuOpen(false);
+  }, [layout]);
+
+  useEffect(() => {
+    if (!modeMenuOpen) return;
+    const dismissMode = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (
+        modeMenuRef.current &&
+        !modeMenuRef.current.contains(target) &&
+        modeTriggerRef.current &&
+        !modeTriggerRef.current.contains(target)
+      ) {
+        setModeMenuOpen(false);
+      }
+    };
+    const escapeMode = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') setModeMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', dismissMode, true);
+    document.addEventListener('keydown', escapeMode);
+    return () => {
+      document.removeEventListener('pointerdown', dismissMode, true);
+      document.removeEventListener('keydown', escapeMode);
+    };
+  }, [modeMenuOpen]);
 
   useEffect(() => {
     if (!settingsOpen) return;
@@ -445,10 +487,19 @@ export const JoystickNavigator: React.FC<JoystickNavigatorProps> = ({
     >
       <div className="jn-rig">
         <div className="jn-control-rail">
-          <button type="button" className="jn-mode-trigger" aria-label="Choose navigator mode and target"
-            aria-expanded={settingsOpen} onClick={() => setSettingsOpen((open) => !open)}>
-            {transformMode === 'look' ? 'Orbit' : transformMode === 'move' ? 'Move' : transformMode === 'scale' ? 'Resize' : 'Rotate'}
-            <ChevronDown size={11} />
+          <button
+            ref={modeTriggerRef}
+            type="button"
+            className={`jn-mode-trigger ${modeMenuOpen ? 'jn-btn-active' : ''}`}
+            aria-label="Choose navigator mode"
+            aria-expanded={modeMenuOpen}
+            onClick={() => {
+              setSettingsOpen(false);
+              setModeMenuOpen((open) => !open);
+            }}
+          >
+            {MODE_LABELS[transformMode]}
+            <ChevronDown size={11} className={modeMenuOpen ? 'jn-chevron-up' : ''} />
           </button>
           <div className="jn-drag-handle" onPointerDown={handleGripPointerDown}
             onPointerMove={handleGripPointerMove} onPointerUp={handleGripPointerUp}
@@ -456,9 +507,51 @@ export const JoystickNavigator: React.FC<JoystickNavigatorProps> = ({
             title="Hold to reposition; double-click to reset position" aria-label="Reposition navigator">
             <span className="jn-drag-pill" />
           </div>
-          <button type="button" className="jn-settings-trigger" aria-label="View controls menu"
-            title="Target, layer and navigator settings" aria-expanded={settingsOpen}
-            onClick={() => setSettingsOpen((open) => !open)}><SlidersHorizontal size={13} /></button>
+          <button
+            type="button"
+            className={`jn-settings-trigger ${settingsOpen ? 'jn-btn-active' : ''}`}
+            aria-label="View controls menu"
+            title="Target, layer and navigator settings"
+            aria-expanded={settingsOpen}
+            onClick={() => {
+              setModeMenuOpen(false);
+              setSettingsOpen((open) => !open);
+            }}
+          >
+            <SlidersHorizontal size={13} />
+          </button>
+
+          {modeMenuOpen && (
+            <div
+              ref={modeMenuRef}
+              className={`jn-mode-menu ${wrapRef.current && wrapRef.current.getBoundingClientRect().top < 160 ? 'jn-mode-menu--down' : 'jn-mode-menu--up'}`}
+              role="menu"
+              aria-label="Transform mode options"
+            >
+              {(['look', 'move', 'rotate', 'scale'] as const).map((m) => {
+                const isSelected = transformMode === m;
+                return (
+                  <button
+                    key={m}
+                    type="button"
+                    role="menuitem"
+                    aria-checked={isSelected}
+                    className={`jn-mode-menu-item ${isSelected ? 'jn-mode-menu-item--active' : ''}`}
+                    onClick={() => handleModeSelect(m)}
+                  >
+                    <span className="jn-mode-item-icon">
+                      {m === 'look' && <Orbit size={13} />}
+                      {m === 'move' && <Move size={13} />}
+                      {m === 'rotate' && <RotateCw size={13} />}
+                      {m === 'scale' && <Scaling size={13} />}
+                    </span>
+                    <span className="jn-mode-item-label">{MODE_LABELS[m]}</span>
+                    {isSelected && <Check size={12} className="jn-mode-item-check" />}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* The active Joystick component from Joystick Lab */}
@@ -473,6 +566,7 @@ export const JoystickNavigator: React.FC<JoystickNavigatorProps> = ({
           <NavigatorSettings theme={theme} targetScope={targetScope}
             onSelectTargetScope={onSelectTargetScope} layers={layers} activeLayerId={activeLayerId}
             onSelectLayer={onSelectLayer} layout={layout}
+            onLayoutChange={onNavigatorLayoutChange}
             sensitivity={navigatorSensitivity} onSensitivityChange={onSensitivityChange}
             projectionMode={projectionMode} onToggleProjection={onToggleProjection}
             modes={['look', 'move', 'rotate', 'scale']}

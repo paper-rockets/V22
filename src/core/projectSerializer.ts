@@ -52,15 +52,22 @@ export class ProjectSerializer {
     projectName: string = 'Remix 3D Project',
     explicitLayers?: Layer[]
   ): ProjectSaveData {
-    const serializeStroke = (desc: StrokeDescriptor): StrokeDescriptor => ({
-      ...desc,
-      points: desc.points.map((p) => ({
-        ...p,
-        position: { x: p.position.x, y: p.position.y, z: p.position.z } as any,
-        normal: { x: p.normal.x, y: p.normal.y, z: p.normal.z } as any,
-        tangent: p.tangent ? ({ x: p.tangent.x, y: p.tangent.y, z: p.tangent.z } as any) : undefined,
-      })),
-    });
+    const serializeStroke = (desc: StrokeDescriptor): StrokeDescriptor => {
+      const cleanSettings = { ...desc.settings };
+      if ('matcapTexture' in cleanSettings) {
+        delete (cleanSettings as any).matcapTexture;
+      }
+      return {
+        ...desc,
+        settings: cleanSettings,
+        points: desc.points.map((p) => ({
+          ...p,
+          position: { x: p.position.x, y: p.position.y, z: p.position.z } as any,
+          normal: { x: p.normal.x, y: p.normal.y, z: p.normal.z } as any,
+          tangent: p.tangent ? ({ x: p.tangent.x, y: p.tangent.y, z: p.tangent.z } as any) : undefined,
+        })),
+      };
+    };
 
     const allStrokes: StrokeDescriptor[] = [];
     state.strokes.forEach(({ descriptor }) => {

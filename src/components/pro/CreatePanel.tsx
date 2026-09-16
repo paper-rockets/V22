@@ -85,7 +85,57 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
 
   return (
     <div className="space-y-2 text-xs select-none">
-      {/* 1. 3D SHAPES / PRIMITIVES (Primary choices) */}
+      {/* 1. 3D MODELS & IMPORT (Top priority) */}
+      <div className={cardClass}>
+        <div className="flex items-center justify-between">
+          <div className={subHeadingClass}>3D Models</div>
+          <span className="text-[10px] opacity-65 font-medium">80+ Ready Models</span>
+        </div>
+
+        <div className="space-y-1.5">
+          {/* Open Model Library Button */}
+          <button
+            type="button"
+            onClick={() => {
+              haptics.trigger('light');
+              onOpenModelLibrary();
+            }}
+            className={`w-full min-h-[44px] px-3 py-2 rounded-lg border flex items-center justify-between font-medium transition-colors duration-150 ease-out ${
+              isLight
+                ? 'bg-neutral-900 border-neutral-900 text-white shadow-xs'
+                : 'bg-white border-white text-neutral-950 font-bold shadow-xs'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <FolderOpen className="w-4 h-4" />
+              <span className="text-xs">Browse Model Library</span>
+            </div>
+            <span className="text-[10px] opacity-75 truncate max-w-[120px]">{activeModelName}</span>
+          </button>
+
+          {/* Import 3D File Button */}
+          <button
+            type="button"
+            onClick={() => {
+              haptics.trigger('light');
+              onOpenImporter();
+            }}
+            className={`w-full min-h-[44px] px-3 py-2 rounded-lg border flex items-center justify-between font-medium transition-colors duration-150 ease-out ${
+              isLight
+                ? 'bg-white border-black/10 hover:bg-neutral-200/50 text-neutral-800'
+                : 'bg-black/30 border-white/10 hover:bg-white/10 text-neutral-200'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <Upload className="w-4 h-4" />
+              <span className="text-xs">Import 3D Model File</span>
+            </div>
+            <span className="text-[10px] opacity-60 font-mono">GLB, OBJ, STL</span>
+          </button>
+        </div>
+      </div>
+
+      {/* 2. 3D SHAPES / PRIMITIVES */}
       <div className={cardClass}>
         <div className="flex items-center justify-between">
           <div className={subHeadingClass}>3D Shapes</div>
@@ -118,7 +168,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
         </div>
       </div>
 
-      {/* 2. PROGRESSIVE DISCLOSURE: MORE WAYS TO ADD */}
+      {/* 3. PROGRESSIVE DISCLOSURE: MORE WAYS TO ADD (Mannequins & Guides) */}
       <button
         type="button"
         onClick={() => {
@@ -136,7 +186,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
           {showMoreWays ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
           <span>More ways to add</span>
         </span>
-        <span className="text-[10px] opacity-60 font-normal">Mannequins & 3D models</span>
+        <span className="text-[10px] opacity-60 font-normal">Mannequins & guides</span>
       </button>
 
       {showMoreWays && (
@@ -196,53 +246,6 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
               </div>
             </div>
           )}
-
-          {/* 3D MODELS & IMPORT */}
-          <div className={cardClass}>
-            <div className={subHeadingClass}>3D Models</div>
-
-            <div className="space-y-1.5">
-              {/* Open Model Library Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  haptics.trigger('light');
-                  onOpenModelLibrary();
-                }}
-                className={`w-full min-h-[44px] px-3 py-2 rounded-lg border flex items-center justify-between font-medium transition-colors duration-150 ease-out ${
-                  isLight
-                    ? 'bg-neutral-900 border-neutral-900 text-white shadow-xs'
-                    : 'bg-white border-white text-neutral-950 font-bold shadow-xs'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <FolderOpen className="w-4 h-4" />
-                  <span className="text-xs">Browse Model Library</span>
-                </div>
-                <span className="text-[10px] opacity-75 truncate max-w-[120px]">{activeModelName}</span>
-              </button>
-
-              {/* Import 3D File Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  haptics.trigger('light');
-                  onOpenImporter();
-                }}
-                className={`w-full min-h-[44px] px-3 py-2 rounded-lg border flex items-center justify-between font-medium transition-colors duration-150 ease-out ${
-                  isLight
-                    ? 'bg-white border-black/10 hover:bg-neutral-200/50 text-neutral-800'
-                    : 'bg-black/30 border-white/10 hover:bg-white/10 text-neutral-200'
-                }`}
-              >
-                <div className="flex items-center gap-2">
-                  <Upload className="w-4 h-4" />
-                  <span className="text-xs">Import 3D Model File</span>
-                </div>
-                <span className="text-[10px] opacity-60 font-mono">GLB, OBJ, STL</span>
-              </button>
-            </div>
-          </div>
         </div>
       )}
     </div>

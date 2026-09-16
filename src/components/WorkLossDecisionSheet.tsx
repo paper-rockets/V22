@@ -11,6 +11,7 @@ interface WorkLossDecisionSheetProps {
   onSave: () => void;
   onReplace: () => void;
   onCancel: () => void;
+  hideSaveOption?: boolean;
 }
 
 export const WorkLossDecisionSheet: React.FC<WorkLossDecisionSheetProps> = ({
@@ -23,6 +24,7 @@ export const WorkLossDecisionSheet: React.FC<WorkLossDecisionSheetProps> = ({
   onSave,
   onReplace,
   onCancel,
+  hideSaveOption = false,
 }) => {
   const cancelRef = useRef<HTMLButtonElement>(null);
   const isLight = theme === 'light';
@@ -72,17 +74,43 @@ export const WorkLossDecisionSheet: React.FC<WorkLossDecisionSheetProps> = ({
           </button>
         </div>
 
-        <div className="mt-4 grid gap-2">
-          <button ref={cancelRef} type="button" onClick={onCancel} disabled={busy} className={`min-h-12 rounded-xl border px-4 text-sm font-bold ${isLight ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-white bg-white text-neutral-950'}`}>
-            Cancel — Keep My Work
-          </button>
-          <button type="button" onClick={onSave} disabled={busy} className={`min-h-12 rounded-xl border px-4 text-sm font-semibold ${isLight ? 'border-black/15 bg-neutral-100' : 'border-white/15 bg-white/10'}`}>
-            <span className="inline-flex items-center gap-2"><Save className="h-4 w-4" />Save Project &amp; {actionLabel}</span>
-          </button>
-          <button type="button" onClick={onReplace} disabled={busy} className="min-h-12 rounded-xl border border-red-500/40 px-4 text-sm font-semibold text-red-600 dark:text-red-300">
-            {actionLabel} Without Saving
-          </button>
-        </div>
+        {hideSaveOption ? (
+          <div className="mt-4 flex gap-2">
+            <button
+              ref={cancelRef}
+              type="button"
+              onClick={onCancel}
+              disabled={busy}
+              className={`flex-1 min-h-11 rounded-xl border px-4 text-sm font-semibold transition-colors ${
+                isLight
+                  ? 'border-black/15 bg-neutral-100 hover:bg-neutral-200 text-neutral-800'
+                  : 'border-white/15 bg-white/10 hover:bg-white/15 text-white'
+              }`}
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onReplace}
+              disabled={busy}
+              className="flex-1 min-h-11 rounded-xl border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 px-4 text-sm font-bold text-red-600 dark:text-red-400 transition-colors"
+            >
+              {actionLabel}
+            </button>
+          </div>
+        ) : (
+          <div className="mt-4 grid gap-2">
+            <button ref={cancelRef} type="button" onClick={onCancel} disabled={busy} className={`min-h-12 rounded-xl border px-4 text-sm font-bold ${isLight ? 'border-neutral-900 bg-neutral-900 text-white' : 'border-white bg-white text-neutral-950'}`}>
+              Cancel — Keep My Work
+            </button>
+            <button type="button" onClick={onSave} disabled={busy} className={`min-h-12 rounded-xl border px-4 text-sm font-semibold ${isLight ? 'border-black/15 bg-neutral-100' : 'border-white/15 bg-white/10'}`}>
+              <span className="inline-flex items-center gap-2"><Save className="h-4 w-4" />Save Project &amp; {actionLabel}</span>
+            </button>
+            <button type="button" onClick={onReplace} disabled={busy} className="min-h-12 rounded-xl border border-red-500/40 px-4 text-sm font-semibold text-red-600 dark:text-red-300">
+              {actionLabel} Without Saving
+            </button>
+          </div>
+        )}
       </section>
     </div>
   );

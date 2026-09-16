@@ -529,6 +529,7 @@ export function App() {
   const [isExportOpen, setIsExportOpen] = useState<boolean>(false);
   const [isSessionModalOpen, setIsSessionModalOpen] = useState<boolean>(false);
   const [isIlluminationOpen, setIsIlluminationOpen] = useState<boolean>(false);
+  const [isMoreMenuOpen, setIsMoreMenuOpen] = useState<boolean>(false);
   const [windowDragOver, setWindowDragOver] = useState<boolean>(false);
 
   // Sprint 1-5 Spatial Editing & Hardware States
@@ -624,6 +625,18 @@ export function App() {
   });
   const [activeDNA, setActiveDNA] = useState<HolisticStrokeDNA | null>(null);
   const [snappedShapeNotice, setSnappedShapeNotice] = useState<string | null>(null);
+
+  // Auto-collapse open panels when stroke starts on canvas
+  useEffect(() => {
+    const handleStrokeStarted = () => {
+      closeSheet();
+      if (!colorStudioAllowsWorkspaceInteraction) {
+        setIsColorStudioOpen(false);
+      }
+    };
+    window.addEventListener('STUDIO_STROKE_STARTED', handleStrokeStarted);
+    return () => window.removeEventListener('STUDIO_STROKE_STARTED', handleStrokeStarted);
+  }, [colorStudioAllowsWorkspaceInteraction]);
 
   const isInitialMountRef = React.useRef<boolean>(true);
 
@@ -1394,7 +1407,7 @@ export function App() {
   const handleClearCanvas = useCallback(() => {
     handleBeforeDestructiveAction(
       'Clear canvas?',
-      'This removes every stroke from all layers. The canvas surface and your layer structure stay in place.',
+      'This removes all drawing strokes. Your canvas size and layers will stay in place.',
       'Clear Canvas',
       () => {
         engine?.clearAllStrokes();
@@ -1741,6 +1754,25 @@ export function App() {
         theme={theme}
         onOpenIllumination={() => setIsIlluminationOpen(true)}
         onOpenSessions={() => setIsSessionModalOpen(true)}
+        onOpenExport={() => setIsExportOpen(true)}
+        onToggleTheme={handleToggleTheme}
+        showGrid={showGrid}
+        onToggleGrid={handleToggleGrid}
+        navigatorStyle={navigatorStyle}
+        onNavigatorStyleChange={handleNavigatorStyleChange}
+        isGizmoActive={gizmoMode !== 'Hidden' && activeController !== 'hidden' && showStudioNavigator}
+        onToggleGizmo={handleToggleGizmo}
+        onMoreOpenChange={setIsMoreMenuOpen}
+        canvasFormat={canvasFormat}
+        onCanvasFormatChange={handleCanvasFormatChange}
+        canvasWidth={canvasWidth}
+        canvasHeight={canvasHeight}
+        onCanvasSizeChange={handleCanvasSizeChange}
+        canvasTransparency={Math.round((1 - canvasOpacity) * 100)}
+        onCanvasTransparencyChange={handleCanvasTransparencyChange}
+        canvasColor={canvasColor}
+        onCanvasColorChange={handleCanvasColorChange}
+        onClearCanvas={handleClearCanvas}
       />
 
       {/* Developer & Test Panel (Exclusively rendered when native debug is authorized) */}
@@ -1938,6 +1970,7 @@ export function App() {
               onToggleProjection={handleToggleProjection}
               transformMode={navigatorTransformMode}
               onTransformModeChange={setNavigatorTransformMode}
+              onNavigatorLayoutChange={handleNavigatorStyleChange}
               onClose={() => handleControllerChange('hidden')}
             />
           )
@@ -2036,8 +2069,6 @@ export function App() {
         onSetTheme={handleSetTheme}
         uiScale={uiScale}
         onUiScaleChange={handleUiScaleChange}
-        projectionMode={projectionMode}
-        onToggleProjection={handleToggleProjection}
         fingerDraw={fingerPenMode}
         onToggleFingerDraw={setFingerPenMode}
         disableContextMenu={disableContextMenu}
@@ -2063,9 +2094,7 @@ export function App() {
           setModelDisplayMode(mode);
           engine?.setModelDisplayMode(mode);
         }}
-        onOpenIllumination={() => setIsIlluminationOpen(true)}
         onOpenRenderSettings={() => setIsRenderSettingsOpen(true)}
-        onOpenSessions={() => setIsSessionModalOpen(true)}
         onOpenExport={() => setIsExportOpen(true)}
         onOpenARViewer={() => setIsARViewerOpen(true)}
         onOpenClipboard={() => setIsClipboardOpen(true)}
@@ -2074,12 +2103,6 @@ export function App() {
         storageEstimate={storageEstimate}
         autoSaveMeta={autoSaveMeta}
         onRestoreAutoSave={handleRestoreAutoSave}
-        navigatorStyle={navigatorStyle}
-        onNavigatorStyleChange={handleNavigatorStyleChange}
-        navigatorSensitivity={navigatorSensitivity}
-        onSensitivityChange={setNavigatorSensitivity}
-        showNavigator={showStudioNavigator && activeController !== 'hidden' && gizmoMode !== 'Hidden'}
-        onToggleNavigator={handleToggleNavigator}
         showStats={showPerformanceStats}
         onToggleStats={setShowPerformanceStats}
       />
@@ -2107,6 +2130,7 @@ export function App() {
           onSave={handleWorkLossSave}
           onReplace={handleWorkLossReplace}
           onCancel={handleWorkLossCancel}
+          hideSaveOption={pendingWorkLoss.actionLabel === 'Clear Canvas'}
         />
       )}
 

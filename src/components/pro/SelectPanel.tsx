@@ -7,8 +7,6 @@ import {
   IcSnapGround as ArrowDownToLine,
   IcCopy as Copy,
   IcDelete as Trash2,
-  IcEye as Eye,
-  IcEyeOff as EyeOff,
   IcCompass as Compass,
 } from './StudioIcons';
 import { StudioEngine } from '../../core/studioEngine';
@@ -289,28 +287,7 @@ export const SelectPanel: React.FC<SelectPanelProps> = ({
           <span className="text-[11px]">{keepModelsOnGround ? 'On' : 'Off'}</span>
         </button>
 
-        <button
-          type="button"
-          aria-pressed={isGizmoActive}
-          onClick={() => {
-            haptics.trigger('light');
-            onToggleGizmo();
-          }}
-          className={`w-full min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center justify-between font-medium text-xs transition-colors ${
-            isLight
-              ? 'bg-white border-black/10 text-neutral-700 hover:bg-neutral-200/40'
-              : 'bg-black/30 border-white/10 text-neutral-300 hover:bg-white/5'
-          }`}
-        >
-          <span className="flex items-center gap-1.5">
-            <Compass className="w-3.5 h-3.5" />
-            View controls
-          </span>
-          <span className="flex items-center gap-1.5 text-[11px]">
-            {isGizmoActive ? 'Shown' : 'Hidden'}
-            {isGizmoActive ? <Eye className="w-3.5 h-3.5" /> : <EyeOff className="w-3.5 h-3.5 opacity-60" />}
-          </span>
-        </button>
+
       </div>
 
       <div className={cardClass}>

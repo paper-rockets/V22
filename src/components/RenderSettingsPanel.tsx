@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { PostProcessSettings, RenderMode, GPUInfo, PathTracingProgressInfo } from '../types';
 import {
   Sliders,
@@ -51,6 +51,32 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
     });
   };
 
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    const handlePointerDown = (e: PointerEvent) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    const timer = setTimeout(() => {
+      window.addEventListener('pointerdown', handlePointerDown);
+    }, 50);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('pointerdown', handlePointerDown);
+      clearTimeout(timer);
+    };
+  }, [onClose]);
+
   const handleManualRecalculate = () => {
     if (onRecalculateNormals) {
       const count = onRecalculateNormals();
@@ -61,30 +87,34 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
 
   return (
     <div
+      ref={panelRef}
       id="render-settings-panel"
-      className={`pr-surface paperrocket-context-panel fixed left-[76px] sm:left-[88px] top-1/2 -translate-y-1/2 w-[var(--studio-menu-wide)] max-w-[min(var(--studio-menu-wide),calc(100vw-6rem))] max-h-[72vh] flex flex-col p-4 rounded-2xl border shadow-2xl z-50 select-none animate-in fade-in slide-in-from-left-2 duration-150 overflow-y-auto ${
+      className={`pr-surface paperrocket-context-panel fixed left-4 sm:left-[88px] top-1/2 -translate-y-1/2 w-[var(--studio-menu-wide)] max-w-[calc(100vw-2rem)] sm:max-w-[min(var(--studio-menu-wide),calc(100vw-6rem))] max-h-[85vh] flex flex-col rounded-2xl border shadow-2xl z-50 select-none animate-in fade-in slide-in-from-left-2 duration-150 overflow-hidden ${
         isLight
           ? 'bg-white border-black/10 text-neutral-800 shadow-2xl'
           : 'bg-[#18191d] border-neutral-800 text-neutral-200 shadow-2xl'
       }`}
     >
-      {/* Header */}
-      <div className={`flex items-center justify-between pb-3 border-b ${isLight ? 'border-black/10' : 'border-neutral-800'}`}>
-        <div className={`flex items-center gap-2 font-semibold text-sm ${isLight ? 'text-neutral-900' : 'text-neutral-200'}`}>
+      {/* Pinned Header - ALWAYS VISIBLE, never scrolls away */}
+      <div className={`flex items-center justify-between p-3.5 px-4 border-b shrink-0 ${isLight ? 'bg-white border-black/10' : 'bg-[#18191d] border-neutral-800'}`}>
+        <div className={`flex items-center gap-2 font-semibold text-sm ${isLight ? 'text-neutral-900' : 'text-neutral-100'}`}>
           <Sliders className="w-4 h-4 text-neutral-700 dark:text-zinc-300" />
           <span>Picture Quality</span>
         </div>
         <button
+          type="button"
           onClick={onClose}
-          className={`p-1 rounded-lg transition-colors ${
-            isLight ? 'hover:bg-neutral-200 text-neutral-500 hover:text-neutral-900' : 'hover:bg-neutral-800 text-neutral-400 hover:text-neutral-200'
+          aria-label="Close Picture Quality"
+          className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+            isLight ? 'hover:bg-neutral-100 text-neutral-600 hover:text-neutral-900' : 'hover:bg-neutral-800 text-neutral-400 hover:text-neutral-100'
           }`}
         >
           <X className="w-4 h-4" />
         </button>
       </div>
 
-      <div className="space-y-4 my-3 pr-1 text-xs">
+      {/* Scrollable Content Container */}
+      <div className="space-y-4 p-4 pt-3 text-xs overflow-y-auto flex-1 overscroll-contain">
         {/* Render Mode Segmented Switch */}
         <div className={`p-3 rounded-xl border space-y-2.5 ${
           isLight ? 'bg-[#f4f0e9]/80 border-black/10' : 'bg-neutral-950/60 border-neutral-800/80'
@@ -512,6 +542,22 @@ export const RenderSettingsPanelComponent: React.FC<RenderSettingsPanelProps> = 
             </button>
           </div>
         )}
+
+        {/* Bottom Close Button */}
+        <div className="pt-2 pb-1">
+          <button
+            type="button"
+            onClick={onClose}
+            className={`w-full py-2.5 px-3 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+              isLight
+                ? 'bg-neutral-100 hover:bg-neutral-200 text-neutral-800 border border-black/10'
+                : 'bg-white/10 hover:bg-white/15 text-neutral-100 border border-white/10'
+            }`}
+          >
+            <X className="w-4 h-4" />
+            <span>Close Picture Quality</span>
+          </button>
+        </div>
       </div>
     </div>
   );

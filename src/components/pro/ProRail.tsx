@@ -65,7 +65,6 @@ const MODES: ModeButton[] = [
   { id: 'draw', label: 'Draw', icon: IcDraw },
   { id: 'erase', label: 'Erase', icon: IcErase },
   { id: 'select', label: 'Select', icon: IcPointer },
-  { id: 'create', label: 'Add', icon: IcCreate },
   { id: 'layers', label: 'Layers', icon: IcLayers },
 ];
 
@@ -110,10 +109,9 @@ export const ProRail: React.FC<ProRailProps> = ({
   const placementBtnRef = useRef<HTMLButtonElement>(null);
   const colorBtnRef = useRef<HTMLButtonElement>(null);
   const sizeBtnRef = useRef<HTMLButtonElement>(null);
-  const opacityBtnRef = useRef<HTMLButtonElement>(null);
   const brushBtnRef = useRef<HTMLButtonElement>(null);
 
-  const [panel, setPanel] = useState<'placement' | 'color' | 'size' | 'opacity' | 'brush' | null>(null);
+  const [panel, setPanel] = useState<'placement' | 'color' | 'size' | 'brush' | null>(null);
   const [showAllBrushes, setShowAllBrushes] = useState(false);
   useEffect(() => {
     setStudioShelfOpen(panel !== null);
@@ -186,8 +184,6 @@ export const ProRail: React.FC<ProRailProps> = ({
       ? colorBtnRef
       : panel === 'size'
       ? sizeBtnRef
-      : panel === 'opacity'
-      ? opacityBtnRef
       : panel === 'brush'
       ? brushBtnRef
       : undefined;
@@ -267,82 +263,259 @@ export const ProRail: React.FC<ProRailProps> = ({
         className="paperrocket-studio-rail fixed z-40 select-none pointer-events-none"
       >
         <div className={`paperrocket-studio-rail-inner pointer-events-auto flex items-center ${light ? 'text-neutral-800' : 'text-white/85'}`}>
-          {/* Studio Modes: Draw, Erase, Select, Add, Layers */}
+          {/* Left Rail Tools: Draw, Brush, Color, Size, Erase, Select, Layers */}
           <div className="paperrocket-studio-mode-group">
-            {MODES.map(({ id, label, icon: Icon }) => {
-              const anotherModeIsOpen =
-                openSheet === 'select' ||
-                openSheet === 'create' ||
-                openSheet === 'deform' ||
-                openSheet === 'layers';
-              const isSelecting = tool === 'select' || tool === 'pointer';
-              const isActive =
-                id === 'erase'
-                  ? tool === 'eraser'
-                  : openSheet === id ||
-                    // Select stays lit after its menu closes, because taps still select.
-                    (id === 'select' && isSelecting && !anotherModeIsOpen) ||
-                    (id === 'draw' && !anotherModeIsOpen && (tool === 'brush' || tool === 'free_brush' || tool === 'eyedropper'));
-              return (
-                <button
-                  key={id}
-                  type="button"
-                  data-pro-rail-button="true"
-                  data-testid={id === 'create' ? 'tool-add' : `tool-${id}`}
-                  data-active={isActive ? 'true' : 'false'}
-                  onClick={() => {
-                    haptics.trigger('light');
-                    closeColorStudio();
-                    if (id === 'erase') {
-                      setTool?.('eraser');
-                      closeSheet();
-                      setPanel(null);
-                      setShowEraseHint(true);
-                      if (eraseHintTimerRef.current) window.clearTimeout(eraseHintTimerRef.current);
-                      eraseHintTimerRef.current = window.setTimeout(() => setShowEraseHint(false), 2400);
-                      return;
-                    }
-                    if (id === 'draw') {
-                      if (tool === 'eraser' || (setTool && tool !== 'brush' && tool !== 'free_brush')) {
-                        setTool?.('brush');
-                      }
-                      setPanel(null);
-                      // Draw is a mode, not another settings menu. Its controls
-                      // already live in the bottom dock, so a second inspector
-                      // would only duplicate Surface, Brush, Color, Size, and Assist.
-                      closeSheet();
-                      return;
-                    } else if (id === 'select' && setTool) {
-                      setTool('select');
-                    }
-                    setPanel(null);
-                    if (openSheet === id) {
-                      closeSheet();
-                    } else {
-                      openSheetId(id);
-                    }
-                  }}
-                  className={`paperrocket-studio-mode flex items-center justify-center rounded-xl transition-colors active:scale-95 border-0 bg-transparent ${
-                    isActive
-                      ? light
-                        ? 'text-neutral-950 font-bold'
-                        : 'text-white font-bold'
-                      : light
-                        ? 'text-neutral-500 hover:text-neutral-900'
-                        : 'text-neutral-400 hover:text-white'
+            {/* 1. Draw */}
+            <button
+              type="button"
+              data-pro-rail-button="true"
+              data-testid="tool-draw"
+              data-active={
+                (!openSheet || openSheet === 'draw') &&
+                (tool === 'brush' || tool === 'free_brush' || tool === 'eyedropper') &&
+                openSheet !== 'select' &&
+                openSheet !== 'create' &&
+                openSheet !== 'deform' &&
+                openSheet !== 'layers'
+              }
+              onClick={() => {
+                haptics.trigger('light');
+                closeColorStudio();
+                if (tool === 'eraser' || (setTool && tool !== 'brush' && tool !== 'free_brush')) {
+                  setTool?.('brush');
+                }
+                setPanel(null);
+                closeSheet();
+              }}
+              className={`paperrocket-studio-mode flex items-center justify-center rounded-xl transition-colors active:scale-95 border-0 bg-transparent ${
+                (!openSheet || openSheet === 'draw') &&
+                (tool === 'brush' || tool === 'free_brush' || tool === 'eyedropper') &&
+                openSheet !== 'select' &&
+                openSheet !== 'create' &&
+                openSheet !== 'deform' &&
+                openSheet !== 'layers'
+                  ? light ? 'text-neutral-950 font-bold' : 'text-white font-bold'
+                  : light ? 'text-neutral-500 hover:text-neutral-900' : 'text-neutral-400 hover:text-white'
+              }`}
+              aria-label="Draw"
+              aria-pressed={
+                (!openSheet || openSheet === 'draw') &&
+                (tool === 'brush' || tool === 'free_brush' || tool === 'eyedropper') &&
+                openSheet !== 'select' &&
+                openSheet !== 'create' &&
+                openSheet !== 'deform' &&
+                openSheet !== 'layers'
+              }
+              title="Draw"
+            >
+              <IcDraw className="h-[21px] w-[21px] shrink-0" strokeWidth={1.7} />
+              <span className="paperrocket-studio-mode-label">Draw</span>
+            </button>
+
+            {/* 2. Brush (moved to left menu) */}
+            <button
+              ref={brushBtnRef}
+              type="button"
+              data-pro-rail-button="true"
+              data-active={panel === 'brush' ? 'true' : 'false'}
+              onClick={() => {
+                haptics.trigger('light');
+                closeColorStudio();
+                if (setTool && tool === 'eraser') setTool('brush');
+                closeSheet();
+                setPanel((previous) => (previous === 'brush' ? null : 'brush'));
+              }}
+              className={`paperrocket-studio-mode paperrocket-studio-quick--brush flex items-center justify-center rounded-xl transition-colors active:scale-95 border-0 bg-transparent ${
+                panel === 'brush'
+                  ? isLight ? 'text-neutral-950 font-bold' : 'text-white font-bold'
+                  : isLight ? 'text-neutral-500 hover:text-neutral-900' : 'text-neutral-400 hover:text-white'
+              }`}
+              aria-label="Brush"
+              title={`Brush: ${QUICK_BRUSH_LABELS[activeBrush.id] || activeBrush.name}`}
+            >
+              <IcBrushRibbon className="h-5 w-5 shrink-0" strokeWidth={1.7} />
+              <span className="paperrocket-studio-mode-label">Brush</span>
+            </button>
+
+            {/* 3. Color (moved to left menu) */}
+            <button
+              ref={colorBtnRef}
+              type="button"
+              data-pro-rail-button="true"
+              data-active="false"
+              onClick={() => {
+                haptics.trigger('light');
+                if (setTool && tool === 'eraser') setTool('brush');
+                closeSheet();
+                setPanel(null);
+                window.dispatchEvent(new Event('remix3d:color-studio-wheel'));
+                onOpenColorStudio?.();
+              }}
+              className="paperrocket-studio-mode paperrocket-studio-quick--color flex items-center justify-center rounded-xl transition-transform active:scale-95 border-0 bg-transparent"
+              aria-label="Color"
+              title="Color"
+            >
+              <span
+                className={`w-6 h-6 rounded-full border transition-all shrink-0 ${
+                  isLight ? 'border-black/15' : 'border-white/20'
+                }`}
+                style={{
+                  background: (brushSettings?.previewUrl || brushSettings?.matcapUrl)
+                    ? `url(${brushSettings.previewUrl || brushSettings.matcapUrl}) center/cover no-repeat`
+                    : activeColor,
+                  boxShadow: brushSettings?.materialType === 'glow' ? `0 0 10px ${activeColor}` : undefined,
+                }}
+              />
+              <span className="paperrocket-studio-mode-label">Color</span>
+            </button>
+
+            {/* 4. Size (moved to left menu) */}
+            <button
+              ref={sizeBtnRef}
+              type="button"
+              data-pro-rail-button="true"
+              data-active={panel === 'size' ? 'true' : 'false'}
+              onClick={() => {
+                haptics.trigger('light');
+                closeColorStudio();
+                if (setTool && tool === 'eraser') setTool('brush');
+                closeSheet();
+                setPanel((previous) => (previous === 'size' ? null : 'size'));
+              }}
+              className={`paperrocket-studio-mode paperrocket-studio-quick--size flex items-center justify-center rounded-xl transition-colors active:scale-95 border-0 bg-transparent ${
+                panel === 'size'
+                  ? isLight
+                    ? 'text-neutral-950 font-bold'
+                    : 'text-white font-bold'
+                  : isLight
+                  ? 'text-neutral-500 hover:text-neutral-900'
+                  : 'text-neutral-400 hover:text-white'
+              }`}
+              aria-label="Line size"
+              title={`Size: ${QUICK_BRUSH_LABELS[activeBrush.id] || activeBrush.name}`}
+            >
+              <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors shrink-0 ${
+                 panel === 'size'
+                  ? isLight ? 'border-neutral-900' : 'border-white'
+                  : isLight ? 'border-neutral-400' : 'border-white/40'
+              }`}>
+                <span
+                  className={`rounded-full transition-all ${
+                    panel === 'size'
+                      ? isLight ? 'bg-neutral-900' : 'bg-white'
+                      : isLight ? 'bg-neutral-900' : 'bg-white'
                   }`}
-                  aria-label={label}
-                  aria-pressed={isActive}
-                  title={label}
-                >
-                  <Icon className="h-[21px] w-[21px] shrink-0" strokeWidth={1.7} />
-                  <span className="paperrocket-studio-mode-label">{label}</span>
-                </button>
-              );
-            })}
+                  style={{
+                    width: Math.max(4, Math.min(10, currentBrushSettings.size * 100)),
+                    height: Math.max(4, Math.min(10, currentBrushSettings.size * 100)),
+                  }}
+                />
+              </div>
+              <span className="paperrocket-studio-mode-label">Size</span>
+            </button>
+
+            {/* 5. Erase */}
+            <button
+              type="button"
+              data-pro-rail-button="true"
+              data-testid="tool-erase"
+              data-active={tool === 'eraser'}
+              onClick={() => {
+                haptics.trigger('light');
+                closeColorStudio();
+                setTool?.('eraser');
+                closeSheet();
+                setPanel(null);
+                setShowEraseHint(true);
+                if (eraseHintTimerRef.current) window.clearTimeout(eraseHintTimerRef.current);
+                eraseHintTimerRef.current = window.setTimeout(() => setShowEraseHint(false), 2400);
+              }}
+              className={`paperrocket-studio-mode flex items-center justify-center rounded-xl transition-colors active:scale-95 border-0 bg-transparent ${
+                tool === 'eraser'
+                  ? light ? 'text-neutral-950 font-bold' : 'text-white font-bold'
+                  : light ? 'text-neutral-500 hover:text-neutral-900' : 'text-neutral-400 hover:text-white'
+              }`}
+              aria-label="Erase"
+              aria-pressed={tool === 'eraser'}
+              title="Erase"
+            >
+              <IcErase className="h-[21px] w-[21px] shrink-0" strokeWidth={1.7} />
+              <span className="paperrocket-studio-mode-label">Erase</span>
+            </button>
+
+            {/* 6. Select */}
+            <button
+              type="button"
+              data-pro-rail-button="true"
+              data-testid="tool-select"
+              data-active={
+                openSheet === 'select' ||
+                ((tool === 'select' || tool === 'pointer') && openSheet !== 'create' && openSheet !== 'deform' && openSheet !== 'layers')
+              }
+              onClick={() => {
+                haptics.trigger('light');
+                closeColorStudio();
+                const isCurrentlyActive =
+                  openSheet === 'select' ||
+                  ((tool === 'select' || tool === 'pointer') && openSheet !== 'create' && openSheet !== 'deform' && openSheet !== 'layers');
+                if (isCurrentlyActive) {
+                  setTool?.('draw');
+                  closeSheet();
+                  setPanel(null);
+                } else {
+                  setTool?.('select');
+                  setPanel(null);
+                  openSheetId('select');
+                }
+              }}
+              className={`paperrocket-studio-mode flex items-center justify-center rounded-xl transition-colors active:scale-95 border-0 bg-transparent ${
+                openSheet === 'select' ||
+                ((tool === 'select' || tool === 'pointer') && openSheet !== 'create' && openSheet !== 'deform' && openSheet !== 'layers')
+                  ? light ? 'text-neutral-950 font-bold' : 'text-white font-bold'
+                  : light ? 'text-neutral-500 hover:text-neutral-900' : 'text-neutral-400 hover:text-white'
+              }`}
+              aria-label="Select"
+              aria-pressed={
+                openSheet === 'select' ||
+                ((tool === 'select' || tool === 'pointer') && openSheet !== 'create' && openSheet !== 'deform' && openSheet !== 'layers')
+              }
+              title="Select"
+            >
+              <IcPointer className="h-[21px] w-[21px] shrink-0" strokeWidth={1.7} />
+              <span className="paperrocket-studio-mode-label">Select</span>
+            </button>
+
+            {/* 7. Layers */}
+            <button
+              type="button"
+              data-pro-rail-button="true"
+              data-testid="tool-layers"
+              data-active={openSheet === 'layers'}
+              onClick={() => {
+                haptics.trigger('light');
+                closeColorStudio();
+                setPanel(null);
+                if (openSheet === 'layers') {
+                  closeSheet();
+                } else {
+                  openSheetId('layers');
+                }
+              }}
+              className={`paperrocket-studio-mode flex items-center justify-center rounded-xl transition-colors active:scale-95 border-0 bg-transparent ${
+                openSheet === 'layers'
+                  ? light ? 'text-neutral-950 font-bold' : 'text-white font-bold'
+                  : light ? 'text-neutral-500 hover:text-neutral-900' : 'text-neutral-400 hover:text-white'
+              }`}
+              aria-label="Layers"
+              aria-pressed={openSheet === 'layers'}
+              title="Layers"
+            >
+              <IcLayers className="h-[21px] w-[21px] shrink-0" strokeWidth={1.7} />
+              <span className="paperrocket-studio-mode-label">Layers</span>
+            </button>
           </div>
 
-          {/* Frequent drawing controls: placement, brush, color, size, and drawing aids. */}
+          {/* Bottom dock: Surface, Add, Assist */}
           <div className="paperrocket-studio-quick-group">
             {/* 1. Placement: Surface / Open air */}
             <button
@@ -367,108 +540,36 @@ export const ProRail: React.FC<ProRailProps> = ({
               </span>
             </button>
 
-            {/* 2. Brush */}
+            {/* 2. Add (moved to bottom menu) */}
             <button
-              ref={brushBtnRef}
               type="button"
               data-pro-rail-button="true"
-              data-active={panel === 'brush' ? 'true' : 'false'}
+              data-testid="tool-add"
+              data-active={openSheet === 'create' ? 'true' : 'false'}
               onClick={() => {
                 haptics.trigger('light');
                 closeColorStudio();
-                if (setTool && tool === 'eraser') setTool('brush');
-                closeSheet();
-                setPanel((previous) => (previous === 'brush' ? null : 'brush'));
+                setPanel(null);
+                if (openSheet === 'create') {
+                  closeSheet();
+                } else {
+                  openSheetId('create');
+                }
               }}
-              className={`paperrocket-studio-quick paperrocket-studio-quick--brush rounded-xl flex items-center justify-center active:scale-95 transition-colors border-0 bg-transparent ${
-                panel === 'brush'
+              className={`paperrocket-studio-quick rounded-xl flex items-center justify-center active:scale-95 transition-colors border-0 bg-transparent ${
+                openSheet === 'create'
                   ? isLight ? 'text-neutral-950 font-bold' : 'text-white font-bold'
                   : isLight ? 'text-neutral-500 hover:text-neutral-900' : 'text-neutral-400 hover:text-white'
               }`}
-              aria-label="Brush"
-              title={`Brush: ${QUICK_BRUSH_LABELS[activeBrush.id] || activeBrush.name}`}
+              aria-label="Add"
+              aria-pressed={openSheet === 'create'}
+              title="Add"
             >
-              <IcBrushRibbon className="h-5 w-5" strokeWidth={1.7} />
-              <span className="paperrocket-studio-quick-label">Brush</span>
+              <IcCreate className="h-5 w-5" strokeWidth={1.7} />
+              <span className="paperrocket-studio-quick-label">Add</span>
             </button>
 
-            {/* 3. Color */}
-            <button
-              ref={colorBtnRef}
-              type="button"
-              data-pro-rail-button="true"
-              data-active="false"
-              onClick={() => {
-                haptics.trigger('light');
-                if (setTool && tool === 'eraser') setTool('brush');
-                closeSheet();
-                setPanel(null);
-                window.dispatchEvent(new Event('remix3d:color-studio-wheel'));
-                onOpenColorStudio?.();
-              }}
-              className="paperrocket-studio-quick paperrocket-studio-quick--color rounded-xl flex items-center justify-center active:scale-95 transition-transform border-0 bg-transparent"
-              aria-label="Color"
-              title="Color"
-            >
-              <span
-                className={`w-7 h-7 rounded-full border transition-all ${
-                  isLight ? 'border-black/15' : 'border-white/20'
-                }`}
-                style={{
-                  background: (brushSettings?.previewUrl || brushSettings?.matcapUrl)
-                    ? `url(${brushSettings.previewUrl || brushSettings.matcapUrl}) center/cover no-repeat`
-                    : activeColor,
-                  boxShadow: brushSettings?.materialType === 'glow' ? `0 0 10px ${activeColor}` : undefined,
-                }}
-              />
-              <span className="paperrocket-studio-quick-label">Color</span>
-            </button>
-
-            {/* 4. Size */}
-            <button
-              ref={sizeBtnRef}
-              type="button"
-              data-pro-rail-button="true"
-              data-active={panel === 'size' ? 'true' : 'false'}
-              onClick={() => {
-                haptics.trigger('light');
-                closeColorStudio();
-                if (setTool && tool === 'eraser') setTool('brush');
-                closeSheet();
-                setPanel((previous) => (previous === 'size' ? null : 'size'));
-              }}
-              className={`paperrocket-studio-quick paperrocket-studio-quick--size rounded-xl flex items-center justify-center active:scale-95 transition-colors border-0 bg-transparent ${
-                panel === 'size'
-                  ? isLight
-                    ? 'text-neutral-950 font-bold'
-                    : 'text-white font-bold'
-                  : isLight
-                  ? 'text-neutral-500 hover:text-neutral-900'
-                  : 'text-neutral-400 hover:text-white'
-              }`}
-              aria-label="Line size"
-              title={`Size: ${QUICK_BRUSH_LABELS[activeBrush.id] || activeBrush.name}`}
-            >
-              <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${
-                 panel === 'size'
-                  ? isLight ? 'border-neutral-900' : 'border-white'
-                  : isLight ? 'border-neutral-400' : 'border-white/40'
-              }`}>
-                <span
-                  className={`rounded-full transition-all ${
-                    panel === 'size'
-                      ? isLight ? 'bg-neutral-900' : 'bg-white'
-                      : isLight ? 'bg-neutral-900' : 'bg-white'
-                  }`}
-                  style={{
-                    width: Math.max(4, Math.min(10, currentBrushSettings.size * 100)),
-                    height: Math.max(4, Math.min(10, currentBrushSettings.size * 100)),
-                  }}
-                />
-              </div>
-              <span className="paperrocket-studio-quick-label">Size</span>
-            </button>
-
+            {/* 3. Assist */}
             <button
               type="button"
               data-pro-rail-button="true"
@@ -538,6 +639,8 @@ export const ProRail: React.FC<ProRailProps> = ({
                 ? 'paperrocket-studio-shelf--brush'
                 : panel === 'placement'
                 ? 'paperrocket-studio-shelf--wide'
+                : panel === 'size'
+                ? 'paperrocket-studio-shelf--size'
                 : 'paperrocket-studio-shelf--compact'
             } pointer-events-auto absolute left-full ml-3 z-50 animate-in fade-in slide-in-from-bottom-2 duration-150`}
           >
@@ -855,62 +958,6 @@ export const ProRail: React.FC<ProRailProps> = ({
                   }}
                   theme={theme}
                 />
-              </div>
-            )}
-
-            {/* Opacity Selector Panel - Dedicated Slider & Quick Presets */}
-            {panel === 'opacity' && (
-              <div className="w-full flex flex-col gap-2.5 py-1">
-                <div className="flex items-center justify-between px-0.5">
-                  <span className={`text-xs font-semibold ${isLight ? 'text-neutral-900' : 'text-white'}`}>
-                    Opacity
-                  </span>
-                  <span className="font-mono text-xs font-bold tabular-nums">
-                    {Math.round((currentBrushSettings.opacity ?? 1) * 100)}%
-                  </span>
-                </div>
-
-                <input
-                  type="range"
-                  min="0.05"
-                  max="1"
-                  step="0.05"
-                  value={currentBrushSettings.opacity ?? 1}
-                  onChange={(e) => {
-                    const val = parseFloat(e.target.value);
-                    setBrushSettings?.((prev) => ({ ...prev, opacity: val }));
-                  }}
-                  className="w-full h-2 accent-neutral-900 dark:accent-white bg-black/10 dark:bg-white/20 rounded-lg cursor-pointer"
-                  aria-label="Line opacity slider"
-                />
-
-                <div className="grid grid-cols-4 gap-1 pt-0.5">
-                  {[0.25, 0.5, 0.75, 1.0].map((preset) => {
-                    const pct = Math.round(preset * 100);
-                    const isSelected = Math.abs((currentBrushSettings.opacity ?? 1) - preset) < 0.03;
-                    return (
-                      <button
-                        key={preset}
-                        type="button"
-                        onClick={() => {
-                          haptics.trigger('light');
-                          setBrushSettings?.((prev) => ({ ...prev, opacity: preset }));
-                        }}
-                        className={`h-7 rounded-lg border text-[11px] font-bold transition-all active:scale-95 ${
-                          isSelected
-                            ? isLight
-                              ? 'bg-neutral-900 text-white border-neutral-900'
-                              : 'bg-white text-neutral-950 border-white'
-                            : isLight
-                            ? 'border-black/15 text-neutral-700 hover:bg-black/5'
-                            : 'border-white/15 text-neutral-300 hover:bg-white/10'
-                        }`}
-                      >
-                        {pct}%
-                      </button>
-                    );
-                  })}
-                </div>
               </div>
             )}
 

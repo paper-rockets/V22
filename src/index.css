@@ -298,26 +298,29 @@ html:not(.light) .pr-surface .paperrocket-toggle {
 .paperrocket-color-studio-overlay--side {
   padding-left: max(72px, calc(env(safe-area-inset-left) + 72px)) !important;
   padding-right: 16px !important;
+  justify-content: flex-start !important;
+  align-items: center !important;
 }
 
 @media (max-width: 639px) {
   .paperrocket-color-studio-overlay--side {
-    align-items: flex-end !important;
-    justify-content: center !important;
-    padding: 0 !important;
+    align-items: center !important;
+    justify-content: flex-start !important;
+    padding-left: max(58px, calc(env(safe-area-inset-left) + 58px)) !important;
+    padding-right: 8px !important;
+    padding-top: max(8px, env(safe-area-inset-top)) !important;
+    padding-bottom: max(8px, env(safe-area-inset-bottom)) !important;
   }
   .paperrocket-color-studio-overlay--side .paperrocket-color-studio {
-    width: 100vw !important;
-    max-width: 100vw !important;
-    left: 0 !important;
-    right: 0 !important;
-    bottom: 0 !important;
-    border-radius: 24px 24px 0 0 !important;
-    border-left: 0 !important;
-    border-right: 0 !important;
-    border-bottom: 0 !important;
-    max-height: min(76dvh, calc(100dvh - 56px)) !important;
-    padding-bottom: max(env(safe-area-inset-bottom), 12px) !important;
+    width: min(calc(100vw - 68px), 320px) !important;
+    max-width: min(calc(100vw - 68px), 320px) !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    border-radius: 18px !important;
+    border: 1px solid rgb(var(--pr-menu-border-rgb) / var(--pr-menu-border-opacity)) !important;
+    max-height: min(80dvh, calc(100dvh - 56px)) !important;
+    padding-bottom: 0 !important;
   }
 }
 
@@ -849,13 +852,36 @@ html.light .paperrocket-sheet-header,
   --remix-ui-scale: 1;
 }
 
+.studio-top-strip-left,
+.studio-top-strip nav,
 .paperrocket-studio-mode-group,
 .paperrocket-studio-quick-group,
 .paperrocket-studio-shelf,
 .paperrocket-pro-panel,
 .paperrocket-context-panel,
-.paperrocket-library-tray {
+.paperrocket-library-tray,
+.jn-wrap,
+.nv-dock,
+.camera-recovery-pill,
+.gizmo-recovery-pill,
+.paperrocket-color-studio-overlay .paperrocket-color-studio,
+.paperrocket-quick-menu {
   zoom: var(--remix-ui-scale, 1);
+}
+
+.paperrocket-studio-sheet {
+  zoom: var(--remix-ui-scale, 1);
+}
+
+@media (min-width: 500px) {
+  .paperrocket-studio-sheet {
+    max-height: calc(min(82dvh, 100dvh - 72px) / var(--remix-ui-scale, 1)) !important;
+    right: calc(20px / var(--remix-ui-scale, 1)) !important;
+    bottom: calc(20px / var(--remix-ui-scale, 1)) !important;
+  }
+  .paperrocket-sheet-body {
+    max-height: calc((min(82dvh, 100dvh - 72px) - 60px) / var(--remix-ui-scale, 1)) !important;
+  }
 }
 
 
@@ -887,8 +913,35 @@ html.light .paperrocket-sheet-header,
 
 /* A menu remains a floating tool even on a phone. The bottom dock needs
    breathing room, and a panel should never turn into an edge-to-edge wall. */
+.paperrocket-studio-sheet[data-sheet-id='select'],
+.paperrocket-studio-sheet[data-sheet-id='layers'] {
+  position: fixed !important;
+  left: max(72px, calc(env(safe-area-inset-left) + 72px)) !important;
+  right: auto !important;
+  top: 50% !important;
+  bottom: auto !important;
+  transform: translateY(-50%) !important;
+  width: min(calc(100vw - 84px), var(--studio-menu-wide, 320px)) !important;
+  max-width: var(--studio-menu-wide, 320px) !important;
+  border-radius: 18px !important;
+  border: 1px solid rgb(var(--pr-menu-border-rgb) / var(--pr-menu-border-opacity)) !important;
+  max-height: min(78dvh, calc(100dvh - 56px)) !important;
+}
+
 @media (max-width: 639px) {
-  .paperrocket-studio-sheet {
+  .paperrocket-studio-sheet[data-sheet-id='select'],
+  .paperrocket-studio-sheet[data-sheet-id='layers'] {
+    left: max(58px, calc(env(safe-area-inset-left) + 58px)) !important;
+    right: auto !important;
+    top: 50% !important;
+    bottom: auto !important;
+    transform: translateY(-50%) !important;
+    width: min(calc(100vw - 68px), 300px) !important;
+    max-width: 300px !important;
+    border-radius: 16px !important;
+  }
+
+  .paperrocket-studio-sheet:not([data-sheet-id='select']):not([data-sheet-id='layers']) {
     left: 50% !important;
     right: auto !important;
     bottom: calc(78px + env(safe-area-inset-bottom)) !important;
@@ -910,19 +963,5 @@ html.light .paperrocket-sheet-header,
     transform: translateX(-50%) !important;
     border: 1px solid rgb(var(--pr-menu-border-rgb) / var(--pr-menu-border-opacity)) !important;
     border-radius: 16px !important;
-  }
-
-  .paperrocket-color-studio-overlay--side {
-    align-items: flex-end !important;
-    justify-content: center !important;
-    padding: 0 var(--studio-menu-gutter) calc(78px + env(safe-area-inset-bottom)) !important;
-  }
-
-  .paperrocket-color-studio-overlay--side .paperrocket-color-studio {
-    width: min(var(--studio-menu-width, var(--studio-menu-wide)), calc(100vw - (var(--studio-menu-gutter) * 2))) !important;
-    max-width: min(var(--studio-menu-width, var(--studio-menu-wide)), calc(100vw - (var(--studio-menu-gutter) * 2))) !important;
-    border: 1px solid rgb(var(--pr-menu-border-rgb) / var(--pr-menu-border-opacity)) !important;
-    border-radius: 16px !important;
-    padding-bottom: 0 !important;
   }
 }

@@ -18,8 +18,8 @@ interface SelectionFrameProps {
 
 /** How long the outline lingers after the View controls are released. */
 const CONTROLLER_LINGER_MS = 900;
-/** How long the "drag to move" reminder stays up after the selection changes. */
-const HINT_MS = 3000;
+/** How long the "drag to move" reminder stays up after the selection changes. Temporary 1.5s HUD toast. */
+const HINT_MS = 1500;
 /** Keeps the label on screen when the selection runs past the edges. */
 const EDGE_INSET = 12;
 /** On-screen controls the label must never sit on top of. */

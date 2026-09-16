@@ -1,14 +1,17 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   Redo2,
-  Settings,
+  Menu,
   Undo2,
+  Check,
   Box,
-  Sun,
+  ChevronDown,
 } from 'lucide-react';
 import { toggleSheet } from './panelStore';
 import { StudioTopMoreMenu } from './StudioTopMoreMenu';
+import { StudioTopLeftMenu } from './StudioTopLeftMenu';
 import { AutoSaveStatus } from '../AutoSaveToast';
+import type { NavigatorLayout } from '../TransformNavigator/JoystickNavigator';
 
 interface StudioTopStripProps {
   projectName: string;
@@ -22,6 +25,26 @@ interface StudioTopStripProps {
   theme?: 'light' | 'dark';
   onOpenIllumination?: () => void;
   onOpenSessions?: () => void;
+  onOpenExport?: () => void;
+  onToggleTheme?: () => void;
+  showGrid?: boolean;
+  onToggleGrid?: () => void;
+  navigatorStyle?: NavigatorLayout;
+  onNavigatorStyleChange?: (style: NavigatorLayout) => void;
+  isGizmoActive?: boolean;
+  onToggleGizmo?: () => void;
+  onMoreOpenChange?: (open: boolean) => void;
+  // Scene & Canvas controls (Image 3)
+  canvasFormat?: 'portrait' | 'square' | 'landscape' | 'custom';
+  onCanvasFormatChange?: (format: 'portrait' | 'square' | 'landscape') => void;
+  canvasWidth?: number;
+  canvasHeight?: number;
+  onCanvasSizeChange?: (width: number, height: number) => void;
+  canvasTransparency?: number;
+  onCanvasTransparencyChange?: (transparency: number) => void;
+  canvasColor?: string;
+  onCanvasColorChange?: (color: string) => void;
+  onClearCanvas?: () => void;
 }
 
 export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
@@ -36,6 +59,25 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
   theme = 'dark',
   onOpenIllumination,
   onOpenSessions,
+  onOpenExport,
+  onToggleTheme,
+  showGrid = true,
+  onToggleGrid,
+  navigatorStyle,
+  onNavigatorStyleChange,
+  isGizmoActive,
+  onToggleGizmo,
+  onMoreOpenChange,
+  canvasFormat,
+  onCanvasFormatChange,
+  canvasWidth,
+  canvasHeight,
+  onCanvasSizeChange,
+  canvasTransparency,
+  onCanvasTransparencyChange,
+  canvasColor,
+  onCanvasColorChange,
+  onClearCanvas,
 }) => {
   const ink = theme === 'light' ? 'text-neutral-800' : 'text-white/90';
   const button = `pointer-events-auto shrink-0 min-w-[44px] min-h-[44px] w-11 h-11 grid place-items-center rounded-xl transition-colors hover:bg-current/[0.045] active:bg-current/[0.075] ${ink}`;
@@ -54,6 +96,7 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
   const [isFullscreen, setIsFullscreen] = useState(isCurrentlyFullscreen);
   const [simulatedFs, setSimulatedFs] = useState(false);
   const [moreOpen, setMoreOpen] = useState(false);
+  const [leftMenuOpen, setLeftMenuOpen] = useState(false);
   const isFsActive = isFullscreen || simulatedFs;
 
   useEffect(() => {
@@ -127,53 +170,72 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
 
   const openSettings = useCallback(() => toggleSheet('settings'), []);
   const handleOpenMore = useCallback(() => {
+    setLeftMenuOpen(false);
     setMoreOpen(true);
-  }, []);
+    onMoreOpenChange?.(true);
+  }, [onMoreOpenChange]);
   const closeMore = useCallback(() => {
     setMoreOpen(false);
+    onMoreOpenChange?.(false);
+  }, [onMoreOpenChange]);
+  const handleToggleLeftMenu = useCallback(() => {
+    setMoreOpen(false);
+    onMoreOpenChange?.(false);
+    setLeftMenuOpen((prev) => !prev);
+  }, [onMoreOpenChange]);
+  const closeLeftMenu = useCallback(() => {
+    setLeftMenuOpen(false);
   }, []);
 
   return (
-    <header className={`studio-top-strip fixed inset-x-0 top-0 ${moreOpen ? 'z-50' : 'z-30'} flex h-[calc(3.5rem+env(safe-area-inset-top))] items-end justify-between px-1.5 pb-0 pt-[env(safe-area-inset-top)] sm:h-[calc(4rem+env(safe-area-inset-top))] sm:px-4 pl-[max(0.375rem,env(safe-area-inset-left))] pr-[max(0.375rem,env(safe-area-inset-right))] pointer-events-none select-none`}>
-      <div className="pointer-events-auto studio-top-strip-left shrink inline-flex items-center gap-1 sm:gap-1.5">
+    <header className={`studio-top-strip fixed inset-x-0 top-0 ${(moreOpen || leftMenuOpen) ? 'z-50' : 'z-40'} flex h-[calc(3.5rem+env(safe-area-inset-top))] items-end justify-between px-1.5 pb-0 pt-[env(safe-area-inset-top)] sm:h-[calc(4rem+env(safe-area-inset-top))] sm:px-4 pl-[max(0.375rem,env(safe-area-inset-left))] pr-[max(0.375rem,env(safe-area-inset-right))] pointer-events-none select-none`}>
+      {/* Top Left: Interactive Project Button & Integrated Autosave Badge */}
+      <div className="pointer-events-auto studio-top-strip-left shrink inline-flex items-center gap-2 h-11 px-1 sm:px-2">
         <button
           type="button"
-          onClick={onOpenSessions}
-          className={`inline-flex items-center gap-1.5 sm:gap-2 h-11 min-h-[44px] min-w-[44px] px-2.5 sm:px-3 rounded-xl transition-colors hover:bg-current/[0.045] active:bg-current/[0.075] ${ink}`}
-          aria-label="Open projects"
+          onClick={handleToggleLeftMenu}
+          className={`text-xs sm:text-sm font-semibold tracking-tight whitespace-nowrap truncate max-w-[150px] sm:max-w-[240px] select-none inline-flex items-center gap-1.5 h-9 px-2.5 rounded-xl transition-colors hover:bg-current/[0.06] active:bg-current/[0.1] cursor-pointer ${ink} ${
+            leftMenuOpen ? (theme === 'light' ? 'bg-black/10' : 'bg-white/15') : ''
+          }`}
+          title={`Project: ${projectName || 'Drawing Canvas'} (Click for Project Menu)`}
+          aria-expanded={leftMenuOpen}
+          aria-label="Project menu"
         >
-          <Box className="w-4 h-4 sm:w-5 sm:h-5 shrink-0" strokeWidth={1.7} />
-          <span className="text-[11px] sm:text-[13px] font-medium tracking-[0.01em] whitespace-nowrap truncate max-w-[70px] sm:max-w-[160px]">
-            {projectName || 'Model'}
-          </span>
+          <Box className="w-4 h-4 opacity-75 shrink-0" strokeWidth={1.75} />
+          <span className="truncate">{projectName || 'Drawing Canvas'}</span>
+          <ChevronDown className="w-3.5 h-3.5 opacity-60 shrink-0" />
         </button>
 
-        {/* Quiet Save Status Indicator */}
+        {/* Clear Autosave Status Badge */}
         {autoSaveStatus === 'saving' && (
           <span
-            className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-medium text-neutral-400 select-none px-1.5 py-0.5"
+            className="inline-flex items-center gap-1.5 text-xs font-medium text-amber-500 bg-amber-500/10 border border-amber-500/25 rounded-full px-2.5 py-0.5 select-none animate-pulse"
             aria-live="polite"
             title="Saving changes..."
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-pulse" />
-            <span className="hidden xs:inline">Saving</span>
+            <span className="h-1.5 w-1.5 rounded-full bg-amber-500" />
+            <span>Saving...</span>
           </span>
         )}
         {(autoSaveStatus === 'saved' || autoSaveStatus === 'idle') && (
           <span
-            className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-medium text-neutral-400/80 dark:text-neutral-500 select-none px-1.5 py-0.5"
+            className={`inline-flex items-center gap-1.5 text-xs font-medium rounded-full px-2.5 py-0.5 select-none transition-opacity ${
+              theme === 'light'
+                ? 'text-neutral-600 bg-black/[0.04] border border-black/10'
+                : 'text-neutral-300 bg-white/[0.06] border border-white/10'
+            }`}
             aria-live="polite"
-            title={lastSavedTime ? `Saved at ${lastSavedTime.toLocaleTimeString()}` : 'Saved'}
+            title={lastSavedTime ? `All changes saved at ${lastSavedTime.toLocaleTimeString()}` : 'All changes saved'}
           >
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500/70" />
-            <span className="hidden xs:inline">Saved</span>
+            <Check className="h-3 w-3 text-emerald-500 shrink-0" strokeWidth={2.5} />
+            <span>Saved</span>
           </span>
         )}
         {autoSaveStatus === 'error' && (
           <button
             type="button"
             onClick={onRetrySave || onOpenSessions}
-            className="inline-flex items-center gap-1 text-[10px] sm:text-[11px] font-semibold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-lg px-2 py-0.5 transition-colors cursor-pointer select-none"
+            className="inline-flex items-center gap-1 text-xs font-semibold text-rose-500 bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/30 rounded-full px-2.5 py-0.5 transition-colors cursor-pointer select-none"
             aria-live="assertive"
             title="Autosave failed. Tap to retry or backup."
           >
@@ -182,13 +244,16 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
           </button>
         )}
       </div>
-      <nav className="flex items-center gap-0.5 sm:gap-1.5 pointer-events-auto shrink-0 py-0.5 overflow-x-auto no-scrollbar" aria-label="History and studio actions">
+
+      {/* Top Right: Undo, Redo, and Unified Menu */}
+      <nav className="flex items-center gap-0.5 sm:gap-1 pointer-events-auto shrink-0 py-0.5" aria-label="History and studio actions">
         <button
           type="button"
           onClick={onUndo}
           disabled={!canUndo}
           className={`${button} disabled:opacity-25`}
           aria-label="Undo"
+          title="Undo"
         >
           <Undo2 className="w-[18px] h-[18px] sm:w-[21px] sm:h-[21px]" strokeWidth={1.7} />
         </button>
@@ -198,40 +263,56 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
           disabled={!canRedo}
           className={`${button} disabled:opacity-25`}
           aria-label="Redo"
+          title="Redo"
         >
           <Redo2 className="w-[18px] h-[18px] sm:w-[21px] sm:h-[21px]" strokeWidth={1.7} />
         </button>
-        {onOpenIllumination && (
-          <button
-            type="button"
-            onClick={onOpenIllumination}
-            className={`${button} flex text-amber-400 hover:text-amber-300`}
-            aria-label="Studio Illumination"
-            title="Studio Illumination"
-          >
-            <Sun className="w-[18px] h-[18px] sm:w-[21px] sm:h-[21px]" strokeWidth={1.7} />
-          </button>
-        )}
         <button
           type="button"
           onClick={handleOpenMore}
-          className={`${button}`}
-          aria-label="Settings and more"
+          className={`${button} ${moreOpen ? (theme === 'light' ? 'bg-black/10' : 'bg-white/15') : ''}`}
+          aria-label="Menu"
           aria-haspopup="dialog"
           aria-expanded={moreOpen}
           aria-controls="studio-top-more-menu"
+          title="Menu"
         >
-          <Settings className="h-5 w-5" strokeWidth={1.6} />
+          <Menu className="h-5 w-5" strokeWidth={1.7} />
         </button>
       </nav>
+
+      <StudioTopLeftMenu
+        open={leftMenuOpen}
+        theme={theme}
+        onClose={closeLeftMenu}
+        projectName={projectName}
+        onOpenSessions={onOpenSessions}
+        onOpenExport={onOpenExport}
+        onClearCanvas={onClearCanvas}
+        onOpenSettings={openSettings}
+      />
+
       <StudioTopMoreMenu
         open={moreOpen}
         theme={theme}
         isFullscreen={isFsActive}
         onClose={closeMore}
-        onOpenSessions={onOpenSessions}
-        onOpenSettings={openSettings}
+        onOpenIllumination={onOpenIllumination}
+        onToggleTheme={onToggleTheme}
+        showGrid={showGrid}
+        onToggleGrid={onToggleGrid}
         onToggleFullscreen={handleToggleFullscreen}
+        isGizmoActive={isGizmoActive}
+        onToggleGizmo={onToggleGizmo}
+        canvasFormat={canvasFormat}
+        onCanvasFormatChange={onCanvasFormatChange}
+        canvasWidth={canvasWidth}
+        canvasHeight={canvasHeight}
+        onCanvasSizeChange={onCanvasSizeChange}
+        canvasTransparency={canvasTransparency}
+        onCanvasTransparencyChange={onCanvasTransparencyChange}
+        canvasColor={canvasColor}
+        onCanvasColorChange={onCanvasColorChange}
       />
     </header>
   );

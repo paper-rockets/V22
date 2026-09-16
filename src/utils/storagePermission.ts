@@ -149,22 +149,55 @@ function getAutosaveDB(): Promise<IDBDatabase> {
 }
 
 /**
+ * Safely sanitizes complex 3D project data to guarantee IndexedDB structuredClone compatibility.
+ * Strips any runtime Three.js Object3D, Mesh, Material, Texture, or DOM instances that could
+ * trigger a DataCloneError / Storage Serialization Exception.
+ */
+function sanitizeForStorage<T>(data: T): T {
+  try {
+    return JSON.parse(
+      JSON.stringify(data, (_key, value) => {
+        if (value && typeof value === 'object') {
+          if (
+            value.isObject3D ||
+            value.isMesh ||
+            value.isTexture ||
+            value.isBufferGeometry ||
+            value.isMaterial ||
+            (typeof EventTarget !== 'undefined' && value instanceof EventTarget) ||
+            (typeof HTMLElement !== 'undefined' && value instanceof HTMLElement)
+          ) {
+            return undefined;
+          }
+        }
+        return value;
+      })
+    );
+  } catch {
+    return data;
+  }
+}
+
+/**
  * Commits the entire 3D project state (strokes, layers, camera, scene) to IndexedDB
  */
 export async function saveAutoSaveProject(projectData: ProjectSaveData): Promise<void> {
   try {
     const db = await getAutosaveDB();
+    const safeData = sanitizeForStorage(projectData);
     const record: AutoSaveRecord = {
       id: AUTOSAVE_RECORD_KEY,
-      projectData,
+      projectData: safeData,
       timestamp: Date.now(),
-      strokeCount: Array.isArray(projectData.strokes) ? projectData.strokes.length : 0,
-      layerCount: Array.isArray(projectData.layers) ? projectData.layers.length : 0,
-      modelName: projectData.activeModelName || 'Canvas',
+      strokeCount: Array.isArray(safeData.strokes) ? safeData.strokes.length : 0,
+      layerCount: Array.isArray(safeData.layers) ? safeData.layers.length : 0,
+      modelName: safeData.activeModelName || 'Canvas',
     };
 
     return new Promise((resolve, reject) => {
       const tx = db.transaction([STORE_NAME], 'readwrite');
+      tx.onabort = () => reject(tx.error || new Error('IndexedDB transaction aborted'));
+      tx.onerror = () => reject(tx.error || new Error('IndexedDB transaction error'));
       const store = tx.objectStore(STORE_NAME);
       const req = store.put(record);
 
@@ -262,10 +295,16 @@ export async function clearAutoSaveProject(): Promise<void> {
 export async function saveProjectSession(session: SavedProjectSession): Promise<void> {
   try {
     const db = await getAutosaveDB();
+    const safeSession: SavedProjectSession = {
+      ...session,
+      projectData: sanitizeForStorage(session.projectData),
+    };
     return new Promise((resolve, reject) => {
       const tx = db.transaction([SESSIONS_STORE_NAME], 'readwrite');
+      tx.onabort = () => reject(tx.error || new Error('IndexedDB transaction aborted'));
+      tx.onerror = () => reject(tx.error || new Error('IndexedDB transaction error'));
       const store = tx.objectStore(SESSIONS_STORE_NAME);
-      const req = store.put(session);
+      const req = store.put(safeSession);
 
       req.onsuccess = () => resolve();
       req.onerror = () => reject(req.error);

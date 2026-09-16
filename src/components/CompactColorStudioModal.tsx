@@ -14,6 +14,7 @@ import {
   Palette,
   Pin,
   Pipette,
+  Search,
   Sliders,
   SunMedium,
   X,
@@ -35,6 +36,7 @@ import { ALL_MATERIAL_PRESETS, createMatCap } from '../presets/materialPresets';
 import { BrushSettings } from '../types';
 import { haptics } from '../utils/haptics';
 import { MenuSegmentedToggle, getMenuSurfaceClasses } from './ui/MenuPrimitives';
+import { useDismissibleSurface } from '../hooks/useDismissibleSurface';
 
 interface ColorStudioModalProps {
   isOpen: boolean;
@@ -78,7 +80,7 @@ const QUICK_SHADER_NAMES = [
   'Toon Classic 2-Tone',
   'Crystal Clear Glass',
   'Prism Rainbow Glass',
-  'Summer Ocean Water',
+  'Starlight Radiant Prism',
   'Polished Gold Ingot',
   'Burnished Copper',
   'Electric Neon Cyan',
@@ -88,21 +90,111 @@ const QUICK_SHADER_NAMES = [
 const QUICK_SHADER_LABEL_MAP: Record<string, string> = {
   'Flat Graphic White': 'Clay',
   'Toon Classic 2-Tone': 'Toon',
-  'Crystal Clear Glass': 'Gloss',
+  'Crystal Clear Glass': 'Glass',
   'Prism Rainbow Glass': 'Prism',
-  'Summer Ocean Water': 'Water',
+  'Starlight Radiant Prism': 'Star',
   'Polished Gold Ingot': 'Metal',
   'Burnished Copper': 'Copper',
   'Electric Neon Cyan': 'Glow',
   'Hot Molten Lava': 'Lava',
   'Toon Manga Ink & White': 'Ink',
 };
+
+function formatShaderDisplayLabel(name: string): string {
+  if (!name) return '';
+  if (QUICK_SHADER_LABEL_MAP[name]) return QUICK_SHADER_LABEL_MAP[name];
+
+  const clean = name
+    .replace(/^Blobmixer:\s*/i, '')
+    .replace(/^MatCaps:\s*/i, '')
+    .replace(/^Toon\s+/i, '')
+    .replace(/^Animated\s+/i, '')
+    .trim();
+
+  // Procedural matcaps like "Deep Cyan Turquoise #045C5C" or "Dark Clay Terracotta #A8422B"
+  const hexMatch = clean.match(/#([0-9a-fA-F]{4,6})/);
+  if (hexMatch) {
+    const hex = hexMatch[1].slice(0, 4).toUpperCase();
+    const withoutHex = clean.replace(/#[0-9a-fA-F]+/g, '').trim();
+    const words = withoutHex.split(/\s+/);
+    const specificWords = words.filter(w => !['Soft', 'Dark', 'Pure', 'Clay', 'Rich', 'Light', 'Vibrant', 'Deep', 'Pale', 'Warm', 'Cool'].includes(w));
+    const mainWord = specificWords[specificWords.length - 1] || words[words.length - 1] || 'Shade';
+    return `${mainWord}\n#${hex}`;
+  }
+
+  // Play-doh and toys
+  if (/play-?doh|playdough/i.test(clean)) {
+    const colorWord = clean.replace(/play-?doh|playdough|animated/gi, '').trim();
+    const words = colorWord.split(/\s+/);
+    if (words.length >= 2) {
+      return `${words[0]} ${words[1]}\nPlay-Doh`;
+    }
+    return `${colorWord || 'Clay'}\nPlay-Doh`;
+  }
+
+  // High dopamine explicit titles
+  const customMap: Record<string, string> = {
+    'Toy Speedster Red': 'Speedster\nRed Toy',
+    'Orange Creamsicle': 'Orange\nCreamsicle',
+    'Glow Alien Slime': 'Glow\nAlien Slime',
+    'Unicorn Stardust': 'Unicorn\nStardust',
+    'Cosmic Violet Stardust': 'Violet\nStardust',
+    'Shooting Star Glitter': 'Shooting\nStar',
+    'Supernova Golden Star': 'Supernova\nStar',
+    'Starlight Radiant Prism': 'Radiant\nPrism',
+    'Rainbow Swirl Lollipop': 'Rainbow\nLollipop',
+    'Sour Apple Neon Gummy': 'Sour Apple\nGummy',
+    'Marshmallow Puffy Gloss': 'Marshmallow\nGloss',
+    'Glazed Sugar Donut': 'Glazed\nDonut',
+    'Dragon Fruit Pop': 'Dragon Fruit\nPop',
+    'Prismatic Dichroic Glass': 'Prismatic\nGlass',
+    'Crystal Clear Glass': 'Crystal\nClear',
+    'Frosted Cyan Glass': 'Frosted\nCyan Glass',
+    'Ruby Rose Crystal': 'Ruby Rose\nCrystal',
+    'Emerald Bottle Glass': 'Emerald\nGlass',
+    'Amethyst Tint Glass': 'Amethyst\nGlass',
+    'Diamond Facet Sparkle': 'Diamond\nSparkle',
+    'Luminescent Milk Opal': 'Milk Opal\nGlass',
+    'Liquid Honey Amber': 'Honey\nAmber',
+    'Smoky Obsidian Glass': 'Smoky\nObsidian',
+    'Neon Edge Cyber Glass': 'Neon Edge\nGlass',
+    'Electric Arc Lightning': 'Electric\nLightning',
+    'Molten Dopamine Lava': 'Molten\nLava',
+    'Cyber Hologram Scan': 'Cyber\nHologram',
+    'Psychedelic Plasma Waves': 'Plasma\nWaves',
+    'Shimmering Magic Glitter': 'Magic\nGlitter',
+    'Pulsing Candy Chrome': 'Candy\nChrome',
+    'Parallax Fractal Galaxy': 'Fractal\nGalaxy',
+    'Cosmic Starfield & Galaxy': 'Cosmic\nStarfield',
+    'Dichroic Rainbow Film': 'Dichroic\nRainbow',
+    'Cyber Opal Crystal': 'Cyber\nOpal',
+    'Iridescent Soap Bubble': 'Soap\nBubble',
+    'Holographic Rainbow Foil': 'Holographic\nFoil',
+    'Laser Pop Neon': 'Laser Pop\nNeon',
+  };
+
+  if (customMap[clean] || customMap[name]) {
+    return customMap[clean] || customMap[name];
+  }
+
+  const words = clean.split(/\s+/);
+  if (words.length === 2) {
+    return `${words[0]}\n${words[1]}`;
+  }
+  if (words.length > 2) {
+    if (['Glass', 'Clay', 'Donut', 'Slime', 'Star', 'Gummy', 'Pop', 'Crystal'].includes(words[words.length - 1])) {
+      return `${words[0]}\n${words[words.length - 1]}`;
+    }
+    return `${words[0]}\n${words.slice(1).join(' ')}`;
+  }
+  return clean;
+}
 const PRESET_REPRESENTATIVE_COLORS: Record<string, string> = {
   'Flat Graphic White': '#ffffff',
   'Toon Classic 2-Tone': '#e0e7ff',
   'Crystal Clear Glass': '#67e8f9',
   'Prism Rainbow Glass': '#f472b6',
-  'Summer Ocean Water': '#38bdf8',
+  'Starlight Radiant Prism': '#fde047',
   'Polished Gold Ingot': '#facc15',
   'Burnished Copper': '#fb923c',
   'Electric Neon Cyan': '#00f7ff',
@@ -180,12 +272,21 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
   const [showPalettes, setShowPalettes] = useState(false);
   const [paletteName, setPaletteName] = useState<keyof typeof CURATED_PALETTES>('Drafting Neon');
   const [harmonyMode, setHarmonyMode] = useState<HarmonyMode>('analogous');
-  const [showUniforms, setShowUniforms] = useState(false);
   const [shaderTarget, setShaderTarget] = useState<'brush' | 'model'>('brush');
   const wheelCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const modalRef = useRef<HTMLElement | null>(null);
+  const pointerDownOutsideRef = useRef(false);
   const draggingWheel = useRef(false);
   const draggingSquare = useRef(false);
   const hsvRef = useRef(hsv);
+
+  useDismissibleSurface({
+    isOpen: isOpen && !isPinned,
+    onClose,
+    surfaceRef: modalRef,
+    ignoreSelector: '[data-pro-rail-button]',
+    suppressCanvasClick: false,
+  });
 
   const allShaders = useMemo(() => {
     const quickIds = new Set<string>();
@@ -234,9 +335,102 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
       if (noticeTimeoutRef.current) window.clearTimeout(noticeTimeoutRef.current);
     };
   }, []);
-  const [shaderRoughness, setShaderRoughness] = useState<number>(0.5);
-  const [shaderMetalness, setShaderMetalness] = useState<number>(0.1);
-  const [shaderRimPower, setShaderRimPower] = useState<number>(0.8);
+
+  const [shaderCategoryFilter, setShaderCategoryFilter] = useState<string>('dopamine');
+  const [shaderSearchText, setShaderSearchText] = useState<string>('');
+  const [shaderVisibleLimit, setShaderVisibleLimit] = useState<number>(30);
+
+  const filteredModalShaders = useMemo(() => {
+    const q = shaderSearchText.trim().toLowerCase();
+
+    return allShaders.filter((preset) => {
+      if (q) {
+        const matchName = preset.name.toLowerCase().includes(q);
+        const matchCat = preset.category?.toLowerCase().includes(q);
+        const matchId = preset.id?.toLowerCase().includes(q);
+        if (!matchName && !matchCat && !matchId) return false;
+      }
+
+      // Strictly exclude any water-related shaders per user requirement
+      const lowerName = preset.name.toLowerCase();
+      const lowerCat = (preset.category || '').toLowerCase();
+      if (lowerName.includes('water') || lowerName.includes('ocean') || lowerName.includes('sea') || lowerCat.includes('water')) {
+        return false;
+      }
+
+      if (shaderCategoryFilter === 'dopamine') {
+        if (
+          !preset.category?.includes('Iridescent') &&
+          !preset.category?.includes('Candy') &&
+          !preset.category?.includes('Holographic') &&
+          !preset.category?.includes('Kids Toy') &&
+          !preset.category?.includes('Stars')
+        )
+          return false;
+      } else if (shaderCategoryFilter === 'kids') {
+        if (lowerName.includes('skin')) return false;
+        const isKidsToy = Boolean(preset.category?.includes('Kids Toy'));
+        const isKidsId = preset.id.includes('playdoh') || preset.id.includes('playdough') || preset.id.includes('toy');
+        const isKidsName =
+          lowerName.includes('play-doh') ||
+          lowerName.includes('playdough') ||
+          lowerName.includes('creamsicle') ||
+          lowerName.includes('speedster') ||
+          lowerName.includes('alien slime') ||
+          (lowerName.includes('rainbow') && lowerName.includes('clay'));
+        if (!isKidsToy && !isKidsId && !isKidsName) return false;
+      } else if (shaderCategoryFilter === 'candy') {
+        if (
+          !preset.category?.includes('Candy') &&
+          !lowerName.includes('candy') &&
+          !lowerName.includes('gummy') &&
+          !lowerName.includes('lollipop') &&
+          !lowerName.includes('donut') &&
+          !lowerName.includes('marshmallow') &&
+          !lowerName.includes('pop') &&
+          !lowerName.includes('cherry') &&
+          !lowerName.includes('creamsicle') &&
+          !lowerName.includes('slime')
+        )
+          return false;
+      } else if (shaderCategoryFilter === 'stars') {
+        if (
+          !preset.category?.includes('Stars') &&
+          !lowerName.includes('star') &&
+          !lowerName.includes('stardust') &&
+          !lowerName.includes('galaxy') &&
+          !lowerName.includes('nebula') &&
+          !lowerName.includes('supernova') &&
+          !lowerName.includes('glitter') &&
+          !lowerName.includes('space')
+        )
+          return false;
+      } else if (shaderCategoryFilter === 'animated') {
+        if (!preset.category?.includes('Animated') && preset.type !== 'shader' && preset.type !== 'effect')
+          return false;
+      } else if (shaderCategoryFilter === 'glass') {
+        if (!preset.category?.includes('Glass') && !lowerName.includes('glass') && !lowerName.includes('crystal') && !lowerName.includes('prism'))
+          return false;
+      } else if (shaderCategoryFilter === 'marble') {
+        if (!preset.category?.includes('Marble') && !lowerName.includes('marble') && !lowerName.includes('travertine') && !lowerName.includes('terrazzo') && !lowerName.includes('lapis') && !lowerName.includes('onyx') && !lowerName.includes('ebru'))
+          return false;
+      } else if (shaderCategoryFilter === 'metals') {
+        if (!preset.category?.includes('Metal') && !preset.category?.includes('Gold') && preset.category !== 'Metals')
+          return false;
+      } else if (shaderCategoryFilter === 'clays') {
+        if (!preset.category?.includes('Clay') && !preset.category?.includes('Earth') && !preset.category?.includes('Toy'))
+          return false;
+      } else if (shaderCategoryFilter === 'toon') {
+        if (!preset.category?.includes('Toon')) return false;
+      }
+
+      return true;
+    });
+  }, [allShaders, shaderCategoryFilter, shaderSearchText]);
+
+  const visibleShaders = useMemo(() => {
+    return filteredModalShaders.slice(0, shaderVisibleLimit);
+  }, [filteredModalShaders, shaderVisibleLimit]);
   const lastSolidColorRef = useRef(normalizeHexColor(currentColor, '#38bdf8'));
 
   const [recentItems, setRecentItems] = useState<RecentStudioItem[]>(() => {
@@ -321,19 +515,6 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
     });
   }, []);
 
-  const handleUniformChange = (type: 'roughness' | 'metalness' | 'rim', value: number) => {
-    if (type === 'roughness') {
-      setShaderRoughness(value);
-      onApplyBrushSettings?.({ roughness: value });
-    } else if (type === 'metalness') {
-      setShaderMetalness(value);
-      onApplyBrushSettings?.({ metalness: value });
-    } else if (type === 'rim') {
-      setShaderRimPower(value);
-      onApplyBrushSettings?.({ emissiveIntensity: value });
-    }
-  };
-
   const togglePinned = () => {
     setIsPinned((previous) => {
       const next = !previous;
@@ -375,6 +556,39 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [isOpen, onClose]);
+
+  // Click or tap anywhere outside the color studio to close it (when unpinned)
+  useEffect(() => {
+    if (!isOpen || isPinned) return;
+
+    const handlePointerDown = (event: PointerEvent) => {
+      const modal = modalRef.current;
+      if (modal && !modal.contains(event.target as Node)) {
+        pointerDownOutsideRef.current = true;
+      } else {
+        pointerDownOutsideRef.current = false;
+      }
+    };
+
+    const handlePointerUp = (event: PointerEvent) => {
+      const modal = modalRef.current;
+      if (
+        pointerDownOutsideRef.current &&
+        modal &&
+        !modal.contains(event.target as Node)
+      ) {
+        onClose();
+      }
+      pointerDownOutsideRef.current = false;
+    };
+
+    window.addEventListener('pointerdown', handlePointerDown, true);
+    window.addEventListener('pointerup', handlePointerUp, true);
+    return () => {
+      window.removeEventListener('pointerdown', handlePointerDown, true);
+      window.removeEventListener('pointerup', handlePointerUp, true);
+    };
+  }, [isOpen, isPinned, onClose]);
 
   useEffect(() => {
     const showColorPicker = () => setActiveTab('wheel');
@@ -721,9 +935,15 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
       } else if (item.hex) {
         applyColor(item.hex);
       }
+      if (!isPinned) onClose();
     },
-    [allShaders, applyColor, applyPreset]
+    [allShaders, applyColor, applyPreset, isPinned, onClose]
   );
+
+  const handlePickSwatch = useCallback((hex: string) => {
+    applyColor(hex);
+    if (!isPinned) onClose();
+  }, [applyColor, isPinned, onClose]);
 
   const activeShaderPreset = useMemo(() => {
     if (!selectedPresetId) return null;
@@ -788,19 +1008,21 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
   return createPortal(
     <div
       data-pinned={isPinned ? 'true' : 'false'}
-      className={`paperrocket-modal-overlay paperrocket-color-studio-overlay--side fixed inset-0 z-50 flex items-center justify-start p-2.5 sm:p-4 animate-in fade-in duration-150 ${
-        allowsWorkspaceInteraction ? 'pointer-events-none' : 'pointer-events-auto'
-      }`}
+      className="paperrocket-modal-overlay paperrocket-color-studio-overlay--side fixed inset-0 z-50 flex items-center justify-start p-2.5 sm:p-4 animate-in fade-in duration-150 pointer-events-none"
     >
       <section
+        ref={modalRef}
         id="mody-color-studio-modal"
         data-theme={theme}
         data-menu-width="wide"
         role={allowsWorkspaceInteraction ? 'region' : 'dialog'}
         aria-modal={allowsWorkspaceInteraction ? undefined : true}
         aria-label="Color studio"
+        onPointerDown={() => {
+          pointerDownOutsideRef.current = false;
+        }}
         onClick={(event) => event.stopPropagation()}
-        className={`paperrocket-color-studio pointer-events-auto relative flex w-full sm:w-[min(var(--studio-menu-wide),calc(100vw-20px))] sm:max-w-[var(--studio-menu-wide)] flex-col overflow-hidden rounded-t-3xl sm:rounded-[18px] border select-none ${shell}`}
+        className={`paperrocket-color-studio pointer-events-auto relative flex w-full sm:w-[min(360px,calc(100vw-20px))] sm:max-w-[360px] flex-col overflow-hidden rounded-t-3xl sm:rounded-[18px] border select-none ${shell}`}
         style={{ maxHeight: isMiniMode ? 'auto' : 'min(76dvh, 560px)' }}
       >
         <header className={`shrink-0 flex min-h-12 sm:min-h-14 items-center justify-between border-b px-3 ${divider}`}>
@@ -821,28 +1043,26 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
             </span>
             {!isMiniMode && (
               <div className="min-w-0 flex-1 pr-1">
-                <div className="flex items-center gap-1.5">
-                  <h2 className="truncate text-xs sm:text-sm font-semibold leading-tight">
-                    {activeShaderPreset
-                      ? (QUICK_SHADER_LABEL_MAP[activeShaderPreset.name] ?? activeShaderPreset.name)
-                      : activeTitle}
-                  </h2>
+                <h2 className="line-clamp-2 text-[11px] sm:text-[12px] font-bold leading-snug" title={activeShaderPreset?.name || activeTitle}>
+                  {activeShaderPreset ? activeShaderPreset.name : activeTitle}
+                </h2>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <input
+                    aria-label="Hex color"
+                    value={currentColor.toUpperCase()}
+                    onChange={(event) => {
+                      const next = event.target.value;
+                      if (/^#[0-9a-fA-F]{6}$/.test(next)) applyColor(next);
+                      else onChangeColor(next);
+                    }}
+                    className={`block w-16 border-0 bg-transparent p-0 font-mono text-[10px] sm:text-[11px] font-bold leading-tight outline-none ${isLight ? 'text-neutral-800' : 'text-neutral-200'}`}
+                  />
                   {effectiveActiveLookName && effectiveActiveLookName !== 'Flat Paint' && !activeShaderPreset && (
                     <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-sky-500/15 text-sky-600 dark:text-sky-400 truncate max-w-[100px]">
                       {effectiveActiveLookName}
                     </span>
                   )}
                 </div>
-                <input
-                  aria-label="Hex color"
-                  value={currentColor.toUpperCase()}
-                  onChange={(event) => {
-                    const next = event.target.value;
-                    if (/^#[0-9a-fA-F]{6}$/.test(next)) applyColor(next);
-                    else onChangeColor(next);
-                  }}
-                  className={`mt-0.5 block w-20 border-0 bg-transparent p-0 font-mono text-[10px] sm:text-[11px] font-bold leading-tight outline-none ${isLight ? 'text-neutral-800' : 'text-neutral-200'}`}
-                />
               </div>
             )}
           </div>
@@ -850,7 +1070,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
             <button
               type="button"
               onClick={toggleMiniMode}
-              className={`grid h-8.5 w-8.5 place-items-center rounded-lg transition-colors ${
+              className={`grid h-7.5 w-7.5 place-items-center rounded-lg transition-colors ${
                 isMiniMode
                   ? isLight ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-950'
                   : ghostButton
@@ -859,31 +1079,31 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
               aria-pressed={isMiniMode}
               title={isMiniMode ? 'Expand full color wheel' : 'Collapse to mini strip'}
             >
-              {isMiniMode ? <Maximize2 className="h-4 w-4" /> : <Minimize2 className="h-4 w-4" />}
+              {isMiniMode ? <Maximize2 className="h-3.5 w-3.5" /> : <Minimize2 className="h-3.5 w-3.5" />}
             </button>
             <button
               type="button"
               onClick={togglePinned}
-              className={`grid h-8.5 w-8.5 place-items-center rounded-lg transition-colors ${
+              className={`grid h-7.5 w-7.5 place-items-center rounded-lg transition-colors ${
                 isPinned
                   ? isLight ? 'bg-neutral-900 text-white' : 'bg-white text-neutral-950'
                   : ghostButton
               }`}
-              aria-label={isPinned ? 'Unpin color studio' : 'Keep color studio open'}
+              aria-label={isPinned ? 'Unpin modal' : 'Pin modal in place'}
               aria-pressed={isPinned}
-              title={isPinned ? 'Return to modal view' : 'Keep open while drawing'}
+              title={isPinned ? 'Unpin modal' : 'Pin modal in place'}
             >
-              <Pin className="h-4 w-4" />
+              <Pin className={`h-3.5 w-3.5 ${isPinned ? 'rotate-45' : ''}`} />
             </button>
             {onSampleFromScreen && (
               <button
                 type="button"
                 onClick={onSampleFromScreen}
-                className={`grid h-8.5 w-8.5 place-items-center rounded-lg transition-colors ${ghostButton}`}
+                className={`grid h-7.5 w-7.5 place-items-center rounded-lg transition-colors ${ghostButton}`}
                 aria-label="Sample color"
                 title="Sample color"
               >
-                <Pipette className="h-4 w-4" />
+                <Pipette className="h-3.5 w-3.5" />
               </button>
             )}
             <button
@@ -893,20 +1113,20 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
                 setCopiedHex(true);
                 window.setTimeout(() => setCopiedHex(false), 1200);
               }}
-              className={`grid h-8.5 w-8.5 place-items-center rounded-lg transition-colors ${ghostButton}`}
+              className={`grid h-7.5 w-7.5 place-items-center rounded-lg transition-colors ${ghostButton}`}
               aria-label="Copy hex"
               title="Copy hex code"
             >
-              {copiedHex ? <Check className="h-4 w-4 text-neutral-900 dark:text-white" /> : <Copy className="h-4 w-4" />}
+              {copiedHex ? <Check className="h-3.5 w-3.5 text-neutral-900 dark:text-white" /> : <Copy className="h-3.5 w-3.5" />}
             </button>
             <button
               type="button"
               onClick={onClose}
-              className={`grid h-8.5 w-8.5 place-items-center rounded-lg transition-colors ${ghostButton}`}
+              className={`grid h-7.5 w-7.5 place-items-center rounded-lg transition-colors ${ghostButton}`}
               aria-label="Close color studio"
               title="Close"
             >
-              <X className="h-4 w-4" />
+              <X className="h-3.5 w-3.5" />
             </button>
           </div>
         </header>
@@ -1008,7 +1228,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
                     <button
                       key={color}
                       type="button"
-                      onClick={() => applyColor(color)}
+                      onClick={() => handlePickSwatch(color)}
                       className={`aspect-square w-full rounded-full border shadow-xs transition-transform active:scale-95 ${
                         isSelected
                           ? isLight
@@ -1036,7 +1256,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
             <button type="button" onClick={() => setShowPosterize((shown) => !shown)} className={`flex h-11 w-full items-center justify-between border-t text-xs font-semibold ${divider} ${ghostButton}`}><span>Posterize</span><ChevronDown className={`h-4 w-4 ${showPosterize ? 'rotate-180' : ''}`} /></button>
             {showPosterize && <div className="space-y-3">
               {slider('Steps', String(posterizeSteps), <input type="range" min="2" max="12" value={posterizeSteps} onChange={(event) => setPosterizeSteps(Number(event.target.value))} className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`} />)}
-              <button type="button" onClick={() => applyColor(posterizedColor)} className={`flex h-11 w-full items-center justify-between rounded-xl border px-3 ${field}`}><span className="text-xs font-semibold">Use posterized color</span><span className="flex items-center gap-2 font-mono text-[10px] font-bold">{posterizedColor.toUpperCase()}<span className={`h-7 w-7 rounded-full border shadow-xs ${isLight ? 'border-black/15' : 'border-white/15'}`} style={{ backgroundColor: posterizedColor }} /></span></button>
+              <button type="button" onClick={() => handlePickSwatch(posterizedColor)} className={`flex h-11 w-full items-center justify-between rounded-xl border px-3 ${field}`}><span className="text-xs font-semibold">Use posterized color</span><span className="flex items-center gap-2 font-mono text-[10px] font-bold">{posterizedColor.toUpperCase()}<span className={`h-7 w-7 rounded-full border shadow-xs ${isLight ? 'border-black/15' : 'border-white/15'}`} style={{ backgroundColor: posterizedColor }} /></span></button>
             </div>}
           </div>}
 
@@ -1051,7 +1271,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
                   <button
                     key={`${color}-${index}`}
                     type="button"
-                    onClick={() => applyColor(color)}
+                    onClick={() => handlePickSwatch(color)}
                     className={`h-11 w-11 sm:h-12 sm:w-12 shrink-0 rounded-full border shadow-xs transition-transform active:scale-95 ${
                       isSelected
                         ? isLight
@@ -1092,95 +1312,134 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
                 </div>
               )}
 
-              {/* All Shaders Unified Grid */}
-              <div className="grid grid-cols-5 gap-1.5 sm:gap-2">
-                {allShaders.map((preset) => {
-                  const isSelected = selectedPresetId === preset.id;
-                  const label = QUICK_SHADER_LABEL_MAP[preset.name] ?? preset.name;
-                  return (
-                    <button
-                      key={preset.id}
-                      type="button"
-                      onClick={() => applyPreset(preset)}
-                      className={`flex flex-col items-center justify-center gap-1 rounded-xl p-1.5 border transition-all active:scale-95 ${
-                        isSelected
-                          ? isLight
-                            ? 'border-sky-500 bg-sky-500/10 text-sky-950 font-bold shadow-xs ring-1 ring-sky-500/30'
-                            : 'border-sky-400 bg-sky-500/15 text-sky-100 font-bold shadow-xs ring-1 ring-sky-400/30'
-                          : `border-transparent ${ghostButton}`
-                      }`}
-                      title={preset.name}
-                    >
-                      <span
-                        className={`relative block h-10 w-10 sm:h-11 sm:w-11 overflow-hidden rounded-full border shadow-sm transition-transform ${
-                          isSelected
-                            ? 'border-sky-500 ring-2 ring-sky-400/50 scale-105'
-                            : isLight ? 'border-black/15' : 'border-white/15'
+              {/* Sticky Filter Header: category pills & search stay pinned when scrolling */}
+              <div className={`sticky -top-3 z-30 -mx-3 px-3 pt-1 pb-2 space-y-2 border-b backdrop-blur-md transition-colors ${
+                isLight ? 'bg-white/95 border-black/10' : 'bg-neutral-900/95 border-white/10'
+              }`}>
+                {/* Category Pill Tabs - Responsive Wrap */}
+                <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                  {[
+                    { id: 'dopamine', label: 'Dopamine' },
+                    { id: 'kids', label: 'Kids & Play-Doh' },
+                    { id: 'candy', label: 'Candy' },
+                    { id: 'stars', label: 'Stars & Galaxy' },
+                    { id: 'animated', label: 'Animated' },
+                    { id: 'glass', label: 'Glass' },
+                    { id: 'marble', label: 'Marble' },
+                    { id: 'toon', label: 'Toon' },
+                    { id: 'metals', label: 'Metals' },
+                    { id: 'clays', label: 'Clay' },
+                    { id: 'all', label: `All (${allShaders.length})` },
+                  ].map((cat) => {
+                    const active = shaderCategoryFilter === cat.id;
+                    return (
+                      <button
+                        key={cat.id}
+                        type="button"
+                        onClick={() => {
+                          setShaderCategoryFilter(cat.id);
+                          setShaderVisibleLimit(30);
+                        }}
+                        className={`px-2.5 py-1 rounded-lg shrink-0 text-[11px] font-semibold transition-all cursor-pointer ${
+                          active
+                            ? isLight
+                              ? 'bg-neutral-900 text-white shadow-xs'
+                              : 'bg-white text-black shadow-xs'
+                            : isLight
+                              ? 'bg-black/5 hover:bg-black/10 text-neutral-700'
+                              : 'bg-white/5 hover:bg-white/10 text-neutral-300'
                         }`}
                       >
-                        <img src={preset.url} alt="" className="h-full w-full object-cover" loading="lazy" />
-                        {isSelected && (
-                          <span className="absolute inset-0 flex items-center justify-center bg-black/40">
-                            <Check className="w-4 h-4 text-white stroke-[3]" />
-                          </span>
-                        )}
-                      </span>
-                      <span className={`text-[10px] truncate max-w-full text-center ${isSelected ? 'font-bold text-sky-600 dark:text-sky-400' : 'font-medium'}`}>
-                        {label}
-                      </span>
-                    </button>
-                  );
-                })}
+                        {cat.label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {/* Clean Full-Width Search Input */}
+                <div className="relative w-full">
+                  <Search className="w-3.5 h-3.5 text-neutral-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <input
+                    type="text"
+                    placeholder="Search shaders…"
+                    value={shaderSearchText}
+                    onChange={(e) => {
+                      setShaderSearchText(e.target.value);
+                      setShaderVisibleLimit(30);
+                    }}
+                    className={`w-full h-8 pl-8 pr-3 rounded-lg text-xs outline-none transition-colors ${field}`}
+                  />
+                </div>
               </div>
 
-              {/* Shader Uniform Controls - Collapsible & Minimized by Default */}
-              <div className={`rounded-xl border overflow-hidden transition-all ${isLight ? 'bg-black/[0.03] border-black/10' : 'bg-white/[0.02] border-white/10'}`}>
-                <button
-                  type="button"
-                  onClick={() => setShowUniforms((prev) => !prev)}
-                  className={`w-full flex items-center justify-between p-3 cursor-pointer select-none transition-colors ${ghostButton}`}
-                  aria-expanded={showUniforms}
-                >
-                  <span className={`text-[11px] font-bold uppercase tracking-wider ${isLight ? 'text-neutral-700' : 'text-neutral-400'}`}>
-                    Effect Settings
-                  </span>
-                  <ChevronDown className={`h-4 w-4 transition-transform duration-200 ${showUniforms ? 'rotate-180' : ''} ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`} />
-                </button>
-                {showUniforms && (
-                  <div className={`px-3 pb-3 space-y-2.5 border-t pt-2.5 ${divider}`}>
-                    {slider('Roughness', `${Math.round(shaderRoughness * 100)}%`, (
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={Math.round(shaderRoughness * 100)}
-                        onChange={(e) => handleUniformChange('roughness', Number(e.target.value) / 100)}
-                        className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`}
-                      />
-                    ))}
-                    {slider('Metalness', `${Math.round(shaderMetalness * 100)}%`, (
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        value={Math.round(shaderMetalness * 100)}
-                        onChange={(e) => handleUniformChange('metalness', Number(e.target.value) / 100)}
-                        className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`}
-                      />
-                    ))}
-                    {slider('Glow / Rim Power', `${shaderRimPower.toFixed(2)}`, (
-                      <input
-                        type="range"
-                        min="0"
-                        max="200"
-                        value={Math.round(shaderRimPower * 100)}
-                        onChange={(e) => handleUniformChange('rim', Number(e.target.value) / 100)}
-                        className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`}
-                      />
-                    ))}
-                  </div>
-                )}
-              </div>
+              {/* Shaders Grid (Fast, Spacious & High Legibility) */}
+              {visibleShaders.length === 0 ? (
+                <div className="py-8 text-center text-xs text-neutral-500">
+                  No shaders match the selected filter.
+                </div>
+              ) : (
+                <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 pt-1">
+                  {visibleShaders.map((preset) => {
+                    const isSelected = selectedPresetId === preset.id;
+                    return (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        onClick={() => applyPreset(preset)}
+                        className={`group relative flex flex-col items-center justify-center gap-1 rounded-xl p-1.5 border transition-all cursor-pointer active:scale-95 ${
+                          isSelected
+                            ? isLight
+                              ? 'border-sky-500 bg-sky-500/10 text-sky-950 font-bold shadow-xs ring-1 ring-sky-500/30'
+                              : 'border-sky-400 bg-sky-500/15 text-sky-100 font-bold shadow-xs ring-1 ring-sky-400/30'
+                            : `border-transparent ${ghostButton}`
+                        }`}
+                        title={preset.name}
+                      >
+                        <span
+                          className={`relative block h-11 w-11 sm:h-12 sm:w-12 overflow-hidden rounded-full border shadow-sm transition-transform ${
+                            isSelected
+                              ? 'border-sky-500 ring-2 ring-sky-400/50 scale-105'
+                              : isLight
+                                ? 'border-black/15'
+                                : 'border-white/15'
+                          }`}
+                        >
+                          <img src={preset.url} alt="" className="h-full w-full object-cover" loading="lazy" />
+                          {isSelected && (
+                            <span className="absolute inset-0 flex items-center justify-center bg-black/40">
+                              <Check className="w-4 h-4 text-white stroke-[3]" />
+                            </span>
+                          )}
+                        </span>
+                        <span
+                          className={`text-[10px] sm:text-[10.5px] leading-[12.5px] min-h-[26px] flex items-center justify-center text-center px-0.5 break-words overflow-hidden mt-1 font-semibold ${
+                            isSelected ? 'text-sky-600 dark:text-sky-400' : 'text-neutral-700 dark:text-neutral-300'
+                          }`}
+                          style={{ whiteSpace: 'pre-line' }}
+                          title={preset.name}
+                        >
+                          {formatShaderDisplayLabel(preset.name)}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+
+              {/* Show More Button if results exceed limit */}
+              {filteredModalShaders.length > visibleShaders.length && (
+                <div className="flex justify-center pt-2 pb-1">
+                  <button
+                    type="button"
+                    onClick={() => setShaderVisibleLimit((prev) => prev + 30)}
+                    className={`px-3 py-1 rounded-lg text-xs font-semibold ${
+                      isLight ? 'bg-black/5 hover:bg-black/10 text-neutral-800' : 'bg-white/5 hover:bg-white/10 text-neutral-200'
+                    }`}
+                  >
+                    Show More ({filteredModalShaders.length - visibleShaders.length} remaining)
+                  </button>
+                </div>
+              )}
             </div>
           )}
 
