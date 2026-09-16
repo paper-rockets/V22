@@ -301,9 +301,9 @@ varying vec3 v_view_dir;
 varying vec3 v_pos;
 
 float hash(vec3 p) {
-  p = fract(p * 0.3183099 + 0.1);
-  p *= 17.0;
-  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+  vec3 q = fract(p * 0.1031);
+  q += dot(q, q.yzx + 33.33);
+  return fract((q.x + q.y) * q.z);
 }
 
 void main() {

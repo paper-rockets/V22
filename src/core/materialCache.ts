@@ -222,6 +222,7 @@ export class MaterialCache {
           polygonOffset: true,
           polygonOffsetFactor: polyOffset,
           polygonOffsetUnits: polyOffset,
+          toneMapped: false,
         });
         globalShaderRegistry.register(shaderMat);
         material = shaderMat;
@@ -251,7 +252,7 @@ export class MaterialCache {
           polygonOffset: true,
           polygonOffsetFactor: polyOffset,
           polygonOffsetUnits: polyOffset,
-          toneMapped: true,
+          toneMapped: false,
         });
 
         globalShaderRegistry.register(shaderMat);
@@ -278,10 +279,11 @@ export class MaterialCache {
           polygonOffsetUnits: polyOffset,
         });
       } else {
+        const metal = Math.max(0.0, Math.min(1.0, settings.metalness ?? 0.15));
         material = new THREE.MeshStandardMaterial({
           color: color,
           roughness: Math.max(0.05, Math.min(1.0, settings.roughness ?? 0.35)),
-          metalness: Math.max(0.0, Math.min(1.0, settings.metalness ?? 0.15)),
+          metalness: metal,
           transparent: !isOpaque,
           opacity: effectiveOpacity,
           side: strokeSide,
@@ -290,7 +292,7 @@ export class MaterialCache {
           polygonOffset: true,
           polygonOffsetFactor: polyOffset,
           polygonOffsetUnits: polyOffset,
-          envMapIntensity: 0.6,
+          envMapIntensity: metal > 0.5 ? (metal - 0.5) * 0.4 : 0.0,
         });
       }
     } else {

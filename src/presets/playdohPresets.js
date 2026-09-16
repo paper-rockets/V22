@@ -6,7 +6,11 @@
 // ============================================================================
 
 export const PLAYDOH_VERTEX_SHADER = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
+#endif
 varying vec3 v_world_pos;
 varying vec3 v_normal;
 varying vec3 v_view_dir;
@@ -22,25 +26,29 @@ void main() {
 `;
 
 const GLSL_COMMON_NOISE = `
+#ifdef GL_FRAGMENT_PRECISION_HIGH
+precision highp float;
+#else
 precision mediump float;
+#endif
 varying vec3 v_world_pos;
 varying vec3 v_normal;
 varying vec3 v_view_dir;
 
 float hash(vec3 p) {
-  p = fract(p * 0.3183099 + 0.1);
-  p *= 17.0;
-  return fract(p.x * p.y * p.z * (p.x + p.y + p.z));
+  vec3 q = fract(p * 0.1031);
+  q += dot(q, q.yzx + 33.33);
+  return fract((q.x + q.y) * q.z);
 }
 
 float noise(vec3 x) {
   vec3 i = floor(x);
   vec3 f = fract(x);
   f = f * f * (3.0 - 2.0 * f);
-  return mix(mix(mix(hash(i + vec3(0,0,0)), hash(i + vec3(1,0,0)), f.x),
-                 mix(hash(i + vec3(0,1,0)), hash(i + vec3(1,1,0)), f.x), f.y),
-             mix(mix(hash(i + vec3(0,0,1)), hash(i + vec3(1,0,1)), f.x),
-                 mix(hash(i + vec3(0,1,1)), hash(i + vec3(1,1,1)), f.x), f.y), f.z);
+  return mix(mix(mix(hash(i + vec3(0.0,0.0,0.0)), hash(i + vec3(1.0,0.0,0.0)), f.x),
+                 mix(hash(i + vec3(0.0,1.0,0.0)), hash(i + vec3(1.0,1.0,0.0)), f.x), f.y),
+             mix(mix(hash(i + vec3(0.0,0.0,1.0)), hash(i + vec3(1.0,0.0,1.0)), f.x),
+                 mix(hash(i + vec3(0.0,1.0,1.0)), hash(i + vec3(1.0,1.0,1.0)), f.x), f.y), f.z);
 }
 
 float fbm(vec3 p) {
