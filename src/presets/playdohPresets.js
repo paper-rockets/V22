@@ -243,6 +243,8 @@ ${GLSL_COMMON_NOISE}
 ${paletteCode}
 
 void main() {
+  vec3 normal = normalize(v_normal);
+  vec3 viewDir = normalize(v_view_dir);
   vec3 p = v_world_pos * 5.0;
   vec3 q = vec3(fbm(p), fbm(p + vec3(4.3, 1.2, 2.7)), fbm(p + vec3(1.5, 7.8, 3.4)));
   float swirl = fbm(p + 3.2 * q);
@@ -250,10 +252,10 @@ void main() {
   vec3 albedo = dough_palette(swirl * 2.2 + v_world_pos.y * 0.8);
 
   vec3 lightDir = normalize(vec3(0.5, 0.85, 0.6));
-  float diff = max(dot(v_normal, lightDir), 0.0);
+  float diff = max(dot(normal, lightDir), 0.0);
   float softDiff = diff * 0.6 + 0.4;
   float microGrain = (noise(v_world_pos * 80.0) - 0.5) * 0.07;
-  float fresnel = pow(1.0 - max(dot(v_normal, v_view_dir), 0.0), 2.5);
+  float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.5);
   vec3 rimColor = vec3(1.0, 0.96, 0.88);
 
   vec3 finalColor = albedo * (softDiff + microGrain) + rimColor * (fresnel * 0.15);
@@ -269,6 +271,8 @@ ${GLSL_COMMON_NOISE}
 ${paletteCode}
 
 void main() {
+  vec3 normal = normalize(v_normal);
+  vec3 viewDir = normalize(v_view_dir);
   vec3 p = v_world_pos * 5.0;
   vec3 q = vec3(fbm(p), fbm(p + vec3(4.3, 1.2, 2.7)), fbm(p + vec3(1.5, 7.8, 3.4)));
   float swirl = fbm(p + 3.2 * q);
@@ -276,13 +280,13 @@ void main() {
   vec3 albedo = dough_palette(swirl * 2.2 + v_world_pos.y * 0.8);
 
   vec3 lightDir = normalize(vec3(0.5, 0.85, 0.6));
-  vec3 halfDir = normalize(lightDir + v_view_dir);
-  float diff = max(dot(v_normal, lightDir), 0.0);
+  vec3 halfDir = normalize(lightDir + viewDir);
+  float diff = max(dot(normal, lightDir), 0.0);
   float softDiff = diff * 0.7 + 0.3;
 
-  float spec1 = pow(max(dot(v_normal, halfDir), 0.0), 36.0) * 0.55;
-  float spec2 = pow(max(dot(v_normal, halfDir), 0.0), 128.0) * 0.85;
-  float clearcoat = pow(1.0 - max(dot(v_normal, v_view_dir), 0.0), 3.0) * 0.48;
+  float spec1 = pow(max(dot(normal, halfDir), 0.0), 36.0) * 0.55;
+  float spec2 = pow(max(dot(normal, halfDir), 0.0), 128.0) * 0.85;
+  float clearcoat = pow(1.0 - max(dot(normal, viewDir), 0.0), 3.0) * 0.48;
   vec3 rimColor = vec3(1.0, 0.98, 0.92);
 
   vec3 finalColor = albedo * softDiff + vec3(1.0) * (spec1 + spec2) + rimColor * clearcoat;
@@ -298,6 +302,8 @@ ${GLSL_COMMON_NOISE}
 ${paletteCode}
 
 void main() {
+  vec3 normal = normalize(v_normal);
+  vec3 viewDir = normalize(v_view_dir);
   vec3 p = v_world_pos * 5.0;
   vec3 q = vec3(fbm(p), fbm(p + vec3(4.3, 1.2, 2.7)), fbm(p + vec3(1.5, 7.8, 3.4)));
   float swirl = fbm(p + 3.2 * q);
@@ -305,16 +311,16 @@ void main() {
   vec3 albedo = dough_palette(swirl * 2.2 + v_world_pos.y * 0.8);
 
   vec3 lightDir = normalize(vec3(0.5, 0.85, 0.6));
-  vec3 halfDir = normalize(lightDir + v_view_dir);
-  float diff = max(dot(v_normal, lightDir), 0.0);
+  vec3 halfDir = normalize(lightDir + viewDir);
+  float diff = max(dot(normal, lightDir), 0.0);
   float softDiff = diff * 0.7 + 0.3;
 
-  float metalSpec = pow(max(dot(v_normal, halfDir), 0.0), 22.0) * 0.85;
+  float metalSpec = pow(max(dot(normal, halfDir), 0.0), 22.0) * 0.85;
   float sparkle = pow(hash(floor(v_world_pos * 135.0)), 15.0) * 2.5;
-  float glitter = sparkle * max(dot(v_normal, lightDir), 0.0);
+  float glitter = sparkle * max(dot(normal, lightDir), 0.0);
 
   vec3 metalReflect = mix(vec3(1.0, 0.95, 0.85), albedo, 0.65) * metalSpec;
-  float fresnel = pow(1.0 - max(dot(v_normal, v_view_dir), 0.0), 2.2);
+  float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.2);
   vec3 rimColor = mix(albedo, vec3(1.0), 0.5);
 
   vec3 finalColor = albedo * softDiff + metalReflect + vec3(glitter) + rimColor * (fresnel * 0.28);
@@ -329,15 +335,17 @@ function createSolidPlaydohFragment(r, g, b) {
 ${GLSL_COMMON_NOISE}
 
 void main() {
+  vec3 normal = normalize(v_normal);
+  vec3 viewDir = normalize(v_view_dir);
   vec3 baseColor = vec3(${r.toFixed(4)}, ${g.toFixed(4)}, ${b.toFixed(4)});
   vec3 p = v_world_pos * 4.0;
   float doughCrease = (fbm(p) - 0.5) * 0.06;
 
   vec3 lightDir = normalize(vec3(0.5, 0.85, 0.6));
-  float diff = max(dot(v_normal, lightDir), 0.0);
+  float diff = max(dot(normal, lightDir), 0.0);
   float softDiff = diff * 0.65 + 0.35;
   float microGrain = (noise(v_world_pos * 85.0) - 0.5) * 0.08;
-  float fresnel = pow(1.0 - max(dot(v_normal, v_view_dir), 0.0), 2.5);
+  float fresnel = pow(1.0 - max(dot(normal, viewDir), 0.0), 2.5);
   vec3 rimColor = vec3(1.0, 0.97, 0.90);
 
   vec3 finalColor = (baseColor + doughCrease) * (softDiff + microGrain) + rimColor * (fresnel * 0.12);

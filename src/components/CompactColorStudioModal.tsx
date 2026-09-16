@@ -1562,7 +1562,9 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
                         </span>
                         <span
                           className={`text-[10px] sm:text-[10.5px] leading-[12.5px] min-h-[26px] flex items-center justify-center text-center px-0.5 break-words overflow-hidden mt-1 font-semibold ${
-                            isSelected ? 'text-sky-600 dark:text-sky-400' : 'text-neutral-700 dark:text-neutral-300'
+                            isSelected
+                              ? isLight ? 'text-sky-700' : 'text-sky-300'
+                              : isLight ? 'text-neutral-900' : 'text-neutral-200'
                           }`}
                           style={{ whiteSpace: 'pre-line' }}
                           title={preset.name}

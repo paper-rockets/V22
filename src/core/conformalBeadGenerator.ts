@@ -237,45 +237,49 @@ export class ConformalBeadGenerator {
       return geom;
     }
 
-    // Zero-allocation smooth area-weighted vertex normal computation across active triangles
-    for (let i = 0; i < vCount; i++) {
-      _workNormals[i] = 0;
-    }
-    for (let i = 0; i < iCount; i += 3) {
-      const iA = _workIndices[i] * 3;
-      const iB = _workIndices[i + 1] * 3;
-      const iC = _workIndices[i + 2] * 3;
+    // Preserve analytical normals if already generated (e.g. radial tube normals).
+    // Only compute area-weighted face normals if normals were not provided.
+    if (_workNormals.length !== vCount) {
+      _workNormals.length = vCount;
+      for (let i = 0; i < vCount; i++) {
+        _workNormals[i] = 0;
+      }
+      for (let i = 0; i < iCount; i += 3) {
+        const iA = _workIndices[i] * 3;
+        const iB = _workIndices[i + 1] * 3;
+        const iC = _workIndices[i + 2] * 3;
 
-      const ax = _workVertices[iA], ay = _workVertices[iA + 1], az = _workVertices[iA + 2];
-      const bx = _workVertices[iB], by = _workVertices[iB + 1], bz = _workVertices[iB + 2];
-      const cx = _workVertices[iC], cy = _workVertices[iC + 1], cz = _workVertices[iC + 2];
+        const ax = _workVertices[iA], ay = _workVertices[iA + 1], az = _workVertices[iA + 2];
+        const bx = _workVertices[iB], by = _workVertices[iB + 1], bz = _workVertices[iB + 2];
+        const cx = _workVertices[iC], cy = _workVertices[iC + 1], cz = _workVertices[iC + 2];
 
-      const abx = bx - ax, aby = by - ay, abz = bz - az;
-      const acx = cx - ax, acy = cy - ay, acz = cz - az;
+        const abx = bx - ax, aby = by - ay, abz = bz - az;
+        const acx = cx - ax, acy = cy - ay, acz = cz - az;
 
-      const fnx = aby * acz - abz * acy;
-      const fny = abz * acx - abx * acz;
-      const fnz = abx * acy - aby * acx;
+        const fnx = aby * acz - abz * acy;
+        const fny = abz * acx - abx * acz;
+        const fnz = abx * acy - aby * acx;
 
-      _workNormals[iA] += fnx; _workNormals[iA + 1] += fny; _workNormals[iA + 2] += fnz;
-      _workNormals[iB] += fnx; _workNormals[iB + 1] += fny; _workNormals[iB + 2] += fnz;
-      _workNormals[iC] += fnx; _workNormals[iC + 1] += fny; _workNormals[iC + 2] += fnz;
-    }
-    const numVertices = Math.floor(vCount / 3);
-    for (let i = 0; i < numVertices; i++) {
-      const idx = i * 3;
-      const nx = _workNormals[idx];
-      const ny = _workNormals[idx + 1];
-      const nz = _workNormals[idx + 2];
-      const len = Math.hypot(nx, ny, nz);
-      if (len > 1e-6) {
-        _workNormals[idx] = nx / len;
-        _workNormals[idx + 1] = ny / len;
-        _workNormals[idx + 2] = nz / len;
-      } else {
-        _workNormals[idx] = 0;
-        _workNormals[idx + 1] = 1;
-        _workNormals[idx + 2] = 0;
+        _workNormals[iA] += fnx; _workNormals[iA + 1] += fny; _workNormals[iA + 2] += fnz;
+        _workNormals[iB] += fnx; _workNormals[iB + 1] += fny; _workNormals[iB + 2] += fnz;
+        _workNormals[iC] += fnx; _workNormals[iC + 1] += fny; _workNormals[iC + 2] += fnz;
+      }
+      const numVertices = Math.floor(vCount / 3);
+      for (let i = 0; i < numVertices; i++) {
+        const idx = i * 3;
+        const nx = _workNormals[idx];
+        const ny = _workNormals[idx + 1];
+        const nz = _workNormals[idx + 2];
+        const len = Math.hypot(nx, ny, nz);
+        if (len > 1e-6) {
+          _workNormals[idx] = nx / len;
+          _workNormals[idx + 1] = ny / len;
+          _workNormals[idx + 2] = nz / len;
+        } else {
+          _workNormals[idx] = 0;
+          _workNormals[idx + 1] = 1;
+          _workNormals[idx + 2] = 0;
+        }
       }
     }
 
@@ -525,6 +529,41 @@ export class ConformalBeadGenerator {
 
       _scratchCenter.copy(pos).addScaledVector(normal, baseOffset + radius).add(_scratchJitter);
 
+      // Compute segment directions to previous and next slice centers
+      let hasPrev = i > 0;
+      let hasNext = i < numPoints - 1;
+      let prevLen = 0, nextLen = 0;
+      let prevDirX = 0, prevDirY = 0, prevDirZ = 0;
+      let nextDirX = 0, nextDirY = 0, nextDirZ = 0;
+
+      if (hasPrev) {
+        const dx = pos.x - positions[i - 1].x;
+        const dy = pos.y - positions[i - 1].y;
+        const dz = pos.z - positions[i - 1].z;
+        prevLen = Math.hypot(dx, dy, dz);
+        if (prevLen > 1e-6) {
+          prevDirX = dx / prevLen;
+          prevDirY = dy / prevLen;
+          prevDirZ = dz / prevLen;
+        } else {
+          hasPrev = false;
+        }
+      }
+
+      if (hasNext) {
+        const dx = positions[i + 1].x - pos.x;
+        const dy = positions[i + 1].y - pos.y;
+        const dz = positions[i + 1].z - pos.z;
+        nextLen = Math.hypot(dx, dy, dz);
+        if (nextLen > 1e-6) {
+          nextDirX = dx / nextLen;
+          nextDirY = dy / nextLen;
+          nextDirZ = dz / nextLen;
+        } else {
+          hasNext = false;
+        }
+      }
+
       const currentRing: THREE.Vector3[] = [];
       for (let j = 0; j < radialSegments; j++) {
         const theta = (j / radialSegments) * Math.PI * 2;
@@ -532,20 +571,29 @@ export class ConformalBeadGenerator {
         const sinT = Math.sin(theta);
 
         _scratchRadialDir.copy(binormal).multiplyScalar(cosT).addScaledVector(normal, sinT).normalize();
-        const vert = _scratchPos.copy(_scratchCenter).addScaledVector(_scratchRadialDir, radius).clone();
+        const rx = _scratchRadialDir.x;
+        const ry = _scratchRadialDir.y;
+        const rz = _scratchRadialDir.z;
 
-        // Miter-clamp inner corner vertices so they never invert behind previous slice
-        if (i > 0) {
-          const seg = _scratchV1.subVectors(pos, positions[i - 1]);
-          const segLen = seg.length();
-          if (segLen > 1e-6) {
-            const segDir = seg.normalize();
-            const d = _scratchV2.subVectors(vert, prevRingVertices[j]).dot(segDir);
-            if (d < 0.0005) {
-              vert.addScaledVector(segDir, 0.0005 - d);
-            }
+        // Prevent self-intersection by clamping radial reach on the inside of bends
+        // so vertices never cross the midpoint planes between consecutive slices.
+        let effRadius = radius;
+        if (hasPrev) {
+          const backProj = -(rx * prevDirX + ry * prevDirY + rz * prevDirZ);
+          if (backProj > 0.05) {
+            const maxR = (prevLen * 0.45) / backProj;
+            if (maxR < effRadius) effRadius = Math.max(radius * 0.2, maxR);
           }
         }
+        if (hasNext) {
+          const fwdProj = rx * nextDirX + ry * nextDirY + rz * nextDirZ;
+          if (fwdProj > 0.05) {
+            const maxR = (nextLen * 0.45) / fwdProj;
+            if (maxR < effRadius) effRadius = Math.max(radius * 0.2, maxR);
+          }
+        }
+
+        const vert = _scratchPos.copy(_scratchCenter).addScaledVector(_scratchRadialDir, effRadius).clone();
 
         prevRingVertices[j].copy(vert);
         currentRing.push(vert);
@@ -635,25 +683,27 @@ export class ConformalBeadGenerator {
       const effectiveBaseOffset = baseOffset + curvatureLift;
 
       _scratchCenter.copy(pos).addScaledVector(normal, effectiveBaseOffset).add(_scratchJitter);
-      const left = _scratchV1.copy(_scratchCenter).addScaledVector(binormal, -width);
-      const right = _scratchV2.copy(_scratchCenter).addScaledVector(binormal, width);
-
-      // Miter-clamp inner corner vertices so they never step backwards on tight turns
+      let effLeftWidth = width;
+      let effRightWidth = width;
       if (i > 0) {
         const seg = _scratchV3.subVectors(pos, positions[i - 1]);
         const segLen = seg.length();
         if (segLen > 1e-6) {
           const segDir = seg.normalize();
-          const dLeft = _scratchV4.subVectors(left, prevLeft).dot(segDir);
-          const dRight = _scratchPos.subVectors(right, prevRight).dot(segDir);
-          if (dLeft < 0.0005) {
-            left.addScaledVector(segDir, 0.0005 - dLeft);
+          const bDot = binormal.dot(segDir);
+          if (-bDot > 0.05) {
+            const maxW = (segLen * 0.45) / (-bDot);
+            if (maxW < effLeftWidth) effLeftWidth = Math.max(width * 0.2, maxW);
           }
-          if (dRight < 0.0005) {
-            right.addScaledVector(segDir, 0.0005 - dRight);
+          if (bDot > 0.05) {
+            const maxW = (segLen * 0.45) / bDot;
+            if (maxW < effRightWidth) effRightWidth = Math.max(width * 0.2, maxW);
           }
         }
       }
+
+      const left = _scratchV1.copy(_scratchCenter).addScaledVector(binormal, -effLeftWidth);
+      const right = _scratchV2.copy(_scratchCenter).addScaledVector(binormal, effRightWidth);
 
       prevLeft.copy(left);
       prevRight.copy(right);
@@ -767,26 +817,28 @@ export class ConformalBeadGenerator {
 
       _scratchCenter.copy(pos).addScaledVector(normal, effectiveBaseOffset).add(_scratchJitter);
 
-      // Flat 2-point calligraphic ribbon profile lying flush on model
-      const left = _scratchV2.copy(_scratchCenter).addScaledVector(dirNib, -width);
-      const right = _scratchV3.copy(_scratchCenter).addScaledVector(dirNib, width);
-
-      // Miter-clamp inner corners on sharp turns so vertices don't step backward
+      let effLeftWidth = width;
+      let effRightWidth = width;
       if (i > 0) {
         const seg = _scratchTipDir.subVectors(pos, positions[i - 1]);
         const segLen = seg.length();
         if (segLen > 1e-6) {
           const segDir = seg.normalize();
-          const dLeft = _scratchTipPos.subVectors(left, prevLeft).dot(segDir);
-          const dRight = _scratchPos.subVectors(right, prevRight).dot(segDir);
-          if (dLeft < 0.0005) {
-            left.addScaledVector(segDir, 0.0005 - dLeft);
+          const dDot = dirNib.dot(segDir);
+          if (-dDot > 0.05) {
+            const maxW = (segLen * 0.45) / (-dDot);
+            if (maxW < effLeftWidth) effLeftWidth = Math.max(width * 0.2, maxW);
           }
-          if (dRight < 0.0005) {
-            right.addScaledVector(segDir, 0.0005 - dRight);
+          if (dDot > 0.05) {
+            const maxW = (segLen * 0.45) / dDot;
+            if (maxW < effRightWidth) effRightWidth = Math.max(width * 0.2, maxW);
           }
         }
       }
+
+      // Flat 2-point calligraphic ribbon profile lying flush on model
+      const left = _scratchV2.copy(_scratchCenter).addScaledVector(dirNib, -effLeftWidth);
+      const right = _scratchV3.copy(_scratchCenter).addScaledVector(dirNib, effRightWidth);
 
       prevLeft.copy(left);
       prevRight.copy(right);
@@ -1144,7 +1196,32 @@ export class ConformalBeadGenerator {
       }
     }
 
-    const vectorPoints = points.map((p) => p.position);
+    const vectorPoints = points.map((p) => p.position.clone());
+    const nPts = vectorPoints.length;
+    if (nPts >= 3 && brushSize > 0.003) {
+      for (let iter = 0; iter < 2; iter++) {
+        for (let i = 1; i < nPts - 1; i++) {
+          const pPrev = vectorPoints[i - 1];
+          const pCurr = vectorPoints[i];
+          const pNext = vectorPoints[i + 1];
+
+          const d1 = pCurr.distanceTo(pPrev);
+          const d2 = pNext.distanceTo(pCurr);
+          if (d1 < 1e-6 || d2 < 1e-6) continue;
+
+          const v1x = (pCurr.x - pPrev.x) / d1, v1y = (pCurr.y - pPrev.y) / d1, v1z = (pCurr.z - pPrev.z) / d1;
+          const v2x = (pNext.x - pCurr.x) / d2, v2y = (pNext.y - pCurr.y) / d2, v2z = (pNext.z - pCurr.z) / d2;
+          const dot = Math.max(-1, Math.min(1, v1x * v2x + v1y * v2y + v1z * v2z));
+          if (dot < 0.94) {
+            const blend = Math.min(0.4, (0.94 - dot) * 0.7);
+            pCurr.x += ((pPrev.x + pNext.x) * 0.5 - pCurr.x) * blend;
+            pCurr.y += ((pPrev.y + pNext.y) * 0.5 - pCurr.y) * blend;
+            pCurr.z += ((pPrev.z + pNext.z) * 0.5 - pCurr.z) * blend;
+          }
+        }
+      }
+    }
+
     const curve = new THREE.CatmullRomCurve3(vectorPoints, false, 'centripetal', 0.5);
 
     // Cumulative input distances for accurate property interpolation
@@ -1156,8 +1233,8 @@ export class ConformalBeadGenerator {
     }
 
     const curveLength = curve.getLength();
-    const stepSize = Math.max(0.003, Math.min(0.012, brushSize * 0.2));
-    const divisions = Math.max(12, Math.min(3072, Math.max(points.length * 2, Math.ceil(curveLength / stepSize))));
+    const stepSize = Math.max(0.006, Math.min(0.035, brushSize * 0.35));
+    const divisions = Math.max(12, Math.min(1024, Math.ceil(curveLength / stepSize)));
 
     const rawPoints = curve.getSpacedPoints(divisions);
     const sampledPositions: THREE.Vector3[] = [];
