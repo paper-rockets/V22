@@ -99,6 +99,8 @@ async function main() {
   }
 
   // 6. Test search bar
+  await page.locator('button:has-text("Color")').click();
+  await page.waitForTimeout(300);
   await page.locator('button:has-text("All (")').click();
   await page.waitForTimeout(300);
   const searchInput = page.locator('input[placeholder*="Search shaders"]');
