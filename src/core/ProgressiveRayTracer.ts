@@ -776,7 +776,43 @@ export class ProgressiveRayTracer {
       return;
     }
 
-    const cameraMoved = this._checkCameraMovement(camera);
+    // Explicitly skip all cutout-material meshes and helper outlines during ray tracing
+    const hiddenCutouts: THREE.Object3D[] = [];
+    const isCutoutObject = (obj: THREE.Object3D): boolean => {
+      if (
+        (obj as any).userData?.isCutout ||
+        (obj as any).userData?.isDashedOutline ||
+        obj.name === 'cutoutRoot' ||
+        obj.name === 'worldCutoutRoot' ||
+        (obj as any).userData?.materialType === 'cutout'
+      ) {
+        return true;
+      }
+      const mesh = obj as THREE.Mesh;
+      if (mesh.isMesh && mesh.material) {
+        const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+        for (const m of mats) {
+          if (
+            (m as any).userData?.isCutout ||
+            (m as any).userData?.materialType === 'cutout' ||
+            (m as any).colorWrite === false
+          ) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+
+    scene.traverse((obj) => {
+      if (isCutoutObject(obj) && obj.visible) {
+        hiddenCutouts.push(obj);
+        obj.visible = false;
+      }
+    });
+
+    try {
+      const cameraMoved = this._checkCameraMovement(camera);
 
     if (cameraMoved) {
       this._isStationary = false;
@@ -906,6 +942,11 @@ export class ProgressiveRayTracer {
     this._blitMaterial.uniforms.uBloomEnabled.value = this._bloomEnabled ? 1.0 : 0.0;
     this._blitMaterial.uniforms.uBloomIntensity.value = this._bloomIntensity;
     renderer.render(this._postScene, this._postCamera);
+    } finally {
+      for (const obj of hiddenCutouts) {
+        obj.visible = true;
+      }
+    }
   }
 
   /**

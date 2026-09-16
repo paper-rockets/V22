@@ -16,6 +16,9 @@ export interface StrokePipelineContext {
   strokes: Map<string, { descriptor: StrokeDescriptor; meshes: THREE.Mesh[] }>;
   strokeRoot: THREE.Group;
   worldStrokeRoot: THREE.Group;
+  cutoutRoot?: THREE.Group;
+  worldCutoutRoot?: THREE.Group;
+  isCutoutOutlineVisible?: () => boolean;
   helperRoot: THREE.Group;
   getCamera: () => THREE.PerspectiveCamera;
   getRaycaster: () => THREE.Raycaster;
@@ -54,6 +57,42 @@ export class StrokePipeline {
 
   constructor(ctx: StrokePipelineContext) {
     this.ctx = ctx;
+  }
+
+  public getStrokeParent(settings?: BrushSettings): THREE.Group {
+    const isCutout = settings?.materialType === 'cutout';
+    const isSpatial = settings?.drawingMode === 'spatial_3d';
+    if (isCutout) {
+      return (isSpatial ? this.ctx.worldCutoutRoot : this.ctx.cutoutRoot) || (isSpatial ? this.ctx.worldStrokeRoot : this.ctx.strokeRoot);
+    }
+    return isSpatial ? this.ctx.worldStrokeRoot : this.ctx.strokeRoot;
+  }
+
+  public static cutoutOutlineMaterial = new THREE.LineDashedMaterial({
+    color: 0x22d3ee,
+    dashSize: 0.08,
+    gapSize: 0.04,
+    opacity: 0.7,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+  });
+
+  public attachCutoutOutline(mesh: THREE.Mesh): void {
+    if (!mesh.geometry) return;
+    try {
+      const isVisible = this.ctx.isCutoutOutlineVisible ? this.ctx.isCutoutOutlineVisible() : false;
+      if (!isVisible) {
+        return;
+      }
+      const edges = new THREE.EdgesGeometry(mesh.geometry, 20);
+      const outline = new THREE.LineSegments(edges, StrokePipeline.cutoutOutlineMaterial);
+      outline.computeLineDistances();
+      outline.renderOrder = 9999;
+      (outline as any).userData = { isDashedOutline: true };
+      outline.visible = true;
+      mesh.add(outline);
+    } catch (_) {}
   }
 
   public getSymmetryCount(symmetry: SymmetryMode): number {
@@ -218,7 +257,8 @@ export class StrokePipeline {
         this.activeVacuumPurgedBatch.push(entry.descriptor);
         for (const m of entry.meshes) {
           m.geometry.dispose();
-          this.ctx.strokeRoot.remove(m);
+          if (m.parent) m.parent.remove(m);
+          else this.ctx.strokeRoot.remove(m);
         }
         this.ctx.strokes.delete(id);
       }
@@ -332,7 +372,7 @@ export class StrokePipeline {
     // Clean up active stroke meshes
     for (const mesh of this.activeStrokeMeshes) {
       mesh.geometry.dispose();
-      this.ctx.strokeRoot.remove(mesh);
+      mesh.parent?.remove(mesh);
     }
     this.activeStrokeMeshes = [];
     this.activePoints = [];
@@ -343,7 +383,7 @@ export class StrokePipeline {
       if (entry) {
         for (const m of entry.meshes) {
           m.geometry.dispose();
-          this.ctx.strokeRoot.remove(m);
+          m.parent?.remove(m);
         }
         this.ctx.strokes.delete(desc.id);
       }
@@ -364,7 +404,7 @@ export class StrokePipeline {
     // 2. Dispose meshes tracked in strokes map
     this.ctx.strokes.forEach(({ meshes }) => {
       meshes.forEach((m) => {
-        this.ctx.strokeRoot.remove(m);
+        m.parent?.remove(m);
         if (m.geometry) {
           try { m.geometry.dispose(); } catch (_) {}
         }
@@ -399,6 +439,8 @@ export class StrokePipeline {
     };
     purgeGroup(this.ctx.strokeRoot);
     if (this.ctx.worldStrokeRoot) purgeGroup(this.ctx.worldStrokeRoot);
+    if (this.ctx.cutoutRoot) purgeGroup(this.ctx.cutoutRoot);
+    if (this.ctx.worldCutoutRoot) purgeGroup(this.ctx.worldCutoutRoot);
   }
 
   /**
@@ -409,7 +451,8 @@ export class StrokePipeline {
     this.ctx.strokes.forEach(({ descriptor, meshes }, id) => {
       if (descriptor.layerId === layerId) {
         meshes.forEach((m) => {
-          this.ctx.strokeRoot.remove(m);
+          if (m.parent) m.parent.remove(m);
+          else this.ctx.strokeRoot.remove(m);
           m.geometry.dispose();
         });
         toDelete.push(id);
@@ -527,7 +570,14 @@ export class StrokePipeline {
       const geom = this.ctx.beadGenerator.generateGeometry(newPoints, desc.settings, targetMeshes);
       const mesh = new THREE.Mesh(geom, mat);
       mesh.renderOrder = 10 + (this.ctx.strokes.size % 20000);
-      this.ctx.strokeRoot.add(mesh);
+      const strokeParent = this.getStrokeParent(desc.settings);
+      strokeParent.add(mesh);
+      if (desc.settings.materialType === 'cutout') {
+        mesh.castShadow = false;
+        mesh.receiveShadow = false;
+        (mesh as any).userData = { ...(mesh as any).userData, isCutout: true };
+        this.attachCutoutOutline(mesh);
+      }
 
       this.ctx.strokes.set(newId, { descriptor: desc, meshes: [mesh] });
       newBatch.push(desc);
@@ -712,7 +762,14 @@ export class StrokePipeline {
     const geom = this.ctx.beadGenerator.generateGeometry(parsedPoints, desc.settings, this.ctx.getTargetMeshes());
     const mesh = new THREE.Mesh(geom, mat);
     mesh.renderOrder = 10 + (this.ctx.strokes.size % 20000);
-    this.ctx.strokeRoot.add(mesh);
+    const strokeParent = this.getStrokeParent(desc.settings);
+    strokeParent.add(mesh);
+    if (desc.settings.materialType === 'cutout') {
+      mesh.castShadow = false;
+      mesh.receiveShadow = false;
+      (mesh as any).userData = { ...(mesh as any).userData, isCutout: true };
+      this.attachCutoutOutline(mesh);
+    }
 
     this.ctx.strokes.set(desc.id, {
       descriptor: {

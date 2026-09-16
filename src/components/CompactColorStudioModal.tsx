@@ -14,6 +14,7 @@ import {
   Palette,
   Pin,
   Pipette,
+  Scissors,
   Search,
   Sliders,
   SunMedium,
@@ -86,6 +87,7 @@ const QUICK_SHADER_NAMES = [
   'Electric Neon Cyan',
   'Hot Molten Lava',
   'Toon Manga Ink & White',
+  'Cutout Mask',
 ];
 const QUICK_SHADER_LABEL_MAP: Record<string, string> = {
   'Flat Graphic White': 'Clay',
@@ -98,6 +100,13 @@ const QUICK_SHADER_LABEL_MAP: Record<string, string> = {
   'Electric Neon Cyan': 'Glow',
   'Hot Molten Lava': 'Lava',
   'Toon Manga Ink & White': 'Ink',
+  'Cutout Mask': 'Cutout',
+};
+const CUTOUT_PRESET = {
+  id: 'cutout',
+  name: 'Cutout Mask',
+  type: 'cutout',
+  category: 'Cutout',
 };
 
 function formatShaderDisplayLabel(name: string): string {
@@ -293,6 +302,11 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
     const ordered: any[] = [];
 
     QUICK_SHADER_NAMES.forEach((name) => {
+      if (name === 'Cutout Mask') {
+        quickIds.add(CUTOUT_PRESET.id);
+        ordered.push(CUTOUT_PRESET);
+        return;
+      }
       const found = (ALL_MATERIAL_PRESETS as any[]).find((preset) => preset.name === name);
       if (found && !quickIds.has(found.id)) {
         quickIds.add(found.id);
@@ -350,6 +364,9 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
         const matchId = preset.id?.toLowerCase().includes(q);
         if (!matchName && !matchCat && !matchId) return false;
       }
+
+      // Cutout is a drawing tool rather than a look, so it stays reachable from every category.
+      if (preset.id === CUTOUT_PRESET.id) return true;
 
       // Strictly exclude any water-related shaders per user requirement
       const lowerName = preset.name.toLowerCase();
@@ -834,6 +851,39 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
     lastSolidColorRef.current = representativeColor;
 
     const previewUrl = preset.url || (typeof preset.generate === 'function' ? createMatCap(preset.generate) : undefined);
+
+    if (preset.type === 'cutout' || preset.id === 'cutout' || preset.name === 'Cutout Mask') {
+      setSelectedPresetId('cutout');
+      if (typeof window !== 'undefined') {
+        try {
+          if (!localStorage.getItem('mody_seen_cutout_toast')) {
+            localStorage.setItem('mody_seen_cutout_toast', 'true');
+            window.dispatchEvent(
+              new CustomEvent('SHOW_STUDIO_TOAST', {
+                detail: { message: 'Everything behind this line becomes see-through.' },
+              })
+            );
+          }
+        } catch (_) {}
+      }
+      onApplyBrushSettings?.({
+        materialType: 'cutout',
+        shaderEffect: undefined,
+        customShader: undefined,
+        matcapUrl: undefined,
+        previewUrl: undefined,
+        matcapTexture: undefined,
+        color: '#ffffff',
+        solidColor: '#ffffff',
+        roughness: 0.5,
+        metalness: 0,
+        emissiveIntensity: 0,
+        opacity: 1,
+        patternType: 'none',
+        activeLookName: 'Cutout',
+      });
+      return;
+    }
 
     if (preset.type === 'effect') {
       if (shaderTarget === 'brush') {
@@ -1530,6 +1580,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
                 <div className="grid grid-cols-4 sm:grid-cols-5 gap-2 pt-1">
                   {visibleShaders.map((preset) => {
                     const isSelected = selectedPresetId === preset.id;
+                    const isCutout = preset.id === CUTOUT_PRESET.id;
                     return (
                       <button
                         key={preset.id}
@@ -1542,7 +1593,8 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
                               : 'border-sky-400 bg-sky-500/15 text-sky-100 font-bold shadow-xs ring-1 ring-sky-400/30'
                             : `border-transparent ${ghostButton}`
                         }`}
-                        title={preset.name}
+                        title={isCutout ? 'Draw to cut a see-through hole' : preset.name}
+                        aria-label={isCutout ? 'Draw to cut a see-through hole' : preset.name}
                       >
                         <span
                           className={`relative block h-11 w-11 sm:h-12 sm:w-12 overflow-hidden rounded-full border shadow-sm transition-transform ${
@@ -1553,7 +1605,17 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
                                 : 'border-white/15'
                           }`}
                         >
-                          <img src={preset.url} alt="" className="h-full w-full object-cover" loading="lazy" />
+                          {isCutout ? (
+                            <span
+                              className={`flex h-full w-full items-center justify-center ${
+                                isLight ? 'bg-neutral-200 text-neutral-800' : 'bg-neutral-800 text-neutral-200'
+                              }`}
+                            >
+                              <Scissors className="h-5 w-5" />
+                            </span>
+                          ) : (
+                            <img src={preset.url} alt="" className="h-full w-full object-cover" loading="lazy" />
+                          )}
                           {isSelected && (
                             <span className="absolute inset-0 flex items-center justify-center bg-black/40">
                               <Check className="w-4 h-4 text-white stroke-[3]" />

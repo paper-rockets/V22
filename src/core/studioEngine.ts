@@ -94,6 +94,7 @@ import { resolveAssetUrl } from '../utils/assetUrl';
 import { getQualityProfile, resolvePixelRatio, QualityProfile } from '../utils/deviceProfile';
 import { FastSurfaceRaycaster } from './FastSurfaceRaycaster';
 
+
 // Patch Three.js geometry and mesh prototypes with BVH accelerated raycasting
 try {
   (THREE.BufferGeometry.prototype as any).computeBoundsTree = computeBoundsTree;
@@ -281,6 +282,19 @@ export class StudioEngine {
   private modelRoot: THREE.Group;
   private strokeRoot: THREE.Group;
   private worldStrokeRoot: THREE.Group;
+  private cutoutRoot: THREE.Group;
+  private worldCutoutRoot: THREE.Group;
+  private cutoutOutlineVisible: boolean = false;
+  private cutoutOutlineMaterial: THREE.LineDashedMaterial = new THREE.LineDashedMaterial({
+    color: 0x22d3ee,
+    dashSize: 0.08,
+    gapSize: 0.04,
+    scale: 1,
+    transparent: true,
+    opacity: 0.7,
+    depthTest: false,
+    depthWrite: false,
+  });
   private helperRoot: THREE.Group;
   private lightsRoot: THREE.Group;
   private customMirrorOrigin: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
@@ -602,11 +616,21 @@ export class StudioEngine {
     this.modelRoot = new THREE.Group();
     this.modelRoot.renderOrder = 2; // Model renders first, writes depth and stencil
 
+    this.cutoutRoot = new THREE.Group();
+    this.cutoutRoot.name = 'cutoutRoot';
+    this.cutoutRoot.renderOrder = 0; // Cutout depth pre-pass draws before models
+    this.modelRoot.add(this.cutoutRoot);
+
     this.strokeRoot = new THREE.Group();
     this.strokeRoot.renderOrder = 5; // Stroke geometry renders with depthTest=true, depthWrite=false
 
     // Attach strokes directly as child of modelRoot so surface strokes stay locked to the model in 3D space
     this.modelRoot.add(this.strokeRoot);
+
+    this.worldCutoutRoot = new THREE.Group();
+    this.worldCutoutRoot.name = 'worldCutoutRoot';
+    this.worldCutoutRoot.renderOrder = 0;
+    this.scene.add(this.worldCutoutRoot);
 
     // Dedicated world-space stroke root for mid-air drawings (independent of model movements)
     this.worldStrokeRoot = new THREE.Group();
@@ -639,6 +663,7 @@ export class StudioEngine {
       container.clientWidth,
       container.clientHeight
     );
+    this.postEngine.setSceneRenderer((target) => this.renderSceneWboit(target));
 
     // 6. Lighting and Studio Stage Controller
     this.lightingController = new LightingController({
@@ -680,6 +705,9 @@ export class StudioEngine {
       strokes: this.strokes,
       strokeRoot: this.strokeRoot,
       worldStrokeRoot: this.worldStrokeRoot,
+      cutoutRoot: this.cutoutRoot,
+      worldCutoutRoot: this.worldCutoutRoot,
+      isCutoutOutlineVisible: () => this.cutoutOutlineVisible,
       helperRoot: this.helperRoot,
       getCamera: () => this.camera,
       getRaycaster: () => this.raycaster,
@@ -1248,6 +1276,7 @@ export class StudioEngine {
       this.modelRoot.children.forEach((child) => {
         if (
           child !== this.strokeRoot &&
+          child !== this.cutoutRoot &&
           child !== obj &&
           child.name !== 'DrawingPlaneCanvas' &&
           !child.userData?.isDrawingPlane
@@ -1496,7 +1525,7 @@ export class StudioEngine {
     if (!modelToDelete) {
       modelToDelete =
         this.modelRoot.children.find(
-          (c) => c !== this.strokeRoot && c !== this.drawingPlaneMesh && c.name !== 'DrawingPlaneCanvas'
+          (c) => c !== this.strokeRoot && c !== this.cutoutRoot && c !== this.drawingPlaneMesh && c.name !== 'DrawingPlaneCanvas'
         ) || null;
     }
 
@@ -1528,7 +1557,7 @@ export class StudioEngine {
       }
     }
 
-    if (modelToDelete && modelToDelete !== this.strokeRoot) {
+    if (modelToDelete && modelToDelete !== this.strokeRoot && modelToDelete !== this.cutoutRoot) {
       this.historyUndoStack.push({
         kind: 'primitive',
         objectId: modelToDelete.uuid,
@@ -1541,7 +1570,7 @@ export class StudioEngine {
       this.setActiveSelectedModel(null);
 
       // If all 3D models were deleted and no drawing canvas is visible, restore default drawing plane
-      const remainingModels = this.modelRoot.children.filter((c) => c !== this.strokeRoot);
+      const remainingModels = this.modelRoot.children.filter((c) => c !== this.strokeRoot && c !== this.cutoutRoot);
       if (remainingModels.length === 0) {
         this.setupDefaultDrawingPlane();
       }
@@ -1636,7 +1665,7 @@ export class StudioEngine {
   ): { points: { x: number; y: number }[]; rect: { x: number; y: number; width: number; height: number } } | null {
     const corners: THREE.Vector3[] = [];
     const lines: StrokeDescriptor[] = [];
-    const modelChildren = () => this.modelRoot.children.filter((c) => c !== this.strokeRoot);
+    const modelChildren = () => this.modelRoot.children.filter((c) => c !== this.strokeRoot && c !== this.cutoutRoot);
 
     if (scope === 'model') {
       const picked = this.activeSelectedModelId
@@ -1786,7 +1815,7 @@ export class StudioEngine {
           : null;
         if (!model) {
           // With nothing picked, moving "3D models" moves all of them (see applyTransformMatrix).
-          const hasModels = this.modelRoot.children.some((c) => c !== this.strokeRoot);
+          const hasModels = this.modelRoot.children.some((c) => c !== this.strokeRoot && c !== this.cutoutRoot);
           return hasModels
             ? { scope, label: 'All 3D models', detail: 'Tap one to pick just it', isEmpty: false }
             : { scope, label: 'No 3D models', detail: 'Add a model to move it', isEmpty: true };
@@ -2602,11 +2631,27 @@ export class StudioEngine {
       const mat = this.materialCache.getStrokeMaterial(settings, !isSpatial && !isDual, layer.opacity, layer.blendMode || 'normal');
       const mesh = new THREE.Mesh(new THREE.BufferGeometry(), mat);
       mesh.renderOrder = 10 + (this.strokeSequenceIndex % 20000);
-      this.strokeRoot.add(mesh);
+      this.addStrokeMesh(mesh, settings, this.strokeRoot);
       this.activeStrokeMeshes.push(mesh);
     }
 
     this.updateActiveStrokeGeometry(settings, symmetry);
+  }
+
+  /**
+   * Cutout strokes go into their own group so the cutout pass can draw their
+   * depth before the models; they stay in the same space as the stroke group
+   * they would otherwise have joined.
+   */
+  private addStrokeMesh(mesh: THREE.Mesh, settings: BrushSettings, strokeParent: THREE.Group): void {
+    if (settings.materialType !== 'cutout') {
+      strokeParent.add(mesh);
+      return;
+    }
+    mesh.castShadow = false;
+    mesh.receiveShadow = false;
+    mesh.userData.isCutout = true;
+    (strokeParent === this.worldStrokeRoot ? this.worldCutoutRoot : this.cutoutRoot).add(mesh);
   }
 
   /**
@@ -2953,7 +2998,7 @@ export class StudioEngine {
           const mat = this.materialCache.getStrokeMaterial(settings, !isSpatial && !isDual, this.activeLayerOpacity);
           const mesh = new THREE.Mesh(new THREE.BufferGeometry(), mat);
           mesh.renderOrder = 10 + (this.strokeSequenceIndex % 20000);
-          this.strokeRoot.add(mesh);
+          this.addStrokeMesh(mesh, settings, this.strokeRoot);
           this.activeStrokeMeshes.push(mesh);
         }
       } else {
@@ -3361,7 +3406,7 @@ export class StudioEngine {
           const mesh = new THREE.Mesh(geom, mat);
           mesh.renderOrder = 10 + ((strokeDesc.settings.strokeSequenceIndex ?? this.strokes.size) % 20000);
           const parent = strokeDesc.settings.drawingMode === 'spatial_3d' ? this.worldStrokeRoot : this.strokeRoot;
-          parent.add(mesh);
+          this.addStrokeMesh(mesh, strokeDesc.settings, parent);
           meshes.push(mesh);
           this.strokes.set(strokeDesc.id, { descriptor: strokeDesc, meshes });
         }
@@ -3418,7 +3463,7 @@ export class StudioEngine {
           mesh.visible = layerVisible;
           mesh.renderOrder = 10 + ((strokeDesc.settings.strokeSequenceIndex ?? this.strokes.size) % 20000);
           const parent = strokeDesc.settings.drawingMode === 'spatial_3d' ? this.worldStrokeRoot : this.strokeRoot;
-          parent.add(mesh);
+          this.addStrokeMesh(mesh, strokeDesc.settings, parent);
           meshes.push(mesh);
 
           this.strokes.set(strokeDesc.id, { descriptor: strokeDesc, meshes });
@@ -3648,7 +3693,7 @@ export class StudioEngine {
     // 2. Remove all model children from modelRoot except strokeRoot
     const toRemove: THREE.Object3D[] = [];
     this.modelRoot.children.forEach((child) => {
-      if (child !== this.strokeRoot) {
+      if (child !== this.strokeRoot && child !== this.cutoutRoot) {
         toRemove.push(child);
       }
     });
@@ -3826,7 +3871,7 @@ export class StudioEngine {
   public getLoadedModels(): LoadedModelInfo[] {
     const models: LoadedModelInfo[] = [];
     this.modelRoot.children.forEach((child, index) => {
-      if (child === this.strokeRoot) return;
+      if (child === this.strokeRoot || child === this.cutoutRoot) return;
       let meshCount = 0;
       child.traverse((c) => {
         if (c instanceof THREE.Mesh) meshCount++;
@@ -4586,7 +4631,7 @@ export class StudioEngine {
   public toggleModelVisibility(visible?: boolean): boolean {
     this.isModelVisible = visible !== undefined ? visible : !this.isModelVisible;
     this.modelRoot.children.forEach((child) => {
-      if (child.name !== 'DrawingPlaneCanvas' && child !== this.strokeRoot) {
+      if (child.name !== 'DrawingPlaneCanvas' && child !== this.strokeRoot && child !== this.cutoutRoot) {
         child.visible = this.isModelVisible;
       }
     });
@@ -4605,18 +4650,18 @@ export class StudioEngine {
   public cloneModel(offset: THREE.Vector3 = new THREE.Vector3(1.5, 0, 0)): THREE.Object3D | null {
     // Find either selected model or first loaded model in modelRoot
     let activeModel = this.activeSelectedModelId
-      ? this.modelRoot.children.find((c) => c.uuid === this.activeSelectedModelId && c !== this.strokeRoot)
+      ? this.modelRoot.children.find((c) => c.uuid === this.activeSelectedModelId && c !== this.strokeRoot && c !== this.cutoutRoot)
       : null;
     if (!activeModel) {
       activeModel = this.modelRoot.children.find(
-        (c) => c !== this.strokeRoot && c.name !== 'DrawingPlaneCanvas'
-      ) || this.modelRoot.children.find((c) => c !== this.strokeRoot);
+        (c) => c !== this.strokeRoot && c !== this.cutoutRoot && c.name !== 'DrawingPlaneCanvas'
+      ) || this.modelRoot.children.find((c) => c !== this.strokeRoot && c !== this.cutoutRoot);
     }
     if (!activeModel) return null;
 
     const cloned = activeModel.clone(true);
     const existingModelsCount = this.modelRoot.children.filter(
-      (c) => c !== this.strokeRoot && c.name !== 'DrawingPlaneCanvas'
+      (c) => c !== this.strokeRoot && c !== this.cutoutRoot && c.name !== 'DrawingPlaneCanvas'
     ).length;
     cloned.name = `${activeModel.name || '3D Model'} (Copy ${existingModelsCount + 1})`;
     cloned.position.add(offset);
@@ -4901,9 +4946,12 @@ export class StudioEngine {
    */
   public captureSnapshot(): string {
     this.cursorDecal.visible = false;
-    this.renderer.render(this.scene, this.camera);
+    const prevCutoutVisible = this.cutoutOutlineVisible;
+    this.setCutoutOutlineVisible(false);
+    this.renderSceneWboit(null);
     const dataUrl = this.renderer.domElement.toDataURL('image/png');
     this.cursorDecal.visible = true;
+    this.setCutoutOutlineVisible(prevCutoutVisible);
     return dataUrl;
   }
 
@@ -5138,6 +5186,479 @@ export class StudioEngine {
     };
 
     this.animationFrameId = requestAnimationFrame(loop);
+  }
+
+  private wboitBackground: THREE.Object3D[] = [];
+  private wboitOpaque: THREE.Mesh[] = [];
+  private wboitCutout: THREE.Mesh[] = [];
+  private wboitTransparent: THREE.Mesh[] = [];
+  private wboitOrdered: THREE.Mesh[] = [];
+  private wboitOverlay: THREE.Object3D[] = [];
+
+  /**
+   * Toggles visibility of faint dashed outlines around cutout lines.
+   * Visible only when the Cutout look is selected or the Select tool is active.
+   */
+  public setCutoutOutlineVisible(visible: boolean): void {
+    this.cutoutOutlineVisible = visible;
+    const processGroup = (grp: THREE.Group) => {
+      if (!grp) return;
+      grp.traverse((child) => {
+        if (
+          child instanceof THREE.Mesh &&
+          ((child as any).userData?.isCutout || (child as any).userData?.materialType === 'cutout')
+        ) {
+          let outline = child.children.find((c) => (c as any).userData?.isDashedOutline) as THREE.LineSegments | undefined;
+          if (visible) {
+            if (!outline) {
+              if (child.geometry) {
+                const edges = new THREE.EdgesGeometry(child.geometry, 20);
+                outline = new THREE.LineSegments(edges, this.cutoutOutlineMaterial);
+                outline.computeLineDistances();
+                outline.renderOrder = 9999;
+                (outline as any).userData = { isDashedOutline: true };
+                child.add(outline);
+              }
+            } else {
+              if (!outline.geometry || !outline.geometry.attributes.position) {
+                if (child.geometry) {
+                  outline.geometry = new THREE.EdgesGeometry(child.geometry, 20);
+                  outline.computeLineDistances();
+                }
+              }
+              outline.visible = true;
+            }
+          } else {
+            if (outline) {
+              outline.visible = false;
+              if (outline.geometry) {
+                outline.geometry.dispose();
+              }
+              child.remove(outline);
+            }
+          }
+        }
+      });
+    };
+    processGroup(this.cutoutRoot);
+    processGroup(this.worldCutoutRoot);
+    this.markDirty();
+  }
+
+  /**
+   * Depth pre-pass rendering architecture for see-through cutouts:
+   * 1. Draw background, sky, and floor grid BEFORE the cutout pre-pass so the hole reveals them (never black).
+   * 2. Run depth-only render pass (colorWrite: false, depthWrite: true) for ALL meshes with 'cutout' materialType
+   *    without clearing the depth buffer, punching holes into the depth buffer.
+   * 3. Run main pass with autoClear: false, skipping all 'cutout' meshes to avoid double-drawing.
+   *    Geometry behind the cutout fails the depth test against the closer cutout depth and preserves the background.
+   * 4. Run helpers pass (cursor, selection frame, guides, lasso, navigator, dashed outlines) with cleared depth
+   *    so helpers are never occluded or cut.
+   * Restores all scene states cleanly at the end.
+   */
+  public renderSceneWithCutoutPass(renderTarget: THREE.WebGLRenderTarget | null): void {
+    const isDashedOutline = (obj: THREE.Object3D): boolean => {
+      return !!(obj as any).userData?.isDashedOutline;
+    };
+
+    const isCutoutMesh = (obj: THREE.Object3D): obj is THREE.Mesh => {
+      if (!(obj instanceof THREE.Mesh)) return false;
+      if (isDashedOutline(obj)) return false;
+      if ((obj as any).userData?.isCutout || (obj as any).userData?.materialType === 'cutout') {
+        return true;
+      }
+      if (obj.parent === this.cutoutRoot || obj.parent === this.worldCutoutRoot) {
+        return true;
+      }
+      const mat = obj.material;
+      if (mat) {
+        const mats = Array.isArray(mat) ? mat : [mat];
+        for (const m of mats) {
+          if (
+            (m as any).userData?.materialType === 'cutout' ||
+            (m as any).userData?.isCutout ||
+            ((m as any).colorWrite === false && (m as any).depthWrite === true)
+          ) {
+            return true;
+          }
+        }
+      }
+      return false;
+    };
+
+    const allCutoutMeshes: THREE.Mesh[] = [];
+    const allNonCutoutMeshes: THREE.Mesh[] = [];
+    const allCutoutOutlines: THREE.Object3D[] = [];
+    const savedMeshVisibilities = new Map<THREE.Object3D, boolean>();
+
+    this.scene.traverse((obj) => {
+      if (isDashedOutline(obj)) {
+        allCutoutOutlines.push(obj);
+        savedMeshVisibilities.set(obj, obj.visible);
+      } else if (isCutoutMesh(obj)) {
+        allCutoutMeshes.push(obj);
+        savedMeshVisibilities.set(obj, obj.visible);
+      } else if (obj instanceof THREE.Mesh) {
+        allNonCutoutMeshes.push(obj);
+        savedMeshVisibilities.set(obj, obj.visible);
+      }
+    });
+
+    const hasCutouts =
+      allCutoutMeshes.length > 0 ||
+      (this.cutoutRoot && this.cutoutRoot.children.length > 0) ||
+      (this.worldCutoutRoot && this.worldCutoutRoot.children.length > 0);
+
+    if (!hasCutouts) {
+      this.renderer.setRenderTarget(renderTarget);
+      this.renderer.autoClear = true;
+      this.renderer.render(this.scene, this.camera);
+      return;
+    }
+
+    // Save initial visibility states of primary scene nodes
+    const modelRootWasVisible = this.modelRoot.visible;
+    const strokeRootWasVisible = this.strokeRoot.visible;
+    const worldStrokeRootWasVisible = this.worldStrokeRoot.visible;
+    const cutoutRootWasVisible = this.cutoutRoot.visible;
+    const worldCutoutRootWasVisible = this.worldCutoutRoot.visible;
+    const cursorWasVisible = this.cursorDecal ? this.cursorDecal.visible : false;
+    const guideRoot = this.loftEngine?.getGuideRoot();
+    const scaffoldRoot = this.scaffoldingEngine?.getScaffoldRoot();
+    const guideWasVisible = guideRoot?.visible ?? false;
+    const scaffoldWasVisible = scaffoldRoot?.visible ?? false;
+    const skyMesh = (this.skyEngine as any)?.skyMesh as THREE.Mesh | undefined;
+    const skyWasVisible = skyMesh?.visible ?? false;
+    const gridWasVisible = this.gridHelper?.visible ?? false;
+
+    // Save model child mesh visibilities inside modelRoot (excluding cutoutRoot and strokeRoot)
+    const modelChildVisibilities = new Map<THREE.Object3D, boolean>();
+    this.modelRoot.children.forEach((child) => {
+      if (child !== this.cutoutRoot && child !== this.strokeRoot) {
+        modelChildVisibilities.set(child, child.visible);
+      }
+    });
+
+    // Save helperRoot child visibilities
+    const helperChildVisibilities = new Map<THREE.Object3D, boolean>();
+    this.helperRoot.children.forEach((child) => {
+      helperChildVisibilities.set(child, child.visible);
+    });
+
+    const savedMaterialStates = new Map<THREE.Material, { colorWrite: boolean; depthWrite: boolean; depthTest: boolean }>();
+    const prevAutoClear = this.renderer.autoClear;
+    const prevAutoClearColor = this.renderer.autoClearColor;
+    const prevAutoClearDepth = this.renderer.autoClearDepth;
+    const prevSceneBackground = this.scene.background;
+
+    try {
+      // PASS 1: Background, Sky, and Floor Grid
+      this.modelRoot.visible = false;
+      this.worldStrokeRoot.visible = false;
+      this.worldCutoutRoot.visible = false;
+      allCutoutMeshes.forEach((m) => { m.visible = false; });
+      allCutoutOutlines.forEach((o) => { o.visible = false; });
+      allNonCutoutMeshes.forEach((m) => { m.visible = false; });
+      if (this.cursorDecal) this.cursorDecal.visible = false;
+      if (guideRoot) guideRoot.visible = false;
+      if (scaffoldRoot) scaffoldRoot.visible = false;
+
+      this.helperRoot.children.forEach((child) => {
+        if (child === this.gridHelper || child === this.arFloorGrid) {
+          child.visible = gridWasVisible;
+        } else {
+          child.visible = false;
+        }
+      });
+      this.helperRoot.visible = true;
+      if (skyMesh) skyMesh.visible = skyWasVisible;
+
+      this.renderer.setRenderTarget(renderTarget);
+      this.renderer.autoClear = true;
+      this.renderer.render(this.scene, this.camera);
+
+      // Disable background for subsequent passes so it doesn't overwrite model/canvas (e.g. in Pass 4 after clearDepth)
+      this.scene.background = null;
+
+      // PASS 2: Cutout Depth-Only Pre-pass (colorWrite: false, depthWrite: true)
+      this.renderer.autoClear = false;
+      this.renderer.autoClearColor = false;
+      this.renderer.autoClearDepth = false;
+
+      allCutoutMeshes.forEach((mesh) => {
+        mesh.visible = savedMeshVisibilities.get(mesh) ?? true;
+        const mat = mesh.material;
+        if (mat) {
+          const mats = Array.isArray(mat) ? mat : [mat];
+          mats.forEach((m) => {
+            if (!savedMaterialStates.has(m)) {
+              savedMaterialStates.set(m, {
+                colorWrite: m.colorWrite,
+                depthWrite: m.depthWrite,
+                depthTest: m.depthTest,
+              });
+            }
+            m.colorWrite = false;
+            m.depthWrite = true;
+            m.depthTest = true;
+          });
+        }
+      });
+
+      allCutoutOutlines.forEach((o) => { o.visible = false; });
+      allNonCutoutMeshes.forEach((m) => { m.visible = false; });
+
+      this.modelRoot.visible = true;
+      this.cutoutRoot.visible = cutoutRootWasVisible;
+      this.worldCutoutRoot.visible = worldCutoutRootWasVisible;
+      this.strokeRoot.visible = false;
+      this.worldStrokeRoot.visible = false;
+
+      allCutoutMeshes.forEach((mesh) => {
+        let p = mesh.parent;
+        while (p && p !== this.scene) {
+          p.visible = true;
+          p = p.parent;
+        }
+      });
+
+      if (skyMesh) skyMesh.visible = false;
+      this.helperRoot.visible = false;
+
+      this.renderer.render(this.scene, this.camera);
+
+      // PASS 3: Main Pass (Model & Normal Strokes)
+      this.renderer.autoClear = false;
+      this.renderer.autoClearColor = false;
+      this.renderer.autoClearDepth = false;
+
+      this.cutoutRoot.visible = false;
+      this.worldCutoutRoot.visible = false;
+      allCutoutMeshes.forEach((mesh) => { mesh.visible = false; });
+      allCutoutOutlines.forEach((o) => { o.visible = false; });
+
+      allNonCutoutMeshes.forEach((mesh) => {
+        mesh.visible = savedMeshVisibilities.get(mesh) ?? true;
+      });
+
+      this.modelRoot.visible = modelRootWasVisible;
+      this.modelRoot.children.forEach((child) => {
+        if (child === this.strokeRoot) {
+          child.visible = strokeRootWasVisible;
+        } else if (child === this.cutoutRoot) {
+          child.visible = false;
+        } else {
+          child.visible = modelChildVisibilities.get(child) ?? true;
+        }
+      });
+      this.worldStrokeRoot.visible = worldStrokeRootWasVisible;
+
+      this.renderer.render(this.scene, this.camera);
+
+      // PASS 4: Helpers Pass
+      this.modelRoot.children.forEach((child) => {
+        if (child === this.cutoutRoot) {
+          child.visible = this.cutoutOutlineVisible && cutoutRootWasVisible;
+        } else {
+          child.visible = false;
+        }
+      });
+      this.modelRoot.visible = this.cutoutOutlineVisible && cutoutRootWasVisible;
+      this.worldCutoutRoot.visible = this.cutoutOutlineVisible && worldCutoutRootWasVisible;
+      this.worldStrokeRoot.visible = false;
+
+      if (this.cutoutOutlineVisible) {
+        allCutoutOutlines.forEach((o) => {
+          o.visible = savedMeshVisibilities.get(o) ?? true;
+        });
+        allCutoutMeshes.forEach((mesh) => {
+          mesh.visible = savedMeshVisibilities.get(mesh) ?? true;
+        });
+      }
+
+      // The floor grid was already drawn in pass 1; drawing it again after the
+      // depth clear would paint it over the models.
+      this.helperRoot.children.forEach((child) => {
+        child.visible =
+          child === this.gridHelper || child === this.arFloorGrid
+            ? false
+            : helperChildVisibilities.get(child) ?? false;
+      });
+      this.helperRoot.visible = true;
+      if (this.cursorDecal) this.cursorDecal.visible = cursorWasVisible;
+      if (guideRoot) guideRoot.visible = guideWasVisible;
+      if (scaffoldRoot) scaffoldRoot.visible = scaffoldWasVisible;
+
+      this.renderer.clearDepth();
+      this.renderer.render(this.scene, this.camera);
+    } finally {
+      // RESTORE ORIGINAL SCENE STATE
+      this.scene.background = prevSceneBackground;
+      this.modelRoot.visible = modelRootWasVisible;
+      this.modelRoot.children.forEach((child) => {
+        if (child === this.cutoutRoot) {
+          child.visible = cutoutRootWasVisible;
+        } else if (child === this.strokeRoot) {
+          child.visible = strokeRootWasVisible;
+        } else {
+          child.visible = modelChildVisibilities.get(child) ?? true;
+        }
+      });
+      this.worldStrokeRoot.visible = worldStrokeRootWasVisible;
+      this.worldCutoutRoot.visible = worldCutoutRootWasVisible;
+
+      allNonCutoutMeshes.forEach((mesh) => {
+        mesh.visible = savedMeshVisibilities.get(mesh) ?? true;
+      });
+      allCutoutMeshes.forEach((mesh) => {
+        mesh.visible = savedMeshVisibilities.get(mesh) ?? true;
+      });
+      allCutoutOutlines.forEach((outline) => {
+        outline.visible = savedMeshVisibilities.get(outline) ?? false;
+      });
+
+      savedMaterialStates.forEach((state, mat) => {
+        mat.colorWrite = state.colorWrite;
+        mat.depthWrite = state.depthWrite;
+        mat.depthTest = state.depthTest;
+      });
+
+      this.helperRoot.children.forEach((child) => {
+        child.visible = helperChildVisibilities.get(child) ?? false;
+      });
+      this.helperRoot.visible = true;
+      if (this.cursorDecal) this.cursorDecal.visible = cursorWasVisible;
+      if (guideRoot) guideRoot.visible = guideWasVisible;
+      if (scaffoldRoot) scaffoldRoot.visible = scaffoldWasVisible;
+      if (skyMesh) skyMesh.visible = skyWasVisible;
+      this.renderer.autoClear = prevAutoClear;
+      this.renderer.autoClearColor = prevAutoClearColor;
+      this.renderer.autoClearDepth = prevAutoClearDepth;
+    }
+  }
+
+  /**
+   * Draws the scene through the weighted-blended OIT pipeline so overlapping
+   * see-through strokes blend by coverage instead of by draw order.
+   */
+  private renderSceneWboit(target: THREE.WebGLRenderTarget | null): void {
+    const wboit = this.postEngine?.wboit;
+    const hasCutoutStrokes =
+      this.cutoutRoot.children.length > 0 || this.worldCutoutRoot.children.length > 0;
+
+    // Without WBOIT there is nothing to classify; skip the per-frame scene walk.
+    if (!wboit || !wboit.getEnabled()) {
+      this.renderSceneWithoutWboit(target, hasCutoutStrokes);
+      return;
+    }
+
+    const background = this.wboitBackground;
+    const opaque = this.wboitOpaque;
+    const cutout = this.wboitCutout;
+    const transparent = this.wboitTransparent;
+    const ordered = this.wboitOrdered;
+    const overlay = this.wboitOverlay;
+    background.length = 0;
+    opaque.length = 0;
+    cutout.length = 0;
+    transparent.length = 0;
+    ordered.length = 0;
+    overlay.length = 0;
+
+    const skyMesh = (this.skyEngine as any)?.skyMesh as THREE.Object3D | undefined;
+    const guideRoot = this.loftEngine?.getGuideRoot();
+    const scaffoldRoot = this.scaffoldingEngine?.getScaffoldRoot();
+
+    this.scene.traverseVisible((obj) => {
+      const o = obj as any;
+      if (!o.isMesh && !o.isLine && !o.isPoints) return;
+      const drawable = obj as THREE.Mesh;
+
+      if (o.userData?.isDashedOutline) {
+        overlay.push(drawable);
+        return;
+      }
+
+      const root = this.wboitRootOf(drawable, skyMesh, guideRoot, scaffoldRoot);
+      if (root === 'background') {
+        background.push(drawable);
+        return;
+      }
+      if (root === 'helper') {
+        overlay.push(drawable);
+        return;
+      }
+
+      const mat = drawable.material;
+      const first = Array.isArray(mat) ? mat[0] : mat;
+      if (root === 'cutout' || o.userData?.isCutout || (first as any)?.userData?.materialType === 'cutout') {
+        cutout.push(drawable);
+      } else if (root !== 'stroke' || !first || first.transparent !== true) {
+        opaque.push(drawable);
+      } else if (first.blending === THREE.NormalBlending) {
+        transparent.push(drawable);
+      } else {
+        ordered.push(drawable);
+      }
+    });
+
+    if (transparent.length === 0 && ordered.length === 0) {
+      this.renderSceneWithoutWboit(target, cutout.length > 0);
+      return;
+    }
+
+    // Helpers are only lifted above the scene when cutouts exist, matching the
+    // cutout pass; otherwise they keep normal depth testing like a plain render.
+    if (cutout.length === 0) {
+      for (let i = 0; i < overlay.length; i++) opaque.push(overlay[i] as THREE.Mesh);
+      overlay.length = 0;
+    }
+
+    wboit.renderWboitFrame(
+      this.scene,
+      this.camera,
+      opaque,
+      cutout,
+      transparent,
+      ordered,
+      target,
+      background,
+      overlay
+    );
+  }
+
+  private renderSceneWithoutWboit(target: THREE.WebGLRenderTarget | null, hasCutouts: boolean): void {
+    if (hasCutouts) {
+      this.renderSceneWithCutoutPass(target);
+      return;
+    }
+    this.renderer.setRenderTarget(target);
+    this.renderer.render(this.scene, this.camera);
+  }
+
+  /** Which pass group an object belongs to, found by walking up to a known root. */
+  private wboitRootOf(
+    obj: THREE.Object3D,
+    skyMesh: THREE.Object3D | undefined,
+    guideRoot: THREE.Object3D | undefined,
+    scaffoldRoot: THREE.Object3D | undefined
+  ): 'background' | 'helper' | 'cutout' | 'stroke' | 'other' {
+    let node: THREE.Object3D | null = obj;
+    while (node) {
+      if (node === skyMesh || node === this.gridHelper || node === this.arFloorGrid) return 'background';
+      if (node === this.cutoutRoot || node === this.worldCutoutRoot) return 'cutout';
+      if (node === this.strokeRoot || node === this.worldStrokeRoot) return 'stroke';
+      if (
+        node === this.helperRoot ||
+        node === this.cursorDecal ||
+        node === guideRoot ||
+        node === scaffoldRoot
+      ) {
+        return 'helper';
+      }
+      node = node.parent;
+    }
+    return 'other';
   }
 
   /**

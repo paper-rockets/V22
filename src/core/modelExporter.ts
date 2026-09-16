@@ -113,6 +113,37 @@ export class ModelExporterService {
     // 1. Deep clone the hierarchy so original uploaded model is never mutated
     const clonedScene = sourceScene.clone(true);
 
+    let hasCutouts = false;
+    const cutoutsToRemove: THREE.Object3D[] = [];
+    clonedScene.traverse((child) => {
+      const isCutoutObj =
+        (child as any).userData?.isCutout ||
+        (child as any).userData?.isDashedOutline ||
+        child.name === 'cutoutRoot' ||
+        child.name === 'worldCutoutRoot' ||
+        (child as any).userData?.materialType === 'cutout' ||
+        ((child as THREE.Mesh).material && ((child as THREE.Mesh).material as any).colorWrite === false) ||
+        ((child as THREE.Mesh).material && ((child as THREE.Mesh).material as any).userData?.isCutout) ||
+        ((child as THREE.Mesh).material && ((child as THREE.Mesh).material as any).userData?.materialType === 'cutout');
+
+      if (isCutoutObj) {
+        hasCutouts = true;
+        cutoutsToRemove.push(child);
+      }
+    });
+
+    cutoutsToRemove.forEach((c) => {
+      if (c.parent) c.parent.remove(c);
+    });
+
+    if (hasCutouts && typeof window !== 'undefined') {
+      window.dispatchEvent(
+        new CustomEvent('SHOW_STUDIO_TOAST', {
+          detail: { message: "Cutout holes aren't included in 3D model files." },
+        })
+      );
+    }
+
     clonedScene.traverse((child) => {
       if ((child as THREE.Mesh).isMesh) {
         const mesh = child as THREE.Mesh;

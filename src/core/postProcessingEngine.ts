@@ -81,6 +81,23 @@ export class PostProcessingEngine {
   private bloomTargetH: THREE.WebGLRenderTarget | null = null;
   private bloomTargetV: THREE.WebGLRenderTarget | null = null;
 
+  // Lets the owner substitute its own multi-pass scene draw (e.g. the WBOIT
+  // pipeline) for the plain scene render, in both draft and render modes.
+  private sceneRenderer: ((target: THREE.WebGLRenderTarget | null) => void) | null = null;
+
+  public setSceneRenderer(fn: (target: THREE.WebGLRenderTarget | null) => void): void {
+    this.sceneRenderer = fn;
+  }
+
+  private drawScene(target: THREE.WebGLRenderTarget | null): void {
+    if (this.sceneRenderer) {
+      this.sceneRenderer(target);
+      return;
+    }
+    this.renderer.setRenderTarget(target);
+    this.renderer.render(this.scene, this.camera);
+  }
+
   // WBOIT Transparency Pipeline (also lazily created).
   private wboitPipeline: WBOITPipeline | null = null;
 
@@ -422,11 +439,35 @@ export class PostProcessingEngine {
    * more full-resolution targets and is not part of the default draft path.
    */
   public get wboit(): WBOITPipeline | null {
-    if (!this.wboitPipeline && this.profile.wboit) {
+    if (!this.wboitAllowed()) return null;
+    if (!this.wboitPipeline) {
       this.wboitPipeline = new WBOITPipeline(this.renderer, this.width, this.height);
     }
     return this.wboitPipeline;
   }
+
+  /**
+   * `?wboit=on` forces the pipeline up on hardware the profile would exclude
+   * (the S6 Lite tier), and `?wboit=off` takes it away everywhere. Without the
+   * flag the device profile decides.
+   */
+  private wboitAllowed(): boolean {
+    if (this.wboitAllowedCache === null) {
+      let allowed = this.profile.wboit;
+      if (typeof window !== 'undefined') {
+        try {
+          const flag = new URLSearchParams(window.location.search).get('wboit');
+          if (flag === 'on') allowed = true;
+          if (flag === 'off') allowed = false;
+        } catch (_) {}
+      }
+      this.wboitAllowedCache = allowed;
+    }
+    return this.wboitAllowedCache;
+  }
+
+  // Read once: the getter runs every frame and the URL cannot change mid-session.
+  private wboitAllowedCache: boolean | null = null;
 
   /** Releases the offscreen targets without tearing down the engine. */
   private releaseTargets(): void {
@@ -515,8 +556,7 @@ export class PostProcessingEngine {
     // Draft mode (and every low-power session) renders straight to the swapchain:
     // no offscreen target, no extra full-screen passes, no extra bandwidth.
     if (this.settings.renderMode === 'draft' || !this.profile.postProcessing) {
-      this.renderer.setRenderTarget(null);
-      this.renderer.render(this.scene, this.camera);
+      this.drawScene(null);
       return;
     }
 
@@ -528,16 +568,14 @@ export class PostProcessingEngine {
     const blurV = this.bloomTargetV;
 
     if (!targetA) {
-      this.renderer.setRenderTarget(null);
-      this.renderer.render(this.scene, this.camera);
+      this.drawScene(null);
       return;
     }
 
     const bloomEnabled = this.settings.bloom && this.profile.bloom && !!down && !!blurH && !!blurV;
 
     // Pass 1: Render 3D scene to full-res target A
-    this.renderer.setRenderTarget(targetA);
-    this.renderer.render(this.scene, this.camera);
+    this.drawScene(targetA);
 
     // Pass 2: Bloom downsample & 2-pass separable blur (downsampled)
     if (bloomEnabled) {

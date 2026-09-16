@@ -8,6 +8,7 @@ import {
   globalShaderRegistry,
 } from './animatedShaders';
 import { getQualityProfile } from '../utils/deviceProfile';
+import { injectWboitShader } from './wboitPipeline';
 
 /**
  * Normalizes any hex or color string to valid lowercase 6-digit #rrggbb
@@ -149,7 +150,7 @@ export class MaterialCache {
         opacity: effectiveOpacity,
         side: strokeSide,
         depthTest: true,
-        depthWrite: false,
+        depthWrite: isOpaque,
         polygonOffset: true,
         polygonOffsetFactor: polyOffset,
         polygonOffsetUnits: polyOffset,
@@ -216,7 +217,7 @@ export class MaterialCache {
           vertexShader: settings.customShader.vertexShader || STANDARD_VERTEX_SHADER,
           fragmentShader: settings.customShader.fragmentShader,
           transparent: !isOpaque || effectiveOpacity < 1.0,
-          depthWrite: false,
+          depthWrite: isOpaque,
           depthTest: true,
           side: strokeSide,
           polygonOffset: true,
@@ -246,7 +247,7 @@ export class MaterialCache {
             [`EFFECT_${effect}`]: '',
           },
           transparent: !isOpaque || effectiveOpacity < 1.0,
-          depthWrite: false,
+          depthWrite: isOpaque,
           depthTest: true,
           side: strokeSide,
           polygonOffset: true,
@@ -273,7 +274,7 @@ export class MaterialCache {
           opacity: effectiveOpacity,
           side: strokeSide,
           depthTest: true,
-          depthWrite: false,
+          depthWrite: isOpaque,
           polygonOffset: true,
           polygonOffsetFactor: polyOffset,
           polygonOffsetUnits: polyOffset,
@@ -288,7 +289,7 @@ export class MaterialCache {
           opacity: effectiveOpacity,
           side: strokeSide,
           depthTest: true,
-          depthWrite: false,
+          depthWrite: isOpaque,
           polygonOffset: true,
           polygonOffsetFactor: polyOffset,
           polygonOffsetUnits: polyOffset,
@@ -304,7 +305,7 @@ export class MaterialCache {
         opacity: effectiveOpacity,
         side: strokeSide,
         depthTest: true,
-        depthWrite: false,
+        depthWrite: isOpaque,
         polygonOffset: true,
         polygonOffsetFactor: polyOffset,
         polygonOffsetUnits: polyOffset,
@@ -361,6 +362,12 @@ export class MaterialCache {
         }
         material.needsUpdate = true;
       }
+    }
+
+    const isTransparent = !isOpaque || material.transparent;
+    const canUseWboit = isTransparent && effectiveOpacity < 1.0 && layerBlendMode === 'normal' && matType !== 'cutout';
+    if (canUseWboit) {
+      injectWboitShader(material);
     }
 
     this.cache.set(key, material);
