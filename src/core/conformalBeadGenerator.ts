@@ -691,6 +691,9 @@ export class ConformalBeadGenerator {
   /**
    * 3. Marker / Chisel Profile: Asymmetric Calligraphic Rectangular Profile
    */
+  /**
+   * 3. Marker / Chisel Profile: Full Flat Calligraphic Ribbon Snapped Flush to Model Surface
+   */
   private populateMarkerData(
     positions: THREE.Vector3[],
     normals: THREE.Vector3[],
@@ -711,12 +714,8 @@ export class ConformalBeadGenerator {
     const jitterFreq = settings.jitterFrequency ?? 8.0;
     const jitterAxis = settings.jitterAxis || 'binormal';
 
-    const cosAngle = Math.cos(chiselAngleRad);
-    const sinAngle = Math.sin(chiselAngleRad);
-
-    const prevCorners: THREE.Vector3[] = [
-      new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3(), new THREE.Vector3()
-    ];
+    const prevLeft = new THREE.Vector3();
+    const prevRight = new THREE.Vector3();
 
     for (let i = 0; i < numPoints; i++) {
       const pos = positions[i];
@@ -747,12 +746,11 @@ export class ConformalBeadGenerator {
       const calligraphicFactor = 0.35 + 0.65 * Math.abs(Math.sin(angleDelta));
 
       const width = baseRadius * aspectRatio * 0.7 * widthMultiplier * calligraphicFactor;
-      const height = baseRadius * 0.35;
 
-      // Chisel vector is strictly in the cross-sectional (binormal, normal) plane — NEVER in the tangent direction!
-      // This guarantees slices never tilt into each other and eliminates the spiral-staircase fan fins.
-      const dirU = _scratchV1.copy(binormal).multiplyScalar(cosAngle).addScaledVector(normal, sinAngle).normalize();
-      const dirV = _scratchV2.copy(binormal).multiplyScalar(-sinAngle).addScaledVector(normal, cosAngle).normalize();
+      // Flat surface direction vector: strictly in the surface tangent/binormal plane so marker lies completely flat on the model!
+      const cosAngle = Math.cos(chiselAngleRad);
+      const sinAngle = Math.sin(chiselAngleRad);
+      const dirNib = _scratchV1.copy(binormal).multiplyScalar(cosAngle).addScaledVector(tangent, sinAngle * 0.25).normalize();
 
       _scratchJitter.set(0, 0, 0);
       if (jitterStrength > 0.001) {
@@ -763,50 +761,54 @@ export class ConformalBeadGenerator {
         if (jitterAxis === 'binormal' || jitterAxis === 'omnidirectional') _scratchJitter.addScaledVector(binormal, noiseBinorm);
       }
 
-      _scratchCenter.copy(pos).addScaledVector(normal, baseOffset + height).add(_scratchJitter);
+      // Minimal curvature clearance lift so flat marker ribbons on convex models never submerge
+      const curvatureLift = Math.max(0, width * 0.03);
+      const effectiveBaseOffset = baseOffset + curvatureLift;
 
-      // 4 corners of rectangular chisel profile in cross-sectional plane
-      const pTL = _scratchV3.copy(_scratchCenter).addScaledVector(dirU, -width).addScaledVector(dirV, height);
-      const pTR = _scratchV4.copy(_scratchCenter).addScaledVector(dirU, width).addScaledVector(dirV, height);
-      const pBR = _scratchPos.copy(_scratchCenter).addScaledVector(dirU, width).addScaledVector(dirV, -height);
-      const pBL = _scratchCenter.clone().addScaledVector(dirU, -width).addScaledVector(dirV, -height);
+      _scratchCenter.copy(pos).addScaledVector(normal, effectiveBaseOffset).add(_scratchJitter);
 
-      const corners = [pTL, pTR, pBR, pBL];
+      // Flat 2-point calligraphic ribbon profile lying flush on model
+      const left = _scratchV2.copy(_scratchCenter).addScaledVector(dirNib, -width);
+      const right = _scratchV3.copy(_scratchCenter).addScaledVector(dirNib, width);
 
-      // Miter-clamp inner corners on sharp turns
+      // Miter-clamp inner corners on sharp turns so vertices don't step backward
       if (i > 0) {
         const seg = _scratchTipDir.subVectors(pos, positions[i - 1]);
         const segLen = seg.length();
         if (segLen > 1e-6) {
           const segDir = seg.normalize();
-          for (let k = 0; k < 4; k++) {
-            const d = _scratchTipPos.subVectors(corners[k], prevCorners[k]).dot(segDir);
-            if (d < 0.0005) {
-              corners[k].addScaledVector(segDir, 0.0005 - d);
-            }
+          const dLeft = _scratchTipPos.subVectors(left, prevLeft).dot(segDir);
+          const dRight = _scratchPos.subVectors(right, prevRight).dot(segDir);
+          if (dLeft < 0.0005) {
+            left.addScaledVector(segDir, 0.0005 - dLeft);
+          }
+          if (dRight < 0.0005) {
+            right.addScaledVector(segDir, 0.0005 - dRight);
           }
         }
       }
 
-      for (let k = 0; k < 4; k++) {
-        prevCorners[k].copy(corners[k]);
-        _workVertices.push(corners[k].x, corners[k].y, corners[k].z);
-        _workNormals.push(normal.x, normal.y, normal.z);
-        _workUvs.push(k / 3, t);
-      }
+      prevLeft.copy(left);
+      prevRight.copy(right);
+
+      _workVertices.push(left.x, left.y, left.z);
+      _workNormals.push(normal.x, normal.y, normal.z);
+      _workUvs.push(0.0, t);
+
+      _workVertices.push(right.x, right.y, right.z);
+      _workNormals.push(normal.x, normal.y, normal.z);
+      _workUvs.push(1.0, t);
     }
 
     for (let i = 0; i < numPoints - 1; i++) {
-      for (let k = 0; k < 4; k++) {
-        const nextK = (k + 1) % 4;
-        const a = i * 4 + k;
-        const b = (i + 1) * 4 + k;
-        const c = (i + 1) * 4 + nextK;
-        const d = i * 4 + nextK;
+      const a = i * 2;
+      const b = (i + 1) * 2;
+      const c = (i + 1) * 2 + 1;
+      const d = i * 2 + 1;
 
-        _workIndices.push(a, d, b);
-        _workIndices.push(d, c, b);
-      }
+      // Double-sided friendly winding
+      _workIndices.push(a, d, b);
+      _workIndices.push(d, c, b);
     }
   }
 

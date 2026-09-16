@@ -266,6 +266,10 @@
   line-height: 16px;
 }
 
+.nv-label:empty {
+  display: none !important;
+}
+
 /* the camera needs no label — in Look the gizmo is the whole tool */
 #nv[data-mode="look"] .nv-label {
   display: none;

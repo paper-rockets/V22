@@ -36,6 +36,12 @@
   display: none;
 }
 
+/* When nothing is selected and the temporary hint has expired, hide the container completely so no black box stays */
+.selection-frame[data-hint='false'] .selection-frame-label[data-empty='true'],
+.selection-frame-label[data-empty='true']:empty {
+  display: none !important;
+}
+
 .selection-frame-shape {
   position: absolute;
   inset: 0;

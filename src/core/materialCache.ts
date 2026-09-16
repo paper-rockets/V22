@@ -290,11 +290,12 @@ export class MaterialCache {
           polygonOffset: true,
           polygonOffsetFactor: polyOffset,
           polygonOffsetUnits: polyOffset,
-          envMapIntensity: 1.0,
+          envMapIntensity: 0.6,
         });
       }
     } else {
       // 5. Flat (Shadeless / Unlit): Pure solid color unaffected by scene lighting for clean graphic illustration
+      // toneMapped: false guarantees 1:1 verbatim sRGB match with UI color pill swatches
       material = new THREE.MeshBasicMaterial({
         color: color,
         transparent: !isOpaque,
@@ -305,7 +306,7 @@ export class MaterialCache {
         polygonOffset: true,
         polygonOffsetFactor: polyOffset,
         polygonOffsetUnits: polyOffset,
-        toneMapped: true,
+        toneMapped: false,
       });
     }
 

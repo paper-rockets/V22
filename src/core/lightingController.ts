@@ -106,12 +106,12 @@ export class LightingController {
     this.helperRoot.add(this.studioGroundMesh);
     this.applyStudioBackdrop('light');
 
-    // 3. PBR Baseline Lights
-    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.85);
-    this.hemiLight = new THREE.HemisphereLight(0xffffff, 0xe2e8f0, 0.7);
+    // 3. PBR Baseline Lights (Balanced for vibrant color saturation and clear directional depth)
+    this.ambientLight = new THREE.AmbientLight(0xffffff, 0.25);
+    this.hemiLight = new THREE.HemisphereLight(0xffffff, 0xe2e8f0, 0.35);
     this.hemiLight.position.set(0, 20, 0);
 
-    this.dirLight1 = new THREE.DirectionalLight(0xffffff, 1.5);
+    this.dirLight1 = new THREE.DirectionalLight(0xffffff, 1.6);
     this.dirLight1.position.set(5, 10, 7);
     this.dirLight1.castShadow = true;
     this.dirLight1.shadow.mapSize.width = 2048;
@@ -126,7 +126,7 @@ export class LightingController {
     this.dirLight1.shadow.normalBias = 0.025;
     this.dirLight1.shadow.radius = 4;
 
-    this.dirLight2 = new THREE.DirectionalLight(0xdbeafe, 0.6);
+    this.dirLight2 = new THREE.DirectionalLight(0xdbeafe, 0.4);
     this.dirLight2.position.set(-5, -2, -5);
 
     this.lightsRoot.add(this.ambientLight);
@@ -519,17 +519,17 @@ export class LightingController {
 
     if (!this.ambientLight || !this.ambientLight.parent) {
       if (!this.ambientLight) {
-        this.ambientLight = new THREE.AmbientLight(0xffffff, 0.35);
+        this.ambientLight = new THREE.AmbientLight(0xffffff, 0.25);
       }
       this.lightsRoot.add(this.ambientLight);
     }
     if (this.ambientLight.intensity <= 0) {
-      this.ambientLight.intensity = 0.35;
+      this.ambientLight.intensity = 0.25;
     }
 
     if (!this.hemiLight || !this.hemiLight.parent) {
       if (!this.hemiLight) {
-        this.hemiLight = new THREE.HemisphereLight(0xffffff, 0xcbd5e1, 0.55);
+        this.hemiLight = new THREE.HemisphereLight(0xffffff, 0xcbd5e1, 0.35);
       }
       this.lightsRoot.add(this.hemiLight);
     }
@@ -547,7 +547,7 @@ export class LightingController {
 
     if (!this.dirLight2 || !this.dirLight2.parent) {
       if (!this.dirLight2) {
-        this.dirLight2 = new THREE.DirectionalLight(0xe0f2fe, 0.9);
+        this.dirLight2 = new THREE.DirectionalLight(0xe0f2fe, 0.4);
         this.dirLight2.position.set(-6, -2, -6);
       }
       this.lightsRoot.add(this.dirLight2);

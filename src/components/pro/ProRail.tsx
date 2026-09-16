@@ -829,18 +829,22 @@ export const ProRail: React.FC<ProRailProps> = ({
                         onChange={(e) => {
                           const newColor = e.target.value;
                           if (setBrushSettings) {
-                            setBrushSettings((p) => ({
-                              ...p,
-                              color: newColor,
-                              solidColor: newColor,
-                              materialType: 'shadeless',
-                              shaderEffect: undefined,
-                              customShader: undefined,
-                              matcapUrl: undefined,
-                              previewUrl: undefined,
-                              matcapTexture: undefined,
-                              activeLookName: 'Flat Paint',
-                            }));
+                            setBrushSettings((p) => {
+                              const targetMatType = p.materialType === 'shaded' ? 'shaded' : 'shadeless';
+                              const targetLookName = targetMatType === 'shaded' ? 'Lit' : 'Flat Paint';
+                              return {
+                                ...p,
+                                color: newColor,
+                                solidColor: newColor,
+                                materialType: targetMatType,
+                                shaderEffect: undefined,
+                                customShader: undefined,
+                                matcapUrl: undefined,
+                                previewUrl: undefined,
+                                matcapTexture: undefined,
+                                activeLookName: targetLookName,
+                              };
+                            });
                           }
                         }}
                         className="sr-only"
@@ -855,7 +859,7 @@ export const ProRail: React.FC<ProRailProps> = ({
                       const isEquippedShaderOrMatcap = Boolean(currentBrushSettings.previewUrl || currentBrushSettings.matcapUrl);
                       const isSelected =
                         !isEquippedShaderOrMatcap &&
-                        (currentBrushSettings.activeLookName === 'Flat Paint' || !currentBrushSettings.activeLookName) &&
+                        (currentBrushSettings.activeLookName === 'Flat Paint' || currentBrushSettings.activeLookName === 'Lit' || !currentBrushSettings.activeLookName) &&
                         activeColor.toLowerCase() === color.toLowerCase();
                       const isWhite = color.toLowerCase() === '#ffffff';
                       const isLightColor = color === '#ffffff' || color === '#f59e0b';
@@ -865,18 +869,22 @@ export const ProRail: React.FC<ProRailProps> = ({
                           type="button"
                           onClick={() => {
                             haptics.trigger('light');
-                            setBrushSettings?.((previous) => ({
-                              ...previous,
-                              color,
-                              solidColor: color,
-                              materialType: 'shadeless',
-                              shaderEffect: undefined,
-                              customShader: undefined,
-                              matcapUrl: undefined,
-                              previewUrl: undefined,
-                              matcapTexture: undefined,
-                              activeLookName: 'Flat Paint',
-                            }));
+                            setBrushSettings?.((previous) => {
+                              const targetMatType = previous.materialType === 'shaded' ? 'shaded' : 'shadeless';
+                              const targetLookName = targetMatType === 'shaded' ? 'Lit' : 'Flat Paint';
+                              return {
+                                ...previous,
+                                color,
+                                solidColor: color,
+                                materialType: targetMatType,
+                                shaderEffect: undefined,
+                                customShader: undefined,
+                                matcapUrl: undefined,
+                                previewUrl: undefined,
+                                matcapTexture: undefined,
+                                activeLookName: targetLookName,
+                              };
+                            });
                             setPanel(null);
                           }}
                           className={`h-9 w-9 rounded-full border transition-transform shadow-xs flex items-center justify-center shrink-0 ${

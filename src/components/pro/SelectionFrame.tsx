@@ -160,7 +160,7 @@ export const SelectionFrame: React.FC<SelectionFrameProps> = ({
       if (!selection) {
         shape.setAttribute('points', '');
         // "Tap a line" style hints only make sense while the Select tool is on.
-        label.hidden = !visible;
+        label.hidden = !visible || !showHint;
         label.dataset.placement = 'top-center';
         label.style.transform = `translate(${Math.round(width / 2)}px, 72px) translateX(-50%)`;
         return;
@@ -218,7 +218,7 @@ export const SelectionFrame: React.FC<SelectionFrameProps> = ({
       cancelAnimationFrame(frame);
       window.removeEventListener('STUDIO_SELECTION_TARGET_CHANGED', forceRemeasure);
     };
-  }, [engine, scope, shown, visible]);
+  }, [engine, scope, shown, visible, showHint]);
 
   // A scope change must re-measure immediately, even if nothing else moved.
   useEffect(() => {
@@ -243,14 +243,19 @@ export const SelectionFrame: React.FC<SelectionFrameProps> = ({
       <svg className="selection-frame-shape" aria-hidden="true">
         <polygon ref={shapeRef} points="" />
       </svg>
-      <div ref={labelRef} className="selection-frame-label" data-empty={summary?.isEmpty ? 'true' : 'false'}>
+      <div
+        ref={labelRef}
+        className="selection-frame-label"
+        data-empty={summary?.isEmpty ? 'true' : 'false'}
+        hidden={Boolean(summary?.isEmpty && (!showHint || !visible))}
+      >
         {summary && !summary.isEmpty && (
           <strong>
             {summary.label}
             {summary.scope === 'active_layer' || summary.scope === 'all' ? <em> · {summary.detail}</em> : null}
           </strong>
         )}
-        <span>{hint}</span>
+        {showHint && <span>{hint}</span>}
       </div>
     </div>
   );

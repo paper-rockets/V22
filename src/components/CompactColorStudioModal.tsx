@@ -540,13 +540,46 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
     hsvRef.current = nextHsv;
   }, [currentColor]);
 
+  const [materialMode, setMaterialMode] = useState<'shadeless' | 'shaded'>(() => {
+    return effectiveMaterialType === 'shaded' ? 'shaded' : 'shadeless';
+  });
+
+  useEffect(() => {
+    if (effectiveMaterialType === 'shaded' || effectiveMaterialType === 'shadeless') {
+      setMaterialMode(effectiveMaterialType);
+    }
+  }, [effectiveMaterialType]);
+
+  const handleSetMaterialMode = useCallback((mode: 'shadeless' | 'shaded') => {
+    setMaterialMode(mode);
+    setSelectedPresetId('');
+    const targetLookName = mode === 'shaded' ? 'Lit' : 'Flat Paint';
+    onApplyBrushSettings?.({
+      materialType: mode,
+      activeLookName: targetLookName,
+      shaderEffect: undefined,
+      customShader: undefined,
+      matcapUrl: undefined,
+      matcapTexture: undefined,
+      previewUrl: undefined,
+      color: currentColor,
+      solidColor: currentColor,
+      roughness: brushSettings?.roughness ?? 0.35,
+      metalness: brushSettings?.metalness ?? 0.1,
+    });
+  }, [brushSettings?.metalness, brushSettings?.roughness, currentColor, onApplyBrushSettings]);
+
   const prevIsOpenRef = useRef(isOpen);
   useEffect(() => {
     if (!prevIsOpenRef.current && isOpen) {
-      setActiveTab('wheel');
+      if (effectiveMaterialType === 'animated_fx' || effectiveMaterialType === 'matcap' || (selectedPresetId && selectedPresetId !== '')) {
+        setActiveTab('shaders');
+      } else {
+        setActiveTab('wheel');
+      }
     }
     prevIsOpenRef.current = isOpen;
-  }, [isOpen]);
+  }, [isOpen, effectiveMaterialType, selectedPresetId]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -591,10 +624,16 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
   }, [isOpen, isPinned, onClose]);
 
   useEffect(() => {
-    const showColorPicker = () => setActiveTab('wheel');
+    const showColorPicker = () => {
+      if (effectiveMaterialType === 'animated_fx' || effectiveMaterialType === 'matcap' || (selectedPresetId && selectedPresetId !== '')) {
+        setActiveTab('shaders');
+      } else {
+        setActiveTab('wheel');
+      }
+    };
     window.addEventListener('remix3d:color-studio-wheel', showColorPicker);
     return () => window.removeEventListener('remix3d:color-studio-wheel', showColorPicker);
-  }, []);
+  }, [effectiveMaterialType, selectedPresetId]);
 
   useEffect(() => {
     const closeColorStudio = () => onClose();
@@ -606,19 +645,23 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
     setSelectedPresetId('');
     lastSolidColorRef.current = hex;
     onChangeColor(hex);
+    const targetMatType = materialMode === 'shaded' ? 'shaded' : 'shadeless';
+    const targetLookName = targetMatType === 'shaded' ? 'Lit' : 'Flat Paint';
     onApplyBrushSettings?.({
       color: hex,
       solidColor: hex,
-      materialType: 'shadeless',
+      materialType: targetMatType,
       shaderEffect: undefined,
       customShader: undefined,
       matcapUrl: undefined,
       matcapTexture: undefined,
       previewUrl: undefined,
-      activeLookName: 'Flat Paint',
+      activeLookName: targetLookName,
+      roughness: brushSettings?.roughness ?? 0.35,
+      metalness: brushSettings?.metalness ?? 0.1,
     });
     if (commitToHistory) rememberColor(hex);
-  }, [onApplyBrushSettings, onChangeColor, rememberColor]);
+  }, [brushSettings?.metalness, brushSettings?.roughness, materialMode, onApplyBrushSettings, onChangeColor, rememberColor]);
 
   const applyHsv = (next: { h: number; s: number; v: number }, commitToHistory = false) => {
     hsvRef.current = next;
@@ -1172,11 +1215,117 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
         ) : (
           <>
             <div className="min-h-0 flex-1 overflow-y-auto studio-scroll px-3 py-3">
-          {activeTab === 'wheel' && <div className="grid gap-3">
-            <div className="flex justify-center"><canvas ref={wheelCanvasRef} style={{ width: WHEEL_SIZE, height: WHEEL_SIZE }} onPointerDown={handleWheelPointerDown} onPointerMove={handleWheelPointerMove} onPointerUp={handleWheelPointerUp} onPointerCancel={handleWheelPointerUp} className="touch-none cursor-crosshair" /></div>
-            <div className="space-y-3 min-w-0">
-              {slider('Saturation', `${Math.round(hsv.s * 100)}%`, <input type="range" min="0" max="100" value={Math.round(hsv.s * 100)} onChange={(event) => applyHsv({ ...hsv, s: Number(event.target.value) / 100 })} className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`} />)}
-              {slider('Lightness', `${Math.round(hsv.v * 100)}%`, <input type="range" min="0" max="100" value={Math.round(hsv.v * 100)} onChange={(event) => applyHsv({ ...hsv, v: Number(event.target.value) / 100 })} className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`} />)}
+              {/* Material Mode Toggle: Flat Paint vs Lit 3D */}
+              {activeTab !== 'shaders' && (
+                <div className="mb-3">
+                  <div className={`grid grid-cols-2 p-0.5 rounded-xl border ${isLight ? 'bg-black/5 border-black/10' : 'bg-white/5 border-white/10'}`}>
+                    <button
+                      type="button"
+                      onClick={() => handleSetMaterialMode('shadeless')}
+                      className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        materialMode === 'shadeless'
+                          ? isLight
+                            ? 'bg-white text-black shadow-xs font-bold'
+                            : 'bg-neutral-800 text-white shadow-xs font-bold'
+                          : isLight
+                            ? 'text-neutral-600 hover:text-black'
+                            : 'text-neutral-400 hover:text-white'
+                      }`}
+                      title="Unlit solid graphic color (1:1 match with color swatches)"
+                    >
+                      <Palette className="w-3.5 h-3.5" />
+                      <span>Flat Paint</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleSetMaterialMode('shaded')}
+                      className={`flex items-center justify-center gap-1.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                        materialMode === 'shaded'
+                          ? isLight
+                            ? 'bg-white text-black shadow-xs font-bold'
+                            : 'bg-neutral-800 text-white shadow-xs font-bold'
+                          : isLight
+                            ? 'text-neutral-600 hover:text-black'
+                            : 'text-neutral-400 hover:text-white'
+                      }`}
+                      title="3D PBR shaded material (responds to Studio Lights, highlights & shadows)"
+                    >
+                      <SunMedium className="w-3.5 h-3.5" />
+                      <span>Lit 3D</span>
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {activeTab === 'wheel' && (
+                <div className="grid gap-3">
+                  <div className="flex justify-center">
+                    <canvas
+                      ref={wheelCanvasRef}
+                      style={{ width: WHEEL_SIZE, height: WHEEL_SIZE }}
+                      onPointerDown={handleWheelPointerDown}
+                      onPointerMove={handleWheelPointerMove}
+                      onPointerUp={handleWheelPointerUp}
+                      onPointerCancel={handleWheelPointerUp}
+                      className="touch-none cursor-crosshair"
+                    />
+                  </div>
+                  <div className="space-y-3 min-w-0">
+                    {slider(
+                      'Saturation',
+                      `${Math.round(hsv.s * 100)}%`,
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={Math.round(hsv.s * 100)}
+                        onChange={(event) => applyHsv({ ...hsv, s: Number(event.target.value) / 100 })}
+                        className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`}
+                      />
+                    )}
+                    {slider(
+                      'Lightness',
+                      `${Math.round(hsv.v * 100)}%`,
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={Math.round(hsv.v * 100)}
+                        onChange={(event) => applyHsv({ ...hsv, v: Number(event.target.value) / 100 })}
+                        className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`}
+                      />
+                    )}
+                    {materialMode === 'shaded' && (
+                      <div className={`p-2.5 rounded-xl border space-y-2.5 ${isLight ? 'bg-black/[0.025] border-black/10' : 'bg-white/[0.03] border-white/10'}`}>
+                        <div className={`text-[10px] font-bold uppercase tracking-[.14em] ${isLight ? 'text-neutral-600' : 'text-neutral-400'}`}>
+                          Lit 3D Surface
+                        </div>
+                        {slider(
+                          'Roughness',
+                          `${Math.round((brushSettings?.roughness ?? 0.35) * 100)}%`,
+                          <input
+                            type="range"
+                            min="5"
+                            max="100"
+                            value={Math.round((brushSettings?.roughness ?? 0.35) * 100)}
+                            onChange={(e) => onApplyBrushSettings?.({ roughness: Number(e.target.value) / 100 })}
+                            className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`}
+                          />
+                        )}
+                        {slider(
+                          'Metalness',
+                          `${Math.round((brushSettings?.metalness ?? 0.1) * 100)}%`,
+                          <input
+                            type="range"
+                            min="0"
+                            max="100"
+                            value={Math.round((brushSettings?.metalness ?? 0.1) * 100)}
+                            onChange={(e) => onApplyBrushSettings?.({ metalness: Number(e.target.value) / 100 })}
+                            className={`h-2 w-full rounded-full cursor-pointer accent-neutral-900 dark:accent-white ${isLight ? 'bg-black/10' : 'bg-white/15'}`}
+                          />
+                        )}
+                      </div>
+                    )}
               <div>
                 <div className={`mb-1.5 text-[10px] font-bold uppercase tracking-[.14em] ${isLight ? 'text-neutral-600' : 'text-neutral-400'}`}>Last used</div>
                 <div className="grid grid-cols-6 gap-2">
@@ -1246,7 +1395,7 @@ export const ColorStudioModal: React.FC<ColorStudioModalProps> = ({
                 })}
               </div>
             </div>}
-          </div>}
+          </div>)}
 
           {activeTab === 'oklch' && <div className="space-y-5 py-1">
             {baseColorControl('Adjust perceptual lightness, color intensity, and hue below.')}

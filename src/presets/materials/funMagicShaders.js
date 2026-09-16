@@ -282,14 +282,18 @@ void main() {
   // Base purple-violet
   vec3 col = mix(vec3(0.1, 0.0, 0.25), vec3(0.7, 0.1, 1.0), fresnel);
 
-  // Animated glitter — random sparks scattered across surface
-  vec2 grid = v_uv * 18.0;
+  // Animated glitter — high-frequency micro sparks with smooth circular particle falloff
+  vec2 grid = v_uv * 120.0;
   vec2 cell = floor(grid);
+  vec2 fractUV = fract(grid) - 0.5;
+  vec2 offset = (vec2(hash(cell + 0.1), hash(cell + 0.2)) - 0.5) * 0.55;
+  float d = length(fractUV - offset);
   float spark_phase = hash(cell) * 6.28318;
-  float spark = pow(max(0.0, sin(u_time * 4.0 + spark_phase)), 12.0);
-  spark *= step(hash(cell + 0.5), 0.4); // Only 40% of cells sparkle
+  float twinkle = pow(max(0.0, sin(u_time * 4.5 + spark_phase)), 8.0);
+  float flake = smoothstep(0.32, 0.04, d);
+  float spark = step(hash(cell + 0.5), 0.42) * flake * twinkle;
 
-  col += vec3(spark * 1.5);
+  col += vec3(spark * 2.5);
 
   // Rainbow shimmer on rim
   float hue_t = fresnel * 4.0 + u_time * 0.5;

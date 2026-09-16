@@ -296,6 +296,7 @@ html:not(.light) .pr-surface .paperrocket-toggle {
 }
 
 .paperrocket-color-studio-overlay--side {
+  background: transparent !important;
   padding-left: max(72px, calc(env(safe-area-inset-left) + 72px)) !important;
   padding-right: 16px !important;
   justify-content: flex-start !important;

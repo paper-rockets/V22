@@ -308,13 +308,23 @@ float hash(vec3 p) {
 
 void main() {
   float fresnel = 1.0 - max(dot(v_normal, v_view_dir), 0.0);
-  vec3 grid = floor(v_pos * 40.0);
+  
+  // High-frequency micro-scale glitter field with circular particle falloff
+  vec3 p = v_pos * 160.0;
+  vec3 grid = floor(p);
+  vec3 fractP = fract(p) - 0.5;
   float rnd = hash(grid);
-  float twinkle = sin(u_time * 8.0 + rnd * 6.28) * 0.5 + 0.5;
-  float sparkle = step(0.88, rnd) * twinkle;
+  
+  // Jitter spark center within each cell for natural distribution
+  vec3 offset = (vec3(hash(grid + 0.1), hash(grid + 0.2), hash(grid + 0.3)) - 0.5) * 0.55;
+  float d = length(fractP - offset);
+  
+  float twinkle = sin(u_time * 7.0 + rnd * 6.28318) * 0.5 + 0.5;
+  float flake = smoothstep(0.32, 0.04, d);
+  float sparkle = step(0.82, rnd) * flake * twinkle;
   
   vec3 base = mix(vec3(0.9, 0.4, 0.7), vec3(0.4, 0.8, 1.0), fresnel);
-  vec3 glitter = vec3(1.0, 0.95, 0.7) * sparkle * 3.0;
+  vec3 glitter = vec3(1.0, 0.96, 0.8) * sparkle * 3.5;
   gl_FragColor = vec4(base + glitter, 1.0);
 }`
   },

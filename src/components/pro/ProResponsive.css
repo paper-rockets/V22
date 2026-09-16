@@ -359,8 +359,23 @@
     border-radius: 0 12px 12px 0;
   }
 
-  .paperrocket-context-panel,
-  .paperrocket-pro-panel {
+  .paperrocket-pro-panel[data-mode='select'],
+  .paperrocket-pro-panel[data-mode='layers'],
+  .paperrocket-pro-panel[data-mode='deform'],
+  .paperrocket-context-panel {
+    left: max(72px, calc(env(safe-area-inset-left) + 72px)) !important;
+    right: auto !important;
+    top: 50% !important;
+    bottom: auto !important;
+    transform: translateY(-50%) !important;
+    width: min(var(--studio-menu-width, var(--studio-menu-wide)), calc(100vw - 120px)) !important;
+    max-width: var(--studio-menu-width, var(--studio-menu-wide)) !important;
+    height: auto !important;
+    max-height: min(76dvh, calc(100dvh - 120px)) !important;
+    border-radius: 20px !important;
+  }
+
+  .paperrocket-pro-panel[data-mode='create'] {
     left: 50% !important;
     right: auto !important;
     top: auto !important;
@@ -399,8 +414,23 @@
     border-radius: 0 12px 12px 0;
   }
 
-  .paperrocket-context-panel,
-  .paperrocket-pro-panel {
+  .paperrocket-pro-panel[data-mode='select'],
+  .paperrocket-pro-panel[data-mode='layers'],
+  .paperrocket-pro-panel[data-mode='deform'],
+  .paperrocket-context-panel {
+    left: max(72px, calc(env(safe-area-inset-left) + 72px)) !important;
+    right: auto !important;
+    top: 50% !important;
+    bottom: auto !important;
+    transform: translateY(-50%) !important;
+    width: min(var(--studio-menu-width, var(--studio-menu-wide)), calc(100vw - 160px)) !important;
+    max-width: var(--studio-menu-width, var(--studio-menu-wide)) !important;
+    height: auto !important;
+    max-height: min(65dvh, calc(100dvh - 160px)) !important;
+    border-radius: 20px !important;
+  }
+
+  .paperrocket-pro-panel[data-mode='create'] {
     left: 50% !important;
     right: auto !important;
     top: auto !important;
@@ -411,6 +441,13 @@
     height: auto !important;
     max-height: min(48dvh, 420px) !important;
     border-radius: 20px !important;
+  }
+
+  .paperrocket-studio-rail[data-dock-position='right'] ~ .paperrocket-pro-panel,
+  .paperrocket-pro-panel[data-dock-position='right'] {
+    left: auto !important;
+    right: max(72px, calc(env(safe-area-inset-right) + 72px)) !important;
+    transform: translateY(-50%) !important;
   }
 
   .paperrocket-context-backdrop { display: none; }
