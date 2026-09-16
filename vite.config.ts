@@ -5,6 +5,30 @@ import path from 'path';
 import { defineConfig } from 'vite';
 import { deletePresetsFromFiles } from './src/presets/presetRemover.js';
 
+// TEMPORARY: receives device logs from src/utils/devErrorReporter.ts.
+function devLogPlugin() {
+  return {
+    name: 'dev-log',
+    configureServer(server: any) {
+      server.middlewares.use('/__dev-log', (req: any, res: any, next: any) => {
+        if (req.method !== 'POST') return next();
+        let body = '';
+        req.on('data', (chunk: any) => { body += chunk; });
+        req.on('end', () => {
+          try {
+            const { kind, message } = JSON.parse(body);
+            const ua = String(req.headers['user-agent'] || '');
+            const device = /Android/.test(ua) ? 'tablet' : 'pc';
+            console.log(`[${device}] ${kind}: ${message}`);
+          } catch (_) {}
+          res.statusCode = 204;
+          res.end();
+        });
+      });
+    },
+  };
+}
+
 function presetApiPlugin() {
   return {
     name: 'preset-api-plugin',
@@ -49,6 +73,7 @@ export default defineConfig(({ mode }) => {
       react(),
       tailwindcss(),
       presetApiPlugin(),
+      devLogPlugin(),
       ...(isHttps ? [basicSsl()] : []),
     ],
     resolve: {

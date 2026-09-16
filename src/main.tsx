@@ -4,6 +4,9 @@ import App from './App';
 import { registerPWA } from './registerServiceWorker';
 import { getQualityProfile } from './utils/deviceProfile';
 import './index.css';
+import { installDevErrorReporter } from './utils/devErrorReporter';
+
+if (import.meta.env.DEV) installDevErrorReporter();
 
 interface ErrorBoundaryProps {
   children: React.ReactNode;
