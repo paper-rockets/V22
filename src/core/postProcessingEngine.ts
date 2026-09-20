@@ -466,6 +466,13 @@ export class PostProcessingEngine {
     return this.wboitAllowedCache;
   }
 
+  public setWboitAllowed(allowed: boolean): void {
+    this.wboitAllowedCache = allowed;
+    if (this.wboitPipeline) {
+      this.wboitPipeline.setEnabled(allowed);
+    }
+  }
+
   // Read once: the getter runs every frame and the URL cannot change mid-session.
   private wboitAllowedCache: boolean | null = null;
 

@@ -39,6 +39,7 @@
 
 import * as THREE from 'three';
 import { OKLAB_FULL_PIPELINE_GLSL } from './colorMath';
+import { ScreenScissorRect } from './wboitScissor';
 
 // Static scratch Float32Array objects to avoid per-frame allocations
 // Target 0 clear: RGB = 0.0 (accumulated color), Alpha = 1.0 (initial revealage = 1.0)
@@ -59,7 +60,7 @@ float computeWBOITWeight(float z, float alpha) {
   float camDistFactor = smoothstep(0.01, 0.45, d);
   // McGuire & Bavoil rational depth weight function, clamped for half-float FP16 stability
   float w = (0.2 + 0.8 * camDistFactor) * (10.0 / (1e-5 + pow(max(d, 0.25), 2.0) + pow(d / 2.5, 4.0)));
-  return clamp(w, 0.01, 300.0);
+  return clamp(w, 0.01, 50.0);
 }
 `;
 
@@ -83,6 +84,7 @@ export const WBOIT_ACCUM_FRAGMENT_SHADER = `
 ${OKLAB_FULL_PIPELINE_GLSL}
 ${WBOIT_WEIGHT_GLSL_CHUNK}
 
+layout(location = 0) out highp vec4 pc_fragData0;
 layout(location = 1) out highp vec4 pc_fragData1;
 
 uniform vec3 uColor;
@@ -118,7 +120,7 @@ void main() {
 
   // Target 0: Accumulation Buffer = vec4(color * alpha * weight, alpha)
   // Blended with (ONE, ONE) for RGB, and (ZERO, ONE_MINUS_SRC_ALPHA) for Alpha (Revealage)
-  gl_FragColor = vec4(color * alpha * weight, alpha);
+  pc_fragData0 = vec4(color * alpha * weight, alpha);
 
   // Target 1: Weight Sum Buffer = vec4(alpha * weight, 0, 0, 0)
   // Blended with (ONE, ONE) for additive accumulation of total weight
@@ -140,10 +142,15 @@ uniform sampler2D tAccum;
 uniform sampler2D tWeight;
 uniform int uDebugView; // 0 = normal, 1 = raw accum, 2 = raw reveal, 3 = raw weight, 4 = 3-way split
 uniform int uShowPipOverlay; // 0 = off, 1 = on (PIP thumbnails)
+uniform vec4 uScissor; // minU, minV, maxU, maxV; full target when disabled
 varying vec2 vUv;
 
 void main() {
   vec4 opaque = texture2D(tOpaque, vUv);
+  if (uDebugView == 0 && (vUv.x < uScissor.x || vUv.y < uScissor.y || vUv.x > uScissor.z || vUv.y > uScissor.w)) {
+    gl_FragColor = opaque;
+    return;
+  }
   vec4 accum = texture2D(tAccum, vUv);
   vec4 weightSample = texture2D(tWeight, vUv);
 
@@ -183,10 +190,10 @@ void main() {
 
   // Base composite: if no transparent fragments covered this pixel, pass opaque through directly
   vec4 finalPixel = opaque;
-  if (revealage < 0.99999 && weightSum > 1e-6) {
-    // McGuire & Bavoil composite:
-    // C = (accum.rgb / max(weightSum, 1e-5)) * (1.0 - revealage) + opaque.rgb * revealage
-    vec3 avgColor = accum.rgb / max(weightSum, 1e-5);
+  if (revealage < 0.999 && weightSum > 0.0001) {
+    // McGuire & Bavoil composite with FP16 overflow & NaN prevention
+    vec3 avgColor = accum.rgb / max(weightSum, 0.001);
+    avgColor = clamp(avgColor, 0.0, 8.0);
     vec3 finalColor = max(avgColor * (1.0 - revealage) + opaque.rgb * revealage, vec3(0.0));
     finalPixel = vec4(finalColor, 1.0);
   }
@@ -260,7 +267,7 @@ export function injectWboitShader(material: THREE.Material, timeUniform?: { valu
     // Attenuates near-plane singularity so ribbons very close to camera don't blow up
     float camDistFactor = smoothstep(0.01, 0.45, wboitD);
     float w = (0.2 + 0.8 * camDistFactor) * (10.0 / (1e-5 + pow(max(wboitD, 0.25), 2.0) + pow(wboitD / 2.5, 4.0)));
-    w = clamp(w, 0.01, 300.0);
+    w = clamp(w, 0.01, 50.0);
 
     // Target 0: accum rgb + revealage alpha
     gl_FragColor = vec4(gl_FragColor.rgb * wboitAlpha * w, wboitAlpha);
@@ -354,6 +361,7 @@ export class WBOITPipeline {
 
   public mrtSupported: boolean = true;
   public isUserEnabled: boolean = true;
+  public transparencyModeOverride: 'auto' | 'wboit' | 'sorted' = 'auto';
   public drawBuffersIndexedExt: any = null;
   public hasIndexedBlending: boolean = false;
   public opaqueTarget: THREE.WebGLRenderTarget | null = null;
@@ -408,6 +416,7 @@ export class WBOITPipeline {
         tWeight: { value: this.accumTarget ? this.accumTarget.textures[1] : null },
         uDebugView: { value: this.debugViewMode },
         uShowPipOverlay: { value: this.isPipOverlayEnabled ? 1 : 0 },
+        uScissor: { value: new THREE.Vector4(0, 0, 1, 1) },
       },
       vertexShader: WBOIT_COMPOSITE_VERTEX_SHADER,
       fragmentShader: WBOIT_COMPOSITE_FRAGMENT_SHADER,
@@ -441,13 +450,25 @@ export class WBOITPipeline {
     } catch (_) {}
   }
 
-  private initTargets(): void {
+  private computeTargetDimensions(): { width: number; height: number } {
     const dpr = this.renderer.getPixelRatio();
+    // Clamp DPR to max 1.25 on high-DPI displays (e.g. S25 Ultra DPR 2.8) to prevent VRAM saturation and GPU watchdog timeouts
+    const effectiveDpr = Math.min(dpr, 1.25);
+    let w = Math.max(1, Math.floor(this.width * effectiveDpr));
+    let h = Math.max(1, Math.floor(this.height * effectiveDpr));
+    const maxDim = 1920;
+    if (w > maxDim || h > maxDim) {
+      const scale = maxDim / Math.max(w, h);
+      w = Math.max(1, Math.floor(w * scale));
+      h = Math.max(1, Math.floor(h * scale));
+    }
+    return { width: w, height: h };
+  }
 
+  private initTargets(): void {
     // Both Opaque and Accumulation targets MUST share identical dimensions
     // to preserve WebGL framebuffer completeness with the shared DepthTexture.
-    const w = Math.max(1, Math.floor(this.width * dpr));
-    const h = Math.max(1, Math.floor(this.height * dpr));
+    const { width: w, height: h } = this.computeTargetDimensions();
 
     const gl = this.renderer.getContext();
     const isWebGL2 = typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext;
@@ -581,9 +602,7 @@ export class WBOITPipeline {
 
     if (!this.mrtSupported || !this.opaqueTarget || !this.accumTarget || !this.sharedDepthTexture) return;
 
-    const dpr = this.renderer.getPixelRatio();
-    const w = Math.max(1, Math.floor(this.width * dpr));
-    const h = Math.max(1, Math.floor(this.height * dpr));
+    const { width: w, height: h } = this.computeTargetDimensions();
 
     this.opaqueTarget.setSize(w, h);
     this.accumTarget.setSize(w, h);
@@ -671,7 +690,9 @@ export class WBOITPipeline {
     orderedNonNormalMeshes: THREE.Mesh[],
     destinationTarget: THREE.WebGLRenderTarget | null = null,
     backgroundMeshes: THREE.Object3D[] = [],
-    overlayMeshes: THREE.Object3D[] = []
+    overlayMeshes: THREE.Object3D[] = [],
+    sortedTransparentMeshes: THREE.Mesh[] = [],
+    scissorRect: ScreenScissorRect | null = null
   ): void {
     if (!this.mrtSupported || !this.isUserEnabled || !this.opaqueTarget || !this.accumTarget) {
       return;
@@ -685,6 +706,7 @@ export class WBOITPipeline {
       opaqueMeshes,
       cutoutMeshes,
       transparentMeshes,
+      sortedTransparentMeshes,
       orderedNonNormalMeshes,
       overlayMeshes,
     ];
@@ -715,6 +737,7 @@ export class WBOITPipeline {
     const savedStates = new Map<THREE.Material, SavedMatState>();
     const prevAutoClear = this.renderer.autoClear;
     const prevSceneBackground = scene.background;
+    let scissorEnabled = false;
 
     this.setDisplayReferred(
       destinationTarget === null || (destinationTarget as any).isXRRenderTarget === true
@@ -743,6 +766,12 @@ export class WBOITPipeline {
       this.renderer.render(scene, camera);
       scene.background = null;
 
+      // Isolated transparent strokes keep Three.js's native camera-depth sort.
+      if (sortedTransparentMeshes.length > 0) {
+        showOnly(sortedTransparentMeshes);
+        this.renderer.render(scene, camera);
+      }
+
       if (orderedNonNormalMeshes.length > 0) {
         showOnly(orderedNonNormalMeshes);
         this.renderer.render(scene, camera);
@@ -757,6 +786,18 @@ export class WBOITPipeline {
       showOnly(transparentMeshes);
 
       this.renderer.setRenderTarget(this.accumTarget);
+
+      if (scissorRect) {
+        const targetWidth = this.accumTarget.width;
+        const targetHeight = this.accumTarget.height;
+        const x = Math.max(0, Math.min(targetWidth - 1, Math.floor(scissorRect.x)));
+        const y = Math.max(0, Math.min(targetHeight - 1, Math.floor(scissorRect.y)));
+        const width = Math.max(1, Math.min(targetWidth - x, Math.ceil(scissorRect.width)));
+        const height = Math.max(1, Math.min(targetHeight - y, Math.ceil(scissorRect.height)));
+        this.renderer.setScissor(x, y, width, height);
+        this.renderer.setScissorTest(true);
+        scissorEnabled = true;
+      }
 
       // Clear color buffers ONLY — NEVER clear depth or stencil!
       gl.clearBufferfv(gl.COLOR, 0, CLEAR_COLOR_0); // target 0: [0, 0, 0, 1] (revealage = 1.0)
@@ -806,45 +847,22 @@ export class WBOITPipeline {
         }
       }
 
-      // If OES_draw_buffers_indexed is supported, configure per-buffer blend states
-      if (this.hasIndexedBlending && this.drawBuffersIndexedExt) {
-        const ext = this.drawBuffersIndexedExt;
-        const enablei = (ext.enableiOES || ext.enableiEXT || ext.enablei)?.bind(ext);
-        const blendEqSep = (ext.blendEquationSeparateiOES || ext.blendEquationSeparateiEXT || ext.blendEquationSeparatei).bind(ext);
-        const blendFuncSep = (ext.blendFuncSeparateiOES || ext.blendFuncSeparateiEXT || ext.blendFuncSeparatei).bind(ext);
-
-        if (enablei) {
-          enablei(gl.BLEND, 0);
-          enablei(gl.BLEND, 1);
-        } else {
-          gl.enable(gl.BLEND);
-        }
-
-        // Buffer 0 (Accumulation Buffer):
-        // RGB: Additive (gl.ONE, gl.ONE) for sum(C_i * alpha_i * w)
-        // Alpha: Multiplicative (gl.ZERO, gl.ONE_MINUS_SRC_ALPHA) for product(1 - alpha_i)
-        blendEqSep(0, gl.FUNC_ADD, gl.FUNC_ADD);
-        blendFuncSep(0, gl.ONE, gl.ONE, gl.ZERO, gl.ONE_MINUS_SRC_ALPHA);
-
-        // Buffer 1 (Weight Sum Buffer):
-        // RGB: Additive (gl.ONE, gl.ONE) for sum(alpha_i * w)
-        // Alpha: Additive (gl.ONE, gl.ONE)
-        blendEqSep(1, gl.FUNC_ADD, gl.FUNC_ADD);
-        blendFuncSep(1, gl.ONE, gl.ONE, gl.ONE, gl.ONE);
-      } else {
-        // Standard WebGL 2.0 without indexed blending:
-        // gl.blendFuncSeparate applies globally to all draw buffers.
-        // Target 0 gets RGB: (ONE, ONE) additive, Alpha: (ZERO, ONE_MINUS_SRC_ALPHA) multiplicative revealage.
-        // Target 1 writes weight sum into the R channel which accumulates additively via RGB: (ONE, ONE).
-        gl.enable(gl.BLEND);
-        gl.blendEquation(gl.FUNC_ADD);
-        gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ZERO, gl.ONE_MINUS_SRC_ALPHA);
-      }
+      // Standard WebGL 2.0 unified blend states (Zero extension dependencies):
+      // Target 0 gets RGB: (ONE, ONE) additive, Alpha: (ZERO, ONE_MINUS_SRC_ALPHA) multiplicative revealage.
+      // Target 1 writes weight sum into the R channel which accumulates additively via RGB: (ONE, ONE).
+      // Target 1 writes 0.0 into Alpha, so (ZERO, ONE_MINUS_SRC_ALPHA) leaves Alpha untouched.
+      gl.enable(gl.BLEND);
+      gl.blendEquation(gl.FUNC_ADD);
+      gl.blendFuncSeparate(gl.ONE, gl.ONE, gl.ZERO, gl.ONE_MINUS_SRC_ALPHA);
 
       // Render transparent geometry into MRT accumTarget (preserve depth with autoClear = false)
       WBOIT_ACCUM_UNIFORM.value = 1;
       this.renderer.render(scene, camera);
       WBOIT_ACCUM_UNIFORM.value = 0;
+      if (scissorEnabled) {
+        this.renderer.setScissorTest(false);
+        scissorEnabled = false;
+      }
 
       // -------------------------------------------------------------
       // PASS 3: Composite Pass (Opaque + Accum -> destinationTarget)
@@ -854,6 +872,17 @@ export class WBOITPipeline {
       this.compositeMaterial.uniforms.tWeight.value = this.accumTarget.textures[1];
       this.compositeMaterial.uniforms.uDebugView.value = this.debugViewMode;
       this.compositeMaterial.uniforms.uShowPipOverlay.value = this.isPipOverlayEnabled ? 1 : 0;
+      const scissorUniform = this.compositeMaterial.uniforms.uScissor.value as THREE.Vector4;
+      if (scissorRect) {
+        scissorUniform.set(
+          scissorRect.x / this.accumTarget.width,
+          scissorRect.y / this.accumTarget.height,
+          (scissorRect.x + scissorRect.width) / this.accumTarget.width,
+          (scissorRect.y + scissorRect.height) / this.accumTarget.height
+        );
+      } else {
+        scissorUniform.set(0, 0, 1, 1);
+      }
 
       // Full clear first: the destination's depth still holds whatever the previous
       // frame left, and on tile-based GPUs a clear is cheaper than loading old contents.
@@ -870,6 +899,7 @@ export class WBOITPipeline {
       }
     } finally {
       WBOIT_ACCUM_UNIFORM.value = 0;
+      if (scissorEnabled) this.renderer.setScissorTest(false);
 
       // Restore scene background
       scene.background = prevSceneBackground;
@@ -891,16 +921,6 @@ export class WBOITPipeline {
         mat.transparent = state.transparent;
       });
 
-      // Reset indexed blending states if extension was active
-      if (this.hasIndexedBlending && this.drawBuffersIndexedExt) {
-        const ext = this.drawBuffersIndexedExt;
-        const blendEqSep = (ext.blendEquationSeparateiOES || ext.blendEquationSeparateiEXT || ext.blendEquationSeparatei).bind(ext);
-        const blendFuncSep = (ext.blendFuncSeparateiOES || ext.blendFuncSeparateiEXT || ext.blendFuncSeparatei).bind(ext);
-        blendEqSep(0, gl.FUNC_ADD, gl.FUNC_ADD);
-        blendFuncSep(0, gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-        blendEqSep(1, gl.FUNC_ADD, gl.FUNC_ADD);
-        blendFuncSep(1, gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA, gl.ONE, gl.ONE_MINUS_SRC_ALPHA);
-      }
       try {
         this.renderer.state.setBlending(THREE.NormalBlending);
       } catch (_) {}

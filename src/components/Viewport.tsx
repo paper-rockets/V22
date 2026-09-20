@@ -32,6 +32,7 @@ import {
   Layers,
   Pipette,
   Trash2,
+  Camera,
 } from 'lucide-react';
 
 interface ViewportProps {
@@ -346,6 +347,44 @@ export const Viewport: React.FC<ViewportProps> = ({
       }
     } catch (_) {}
   };
+
+  const [liveCameraState, setLiveCameraState] = useState<{
+    isActive: boolean;
+    facingMode: 'user' | 'environment';
+    mirrored: boolean;
+  }>({ isActive: false, facingMode: 'user', mirrored: true });
+
+  useEffect(() => {
+    if (!engineInstance) return;
+    const unsub = engineInstance.liveCamera.subscribe((state) => {
+      setLiveCameraState({
+        isActive: state.isActive,
+        facingMode: state.facingMode,
+        mirrored: state.mirrored,
+      });
+    });
+    return unsub;
+  }, [engineInstance]);
+
+  const handleToggleLiveCamera = useCallback(async () => {
+    if (!engineInstance) return;
+    const active = await engineInstance.liveCamera.toggle();
+    triggerHaptic(25);
+    showGestureToast(
+      active ? 'Live Camera Active' : 'Live Camera Off',
+      active
+        ? (engineInstance.liveCamera.getState().facingMode === 'user' ? 'Selfie Camera' : 'Rear Camera')
+        : 'Returned to studio background'
+    );
+  }, [engineInstance]);
+
+  const handleSwitchLiveCameraFacing = useCallback(async () => {
+    if (!engineInstance) return;
+    await engineInstance.liveCamera.switchFacingMode();
+    triggerHaptic(20);
+    const mode = engineInstance.liveCamera.getState().facingMode;
+    showGestureToast('Camera Flipped', mode === 'user' ? 'Front (Selfie)' : 'Back (Environment)');
+  }, [engineInstance]);
 
   // Initialize Three.js Studio Engine
   useEffect(() => {
@@ -1020,6 +1059,20 @@ export const Viewport: React.FC<ViewportProps> = ({
         (activeDrawingPointerIdRef.current !== null || performance.now() < drawingIntentUntilRef.current)
       ) {
         return;
+      }
+
+      // Bezel Edge Palm Rejection: curved bezel on Galaxy S25 Ultra registers edge taps outside active canvas
+      const containerBounds = containerRef.current?.getBoundingClientRect();
+      if (containerBounds) {
+        const edgeThreshold = 16;
+        if (
+          e.clientX < containerBounds.left + edgeThreshold ||
+          e.clientX > containerBounds.right - edgeThreshold ||
+          e.clientY < containerBounds.top + edgeThreshold ||
+          e.clientY > containerBounds.bottom - edgeThreshold
+        ) {
+          return;
+        }
       }
 
       try {
@@ -1875,6 +1928,32 @@ export const Viewport: React.FC<ViewportProps> = ({
         >
           <Move className="w-4 h-4" />
         </button>
+        <button
+          onClick={() => {
+            handleToggleLiveCamera();
+            showNavPod(3000);
+          }}
+          className={`shrink-0 min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center rounded-xl border transition-colors duration-150 ease-out ${
+            liveCameraState.isActive
+              ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-900/30'
+              : 'border-transparent text-neutral-400 hover:bg-neutral-800 hover:text-white'
+          }`}
+          title={liveCameraState.isActive ? 'Turn Off Camera' : 'Live Camera (Webcam / AR background)'}
+        >
+          <Camera className="w-4 h-4" />
+        </button>
+        {liveCameraState.isActive && (
+          <button
+            onClick={() => {
+              handleSwitchLiveCameraFacing();
+              showNavPod(3000);
+            }}
+            className="shrink-0 min-w-[44px] min-h-[44px] w-11 h-11 flex items-center justify-center rounded-xl border border-emerald-500/40 bg-emerald-950/40 text-emerald-300 hover:bg-emerald-900/60 hover:text-white transition-colors"
+            title="Flip Camera (Front / Back)"
+          >
+            <RotateCw className="w-4 h-4" />
+          </button>
+        )}
       </div>
 
       {/* Floating Selection Options Action Bar (Delete, Clone, Reset, Deselect) */}

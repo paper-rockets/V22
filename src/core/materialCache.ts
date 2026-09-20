@@ -70,7 +70,10 @@ export class MaterialCache {
 
     const seq = settings.strokeSequenceIndex ?? 0;
     const seqTier = seq % 500;
-    const polyOffset = -3.0 - seqTier * 0.04;
+    // Gentle slope factor (-0.75) prevents extreme glancing angle slope blowup (ribbon slicing/disappearing).
+    // polyOffsetUnits provides the consistent depth spacing between successive strokes.
+    const polyOffsetFactor = -0.75;
+    const polyOffsetUnits = -2.0 - seqTier * 0.04;
 
     // Strict isolation key
     const key = `${matType}|${shaderKey}|${matcapKey}|${validColor}|o${effectiveOpacity.toFixed(3)}|r${(settings.roughness ?? 0.35).toFixed(2)}|m${(settings.metalness ?? 0.15).toFixed(2)}|e${(settings.emissiveIntensity ?? 0).toFixed(2)}|${modeKey}|${stencilKey}|sq${seqTier}|p_${patType}_${patScale}_${patInt}_${patAng}_${patContr}|b_${layerBlendMode}`;
@@ -110,8 +113,8 @@ export class MaterialCache {
         depthTest: true,
         depthWrite: false,
         polygonOffset: true,
-        polygonOffsetFactor: polyOffset,
-        polygonOffsetUnits: polyOffset,
+        polygonOffsetFactor: polyOffsetFactor,
+        polygonOffsetUnits: polyOffsetUnits,
         toneMapped: false,
       });
     } else if (matType === 'matcap') {
@@ -152,8 +155,8 @@ export class MaterialCache {
         depthTest: true,
         depthWrite: isOpaque,
         polygonOffset: true,
-        polygonOffsetFactor: polyOffset,
-        polygonOffsetUnits: polyOffset,
+        polygonOffsetFactor: polyOffsetFactor,
+        polygonOffsetUnits: polyOffsetUnits,
       });
     } else if (matType === 'animated_fx') {
       // 4. Animated FX Shader Material (Custom GLSL or standard 27 presets)
@@ -221,8 +224,8 @@ export class MaterialCache {
           depthTest: true,
           side: strokeSide,
           polygonOffset: true,
-          polygonOffsetFactor: polyOffset,
-          polygonOffsetUnits: polyOffset,
+          polygonOffsetFactor: polyOffsetFactor,
+          polygonOffsetUnits: polyOffsetUnits,
           toneMapped: false,
         });
         globalShaderRegistry.register(shaderMat);
@@ -251,8 +254,8 @@ export class MaterialCache {
           depthTest: true,
           side: strokeSide,
           polygonOffset: true,
-          polygonOffsetFactor: polyOffset,
-          polygonOffsetUnits: polyOffset,
+          polygonOffsetFactor: polyOffsetFactor,
+          polygonOffsetUnits: polyOffsetUnits,
           toneMapped: false,
         });
 
@@ -276,8 +279,8 @@ export class MaterialCache {
           depthTest: true,
           depthWrite: isOpaque,
           polygonOffset: true,
-          polygonOffsetFactor: polyOffset,
-          polygonOffsetUnits: polyOffset,
+          polygonOffsetFactor: polyOffsetFactor,
+          polygonOffsetUnits: polyOffsetUnits,
         });
       } else {
         const metal = Math.max(0.0, Math.min(1.0, settings.metalness ?? 0.15));
@@ -291,8 +294,8 @@ export class MaterialCache {
           depthTest: true,
           depthWrite: isOpaque,
           polygonOffset: true,
-          polygonOffsetFactor: polyOffset,
-          polygonOffsetUnits: polyOffset,
+          polygonOffsetFactor: polyOffsetFactor,
+          polygonOffsetUnits: polyOffsetUnits,
           envMapIntensity: metal > 0.5 ? (metal - 0.5) * 0.4 : 0.0,
         });
       }
@@ -307,8 +310,8 @@ export class MaterialCache {
         depthTest: true,
         depthWrite: isOpaque,
         polygonOffset: true,
-        polygonOffsetFactor: polyOffset,
-        polygonOffsetUnits: polyOffset,
+        polygonOffsetFactor: polyOffsetFactor,
+        polygonOffsetUnits: polyOffsetUnits,
         toneMapped: false,
       });
     }

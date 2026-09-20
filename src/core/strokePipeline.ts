@@ -569,7 +569,8 @@ export class StrokePipeline {
       const mat = this.ctx.materialCache.getStrokeMaterial(desc.settings, true, activeLayerOpacity);
       const geom = this.ctx.beadGenerator.generateGeometry(newPoints, desc.settings, targetMeshes);
       const mesh = new THREE.Mesh(geom, mat);
-      mesh.renderOrder = 10 + (this.ctx.strokes.size % 20000);
+      const isTransparent = Array.isArray(mat) ? mat[0]?.transparent === true : (mat as any)?.transparent === true;
+      mesh.renderOrder = isTransparent ? 5 : 10 + (this.ctx.strokes.size % 20000);
       const strokeParent = this.getStrokeParent(desc.settings);
       strokeParent.add(mesh);
       if (desc.settings.materialType === 'cutout') {
@@ -761,7 +762,8 @@ export class StrokePipeline {
     const mat = this.ctx.materialCache.getStrokeMaterial(desc.settings, true, this.ctx.getActiveLayerOpacity());
     const geom = this.ctx.beadGenerator.generateGeometry(parsedPoints, desc.settings, this.ctx.getTargetMeshes());
     const mesh = new THREE.Mesh(geom, mat);
-    mesh.renderOrder = 10 + (this.ctx.strokes.size % 20000);
+    const isTransparent = Array.isArray(mat) ? mat[0]?.transparent === true : (mat as any)?.transparent === true;
+    mesh.renderOrder = isTransparent ? 5 : 10 + (this.ctx.strokes.size % 20000);
     const strokeParent = this.getStrokeParent(desc.settings);
     strokeParent.add(mesh);
     if (desc.settings.materialType === 'cutout') {
