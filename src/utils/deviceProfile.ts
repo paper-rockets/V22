@@ -336,7 +336,9 @@ function buildProfile(tier: PerformanceTier, isS6Lite: boolean, reason: string, 
       bloom: false,
       bloomDivisor: 8,
       halfFloatTargets: false,
-      wboit: false,
+      // Hybrid WBOIT is the production transparency path. The pipeline still
+      // falls back safely when WebGL2 MRT support is unavailable.
+      wboit: true,
 
       uvPaintResolution: 1024,
       uvHistoryDepth: 3,

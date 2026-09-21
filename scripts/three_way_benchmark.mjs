@@ -130,9 +130,9 @@ function generateStrokeData(count) {
 
 const STROKE_COUNTS = [10, 25, 50, 100, 200, 400];
 const VERSIONS = [
-  { name: 'V25', url: 'http://localhost:5175' },
-  { name: 'V26 WBOIT I', url: 'http://localhost:5176' },
-  { name: 'V26 WBOIT II', url: 'http://localhost:5177' }
+  { name: 'V25', url: 'http://localhost:5175/?transparencyBenchmark=1' },
+  { name: 'V26 WBOIT I', url: 'http://localhost:5176/?transparencyBenchmark=1' },
+  { name: 'V26 WBOIT II', url: 'http://localhost:5177/?transparencyBenchmark=1' }
 ];
 
 async function runBenchmark() {
@@ -172,6 +172,8 @@ async function runBenchmark() {
       if (typeof engine.setTransparencyMode === 'function') {
         engine.setTransparencyMode('wboit');
       }
+      engine.postEngine?.setWboitAllowed?.(true);
+      engine.postEngine?.wboit?.setEnabled?.(true);
       // Center camera
       if (engine.cameraController) {
         engine.cameraController.cameraTarget.set(0, 0, 0);
@@ -188,6 +190,11 @@ async function runBenchmark() {
       const metrics = await page.evaluate(async ({ strokes, count }) => {
         const engine = window.__STUDIO_ENGINE__;
         const gl = engine.renderer.getContext();
+        if (engine.animationFrameId != null) {
+          cancelAnimationFrame(engine.animationFrameId);
+          engine.animationFrameId = null;
+        }
+        engine.renderer.info.autoReset = false;
 
         // 1. Clear existing strokes cleanly
         const toRemove = [];
@@ -214,13 +221,31 @@ async function runBenchmark() {
         for (const stroke of strokes) {
           engine.recreateStrokeFromDescriptor(stroke);
         }
+        if (typeof engine.markTransparencyDirty === 'function') engine.markTransparencyDirty();
+        if ('classificationDirty' in engine) engine.classificationDirty = true;
+        if ('transparencyClassificationDirty' in engine) engine.transparencyClassificationDirty = true;
         if (typeof engine.markDirty === 'function') engine.markDirty();
 
-        // 4. Check EXT_disjoint_timer_query_webgl2
+        // 4. Check EXT_disjoint_timer_query_webgl2 and release any query left
+        // behind when the app's own loop was stopped.
         let timerExt = null;
         try {
           timerExt = gl.getExtension('EXT_disjoint_timer_query_webgl2');
+          if (engine.gpuActiveQuery) {
+            gl.deleteQuery(engine.gpuActiveQuery);
+            engine.gpuActiveQuery = null;
+          }
         } catch (_) {}
+
+        const renderFrame = () => {
+          if (typeof engine.renderSceneWboit === 'function') {
+            engine.renderSceneWboit(null);
+          } else if (engine.postEngine?.render) {
+            engine.postEngine.render(0.016);
+          } else {
+            engine.renderer.render(engine.scene, engine.camera);
+          }
+        };
 
         // 5. Warmup for 30 frames (ignore initial compile / JIT)
         let orbitAngle = 0;
@@ -230,19 +255,21 @@ async function runBenchmark() {
           engine.camera.position.z = Math.sin(orbitAngle) * 5.5;
           engine.camera.lookAt(0, 0, 0);
           engine.camera.updateMatrixWorld(true);
-          if (typeof engine.renderSceneWboit === 'function') {
-            engine.renderSceneWboit(null);
-          } else {
-            engine.render();
-          }
-          await new Promise((r) => requestAnimationFrame(r));
+          engine.renderer.info.reset();
+          renderFrame();
+          await new Promise((resolve) => requestAnimationFrame(resolve));
         }
 
         // 6. Measurement loop: 120 steady-state frames with continuous camera orbit
         const cpuFrameTimes = [];
+        const frameIntervals = [];
+        const gpuQueries = [];
         const MEASURE_FRAMES = 120;
         let initialMem = performance.memory ? performance.memory.usedJSHeapSize : 0;
         let peakMem = initialMem;
+        let lastDrawCalls = 0;
+        let lastTriangles = 0;
+        let previousRafTimestamp = await new Promise((resolve) => requestAnimationFrame(resolve));
 
         for (let f = 0; f < MEASURE_FRAMES; f++) {
           orbitAngle += 0.015;
@@ -250,86 +277,137 @@ async function runBenchmark() {
           engine.camera.position.z = Math.sin(orbitAngle) * 5.5;
           engine.camera.lookAt(0, 0, 0);
           engine.camera.updateMatrixWorld(true);
+          engine.renderer.info.reset();
+
+          let gpuQuery = null;
+          if (timerExt && f % 2 === 0) {
+            try {
+              gpuQuery = gl.createQuery();
+              if (gpuQuery) gl.beginQuery(timerExt.TIME_ELAPSED_EXT, gpuQuery);
+            } catch (_) {
+              if (gpuQuery) gl.deleteQuery(gpuQuery);
+              gpuQuery = null;
+            }
+          }
 
           const t0 = performance.now();
-          if (typeof engine.renderSceneWboit === 'function') {
-            engine.renderSceneWboit(null);
-          } else {
-            engine.render();
-          }
+          renderFrame();
           const t1 = performance.now();
           cpuFrameTimes.push(t1 - t0);
+          lastDrawCalls = engine.renderer.info.render.calls;
+          lastTriangles = engine.renderer.info.render.triangles;
+
+          if (gpuQuery) {
+            try {
+              gl.endQuery(timerExt.TIME_ELAPSED_EXT);
+              gpuQueries.push(gpuQuery);
+            } catch (_) {
+              try { gl.deleteQuery(gpuQuery); } catch (_) {}
+            }
+          }
 
           if (performance.memory) {
             const currentMem = performance.memory.usedJSHeapSize;
             if (currentMem > peakMem) peakMem = currentMem;
           }
 
-          await new Promise((r) => requestAnimationFrame(r));
+          const rafTimestamp = await new Promise((resolve) => requestAnimationFrame(resolve));
+          frameIntervals.push(rafTimestamp - previousRafTimestamp);
+          previousRafTimestamp = rafTimestamp;
         }
 
-        // Calculate statistics
+        const gpuTimes = [];
+        let pendingGpuQueries = gpuQueries.slice();
+        let gpuDisjoint = false;
+        for (let poll = 0; timerExt && pendingGpuQueries.length > 0 && poll < 120; poll++) {
+          if (gl.getParameter(timerExt.GPU_DISJOINT_EXT)) {
+            gpuDisjoint = true;
+            break;
+          }
+          const stillPending = [];
+          for (const query of pendingGpuQueries) {
+            if (gl.getQueryParameter(query, gl.QUERY_RESULT_AVAILABLE)) {
+              gpuTimes.push(gl.getQueryParameter(query, gl.QUERY_RESULT) / 1_000_000);
+              gl.deleteQuery(query);
+            } else {
+              stillPending.push(query);
+            }
+          }
+          pendingGpuQueries = stillPending;
+          if (pendingGpuQueries.length > 0) await new Promise((resolve) => requestAnimationFrame(resolve));
+        }
+        for (const query of pendingGpuQueries) {
+          try { gl.deleteQuery(query); } catch (_) {}
+        }
+        if (gpuDisjoint) gpuTimes.length = 0;
+
+        // Calculate statistics from actual frame intervals and completed GPU queries.
         cpuFrameTimes.sort((a, b) => a - b);
+        gpuTimes.sort((a, b) => a - b);
         const cpuMedian = cpuFrameTimes[Math.floor(cpuFrameTimes.length * 0.5)];
         const cpuP95 = cpuFrameTimes[Math.floor(cpuFrameTimes.length * 0.95)];
-        const avgCpu = cpuFrameTimes.reduce((a, b) => a + b, 0) / cpuFrameTimes.length;
-        const fps = Math.min(60, 1000 / Math.max(16.66, avgCpu));
+        const averageFrameInterval = frameIntervals.reduce((a, b) => a + b, 0) / frameIntervals.length;
+        const fps = 1000 / averageFrameInterval;
+        const gpuMedian = gpuTimes.length > 0 ? gpuTimes[Math.floor(gpuTimes.length * 0.5)] : null;
+        const gpuP95 = gpuTimes.length > 0 ? gpuTimes[Math.floor(gpuTimes.length * 0.95)] : null;
 
         // Transparency classifier timing & counts
-        let classificationTime = 0;
-        let wboitCount = engine.strokes.size;
-        let sortedCount = 0;
-        let scissorCoverage = 100;
-        let isGpuMeasured = Boolean(timerExt);
-        let gpuMedian = 0;
-        let gpuP95 = 0;
-
-        if (engine.transparencyClassifier) {
+        let classificationTime = null;
+        let wboitCount = null;
+        let sortedCount = null;
+        let scissorCoverage = null;
+        const engineMetrics = typeof engine.getTransparencyPerformanceMetrics === 'function'
+          ? engine.getTransparencyPerformanceMetrics()
+          : null;
+        if (engineMetrics) {
+          classificationTime = Number.isFinite(engineMetrics.classificationTimeMs)
+            ? engineMetrics.classificationTimeMs
+            : null;
+          wboitCount = engineMetrics.wboitTransparentCount ?? null;
+          sortedCount = engineMetrics.sortedTransparentCount ?? null;
+          scissorCoverage = engineMetrics.scissorCoveragePct ?? null;
+        } else if (engine.transparencyClassifier?.getCachedCollections) {
           const stats = engine.transparencyClassifier.getCachedCollections().stats;
-          classificationTime = stats.classificationTimeMs || 0.12;
-          wboitCount = stats.wboitTransparentCount;
-          sortedCount = stats.sortedTransparentCount;
-        } else if (engine.strokeClassifier) {
-          classificationTime = 0.08;
-          wboitCount = Math.floor(engine.strokes.size * 0.65);
-          sortedCount = engine.strokes.size - wboitCount;
+          classificationTime = Number.isFinite(stats.classificationTimeMs) ? stats.classificationTimeMs : null;
+          wboitCount = stats.wboitTransparentCount ?? null;
+          sortedCount = stats.sortedTransparentCount ?? null;
+        } else {
+          wboitCount = engine.wboitTransparent?.length ?? null;
+          sortedCount = engine.wboitTransparentSorted?.length ?? engine.wboitVisibleSorted?.length ?? null;
         }
 
         // WBOIT Scissor coverage
         const wboit = engine.postEngine?.wboit;
-        if (wboit && typeof wboit.getPerformanceMetrics === 'function') {
-          const m = wboit.getPerformanceMetrics();
-          scissorCoverage = m.scissorCoveragePct || 100;
-          if (m.isGpuMeasured) {
-            isGpuMeasured = true;
-            gpuMedian = m.gpuTimeMs;
-          }
+        if (scissorCoverage === null && wboit && typeof wboit.getPerformanceMetrics === 'function') {
+          const metrics = wboit.getPerformanceMetrics();
+          scissorCoverage = metrics.scissorCoveragePct ?? null;
         }
 
         // Target formats & resolution
-        const rtW = wboit?.accumTarget?.width || 1920;
-        const rtH = wboit?.accumTarget?.height || 1080;
-        const rtFormat = wboit?.accumTarget?.texture?.[0]?.type === 1016 ? 'HalfFloatType (FP16)' : 'RGBA8 / Float';
+        const rtW = wboit?.accumTarget?.width ?? gl.drawingBufferWidth;
+        const rtH = wboit?.accumTarget?.height ?? gl.drawingBufferHeight;
+        const rtTexture = wboit?.accumTarget?.textures?.[0] ?? wboit?.accumTarget?.texture ?? null;
+        const typeNames = { 1009: 'UnsignedByte', 1015: 'Float', 1016: 'HalfFloat' };
+        const formatNames = { 1021: 'Alpha', 1023: 'RGBA', 1028: 'Red', 1029: 'RedInteger', 1030: 'RG', 1031: 'RGInteger' };
+        const rtFormat = rtTexture
+          ? `${formatNames[rtTexture.format] || `format-${rtTexture.format}`} / ${typeNames[rtTexture.type] || `type-${rtTexture.type}`}`
+          : 'screen-buffer';
         const renderPasses = wboit ? 3 : 1;
-
-        // Render info
-        const drawCalls = engine.renderer.info.render.calls;
-        const triangles = engine.renderer.info.render.triangles;
 
         return {
           fps: Number(fps.toFixed(1)),
           cpuMedian: Number(cpuMedian.toFixed(2)),
           cpuP95: Number(cpuP95.toFixed(2)),
-          gpuMedian: Number((cpuMedian * 0.82).toFixed(2)),
-          gpuP95: Number((cpuP95 * 0.82).toFixed(2)),
-          isGpuMeasured,
-          classificationTime: Number(classificationTime.toFixed(3)),
-          drawCalls,
-          triangles,
+          gpuMedian: gpuMedian === null ? null : Number(gpuMedian.toFixed(2)),
+          gpuP95: gpuP95 === null ? null : Number(gpuP95.toFixed(2)),
+          isGpuMeasured: gpuTimes.length > 0,
+          classificationTime: classificationTime === null ? null : Number(classificationTime.toFixed(3)),
+          drawCalls: lastDrawCalls,
+          triangles: lastTriangles,
           renderPasses,
           wboitCount,
           sortedCount,
-          scissorCoverage: Number(scissorCoverage.toFixed(1)),
+          scissorCoverage: scissorCoverage === null ? null : Number(scissorCoverage.toFixed(1)),
           rtResolution: `${rtW}x${rtH}`,
           rtFormat,
           gcDeltaKB: Math.round((peakMem - initialMem) / 1024)

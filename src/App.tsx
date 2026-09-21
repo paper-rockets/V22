@@ -60,6 +60,7 @@ import { useAppShortcuts } from './hooks/useAppShortcuts';
 import { useAppAutoSave } from './hooks/useAppAutoSave';
 import { haptics } from './utils/haptics';
 import { setGlobalSoundEnabled } from './utils/audio';
+import { isDiagnosticsEnabled } from './utils/diagnostics';
 import { PlatformBridge } from './core/platformBridge';
 
 import { DebugTestPanel } from '@debug-panel';
@@ -1309,7 +1310,8 @@ export function App() {
 
   // Automated Testing / Robot Tester Hook
   useEffect(() => {
-    (window as any).__testApp = {
+    if (!isDiagnosticsEnabled()) return;
+    const testApi = {
       getEngine: () => engine,
       setTheme: handleSetTheme,
       setTool,
@@ -1372,6 +1374,10 @@ export function App() {
       getActiveGuide: () => activeGuide,
       getTargetScope: () => targetScope,
       setTargetScope: (scope: any) => handleSelectTargetScope(scope),
+    };
+    (window as any).__testApp = testApi;
+    return () => {
+      if ((window as any).__testApp === testApi) delete (window as any).__testApp;
     };
   }, [engine, handleSetTheme, setTool, setBrushSettings, activeGuide, targetScope, handleSelectTargetScope]);
 

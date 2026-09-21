@@ -93,6 +93,7 @@ import { StrokePipeline } from './strokePipeline';
 import { modelNormalization } from './modelNormalization';
 import { resolveAssetUrl } from '../utils/assetUrl';
 import { getQualityProfile, resolvePixelRatio, QualityProfile } from '../utils/deviceProfile';
+import { isDiagnosticsEnabled } from '../utils/diagnostics';
 import { FastSurfaceRaycaster } from './FastSurfaceRaycaster';
 import { StrokeClassifier, StrokeSpatialData } from './strokeClassification';
 import { ScreenScissorRect, WboitScissorHelper } from './wboitScissor';
@@ -272,9 +273,14 @@ export class StudioEngine {
   public scaffoldingEngine: ScaffoldingEngine;
   public liveCamera: LiveCameraManager;
   private savedEngineSceneBackground: THREE.Color | THREE.Texture | null = null;
+  private hasSavedEngineSceneBackground = false;
+  private activeLiveCameraTexture: THREE.Texture | null = null;
 
   // Transparency Mode Test Bench
-  public transparencyMode: 'wboit' | 'sorted' | 'sequential_debug' = 'sorted';
+  public transparencyMode: 'wboit' | 'sorted' | 'sequential_debug' = 'wboit';
+  private readonly transparencyDiagnosticsEnabled = isDiagnosticsEnabled();
+  private transparencyKeydownHandler: ((event: KeyboardEvent) => void) | null = null;
+  private rayEngineApi: any = null;
   public isAutoOrbitActive: boolean = false;
   private autoOrbitSpeed: number = 0.012;
   private gpuTimerExt: any = null;
@@ -712,6 +718,7 @@ export class StudioEngine {
       getContainer: () => this.container,
       getNavigatorSensitivity: () => this.navigatorSensitivity,
       markDirty: () => this.markDirty(),
+      markTransparencyDirty: () => this.markTransparencyDirty(),
       notifyHistory: () => this.notifyHistory(),
       pushHistoryUndo: (entry) => this.historyUndoStack.push(entry),
       clearHistoryRedo: () => { this.historyRedoStack = []; },
@@ -744,6 +751,8 @@ export class StudioEngine {
       onAutoSaveTrigger: (reason) => this.onAutoSaveTrigger?.(reason),
       notifyHistory: () => this.notifyHistory(),
       markDirty: () => this.markDirty(),
+      markTransparencyDirty: () => this.markTransparencyDirty(),
+      invalidateTransparencyScissor: () => this.invalidateWboitScissor(),
       pushUndoAction: (action) => {
         this.undoStack.push(action);
         this.historyUndoStack.push({
@@ -800,8 +809,10 @@ export class StudioEngine {
 
     // 9. Attach global RayEngine interface for 100% interoperability
     if (typeof window !== 'undefined') {
-      (window as any).__STUDIO_ENGINE__ = this;
-      window.RayEngine = {
+      if (this.transparencyDiagnosticsEnabled) {
+        (window as any).__STUDIO_ENGINE__ = this;
+      }
+      this.rayEngineApi = {
         screenToWorld: (clientX: number, clientY: number, isSpatial: boolean = false, depth: number = 6.0) =>
           this.screenToWorld(clientX, clientY, isSpatial, depth),
         checkHover: (clientX: number, clientY: number) => this.checkHover(clientX, clientY),
@@ -809,21 +820,25 @@ export class StudioEngine {
         raycastModel: (screenX: number, screenY: number) => this.raycastModel(screenX, screenY),
         loadGLTF: (url: string, name?: string) => this.loadGLTF(url, name || 'Custom Model'),
       };
+      window.RayEngine = this.rayEngineApi;
     }
 
     // 10. Start with Default Drawing Plane on Canvas Load
     this.setupDefaultDrawingPlane();
 
-    // 11. WebGL2 Disjoint Timer Query initialization
-    try {
-      const gl = this.renderer.getContext();
-      if (typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext) {
-        this.gpuTimerExt = gl.getExtension('EXT_disjoint_timer_query_webgl2');
-      }
-    } catch (_) {}
+    // 11. WebGL2 timing is diagnostics-only; normal rendering does not create
+    // or poll timer queries every frame.
+    if (this.transparencyDiagnosticsEnabled) {
+      try {
+        const gl = this.renderer.getContext();
+        if (typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext) {
+          this.gpuTimerExt = gl.getExtension('EXT_disjoint_timer_query_webgl2');
+        }
+      } catch (_) {}
+    }
 
     // 12. Attach Transparency Test Bench methods & keyboard hotkeys
-    if (typeof window !== 'undefined') {
+    if (typeof window !== 'undefined' && this.transparencyDiagnosticsEnabled) {
       (window as any).toggleTransparencyMode = () => this.toggleTransparencyMode();
       (window as any).setTransparencyMode = (m: any) => this.setTransparencyMode(m);
       (window as any).spawnTransparencyTestScene = () => this.spawnTransparencyTestScene();
@@ -832,7 +847,7 @@ export class StudioEngine {
       (window as any).getTransparencyTelemetry = () => this.getTransparencyTelemetry();
       (window as any).runTransparencyBenchmarkSuite = (counts?: number[], frames?: number) => this.runTransparencyBenchmarkSuite(counts, frames);
 
-      window.addEventListener('keydown', (e: KeyboardEvent) => {
+      this.transparencyKeydownHandler = (e: KeyboardEvent) => {
         if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
         if (e.key === 't' || e.key === 'T') {
           this.toggleTransparencyMode();
@@ -843,7 +858,8 @@ export class StudioEngine {
         } else if (e.key === 'p' || e.key === 'P') {
           this.spawnTransparencyTestScene();
         }
-      });
+      };
+      window.addEventListener('keydown', this.transparencyKeydownHandler);
 
       this.initTransparencyTestHud();
     }
@@ -5160,7 +5176,7 @@ export class StudioEngine {
         if (this.onFpsUpdate) {
           this.onFpsUpdate(this.fps);
         }
-        this.updateTelemetryHud();
+        if (this.transparencyDiagnosticsEnabled) this.updateTelemetryHud();
       }
       this.lastTime = time;
 
@@ -5243,18 +5259,24 @@ export class StudioEngine {
           const w = this.container?.clientWidth || window.innerWidth;
           const h = this.container?.clientHeight || window.innerHeight;
           this.liveCamera.updateTextureAspect(w, h);
-          if (this.scene.background !== camTex) {
+          if (!this.hasSavedEngineSceneBackground) {
             this.savedEngineSceneBackground = this.scene.background;
-            this.scene.background = camTex;
+            this.hasSavedEngineSceneBackground = true;
           }
+          this.activeLiveCameraTexture = camTex;
+          this.scene.background = camTex;
         }
-      } else if (this.savedEngineSceneBackground && this.scene.background === this.liveCamera?.getVideoTexture()) {
-        this.scene.background = this.savedEngineSceneBackground;
+      } else if (this.hasSavedEngineSceneBackground) {
+        if (this.scene.background === this.activeLiveCameraTexture) {
+          this.scene.background = this.savedEngineSceneBackground;
+        }
         this.savedEngineSceneBackground = null;
+        this.hasSavedEngineSceneBackground = false;
+        this.activeLiveCameraTexture = null;
       }
 
-      const gl = this.renderer.getContext();
-      if (this.gpuTimerExt && typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext) {
+      const gl = this.transparencyDiagnosticsEnabled ? this.renderer.getContext() : null;
+      if (gl && this.gpuTimerExt && typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext) {
         if (this.gpuActiveQuery) {
           try {
             const available = gl.getQueryParameter(this.gpuActiveQuery, gl.QUERY_RESULT_AVAILABLE);
@@ -5270,7 +5292,7 @@ export class StudioEngine {
       }
 
       let renderQuery: WebGLQuery | null = null;
-      if (this.gpuTimerExt && !this.gpuActiveQuery && typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext) {
+      if (gl && this.gpuTimerExt && !this.gpuActiveQuery && typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext) {
         try {
           renderQuery = gl.createQuery();
           if (renderQuery) {
@@ -5279,10 +5301,12 @@ export class StudioEngine {
         } catch (_) {}
       }
 
-      this.renderer.info.autoReset = false;
-      this.renderer.info.reset();
+      if (this.transparencyDiagnosticsEnabled) {
+        this.renderer.info.autoReset = false;
+        this.renderer.info.reset();
+      }
 
-      const t0 = performance.now();
+      const t0 = this.transparencyDiagnosticsEnabled ? performance.now() : 0;
       const postSettings = this.postEngine?.getSettings();
       const useRayTracing = postSettings?.renderMode === 'render' && postSettings?.rayTracing;
 
@@ -5308,11 +5332,13 @@ export class StudioEngine {
       } else {
         this.renderer.render(this.scene, this.camera);
       }
-      this.cpuFrameTimeMs = performance.now() - t0;
-      this.totalDrawCalls = this.renderer.info.render.calls;
-      this.totalTriangles = this.renderer.info.render.triangles;
+      if (this.transparencyDiagnosticsEnabled) {
+        this.cpuFrameTimeMs = performance.now() - t0;
+        this.totalDrawCalls = this.renderer.info.render.calls;
+        this.totalTriangles = this.renderer.info.render.triangles;
+      }
 
-      if (renderQuery && typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext) {
+      if (renderQuery && gl && typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext) {
         try {
           gl.endQuery(this.gpuTimerExt.TIME_ELAPSED_EXT);
           this.gpuActiveQuery = renderQuery;
@@ -5334,7 +5360,12 @@ export class StudioEngine {
   private wboitOverlay: THREE.Object3D[] = [];
   private strokeClassifier = new StrokeClassifier();
   private wboitClassificationDirty = true;
+  private transparencyClassificationRevision = 0;
+  private transparencyClassificationTimeMs = 0;
+  private transparencyWboitCount = 0;
+  private transparencySortedCount = 0;
   private wboitScissorDirty = true;
+  private wboitScissorRevision = 0;
   private wboitScissorRect: ScreenScissorRect | null = null;
   private wboitScissorTargetWidth = 0;
   private wboitScissorTargetHeight = 0;
@@ -5693,11 +5724,40 @@ export class StudioEngine {
     this.invalidateWboitScissor();
   }
 
+  public getTransparencyPerformanceMetrics(): {
+    classificationTimeMs: number;
+    classificationRevision: number;
+    wboitTransparentCount: number;
+    sortedTransparentCount: number;
+    scissorCoveragePct: number | null;
+    scissorApplied: boolean;
+    classificationDirty: boolean;
+    scissorDirty: boolean;
+    scissorRevision: number;
+  } {
+    if (this.wboitClassificationDirty) this.updateTransparencyClassification();
+    const scissorCoverage = this.wboitScissorDirty || !this.wboitScissorRect
+      ? null
+      : this.wboitScissorRect.coverageFraction * 100;
+    return {
+      classificationTimeMs: this.transparencyClassificationTimeMs,
+      classificationRevision: this.transparencyClassificationRevision,
+      wboitTransparentCount: this.transparencyWboitCount,
+      sortedTransparentCount: this.transparencySortedCount,
+      scissorCoveragePct: scissorCoverage,
+      scissorApplied: scissorCoverage !== null && scissorCoverage < 75,
+      classificationDirty: this.wboitClassificationDirty,
+      scissorDirty: this.wboitScissorDirty,
+      scissorRevision: this.wboitScissorRevision,
+    };
+  }
+
   /**
    * Reclassifies transparent stroke meshes only after scene changes. Isolated
    * strokes stay on native sorted alpha; intersecting strokes use WBOIT.
    */
   private updateTransparencyClassification(): void {
+    const startedAt = performance.now();
     this.wboitClassificationDirty = false;
     const modeOverride = this.postEngine?.wboit?.transparencyModeOverride ?? 'auto';
     const spatialData: StrokeSpatialData[] = [];
@@ -5737,6 +5797,16 @@ export class StudioEngine {
     }
 
     StrokeClassifier.classifyStrokes(spatialData, modeOverride);
+    let wboitCount = 0;
+    let sortedCount = 0;
+    for (const item of spatialData) {
+      if (item.transparencyClass === 'wboit') wboitCount++;
+      else sortedCount++;
+    }
+    this.transparencyWboitCount = wboitCount;
+    this.transparencySortedCount = sortedCount;
+    this.transparencyClassificationTimeMs = performance.now() - startedAt;
+    this.transparencyClassificationRevision++;
     this.invalidateWboitScissor();
   }
 
@@ -5785,6 +5855,7 @@ export class StudioEngine {
         targetHeight
       );
       this.wboitScissorDirty = false;
+      this.wboitScissorRevision++;
     }
 
     return this.wboitScissorRect && this.wboitScissorRect.coverageFraction < 0.75
@@ -6467,6 +6538,9 @@ export class StudioEngine {
    */
   public setARSceneElevation(elevation: number): void {
     this.modelRoot.position.y = elevation;
+    this.modelRoot.updateMatrixWorld(true);
+    this.markTransparencyDirty();
+    this.markDirty();
   }
 
   /**
@@ -6487,6 +6561,10 @@ export class StudioEngine {
     // 1. Listeners
     window.removeEventListener('resize', this.handleWindowResize);
     window.removeEventListener('scroll', this.handleWindowScroll, true);
+    if (this.transparencyKeydownHandler) {
+      window.removeEventListener('keydown', this.transparencyKeydownHandler);
+      this.transparencyKeydownHandler = null;
+    }
     if (this.renderer.domElement) {
       this.renderer.domElement.removeEventListener('webglcontextlost', this.handleContextLost);
       this.renderer.domElement.removeEventListener('webglcontextrestored', this.handleContextRestored);
@@ -6515,6 +6593,16 @@ export class StudioEngine {
     try { this.liveCamera?.dispose(); } catch (_) {}
     try { this.dracoLoader?.dispose(); } catch (_) {}
     this.dracoLoader = null;
+
+    if (this.gpuActiveQuery) {
+      try {
+        const gl = this.renderer.getContext();
+        if (typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext) {
+          gl.deleteQuery(this.gpuActiveQuery);
+        }
+      } catch (_) {}
+      this.gpuActiveQuery = null;
+    }
 
     // 4. Scene graph geometry, materials and textures
     this.disposeSceneGraph();
@@ -6555,13 +6643,19 @@ export class StudioEngine {
     // 7. Globals installed by the constructor. Only reclaim them if this engine
     // still owns them - during a StrictMode remount a newer engine may already
     // have taken over, and clearing its bindings would break the live viewport.
-    if (typeof window !== 'undefined' && (window as any).__STUDIO_ENGINE__ === this) {
-      delete (window as any).__STUDIO_ENGINE__;
-      delete window.RayEngine;
-      delete (window as any).toggleTransparencyMode;
-      delete (window as any).setTransparencyMode;
-      delete (window as any).spawnTransparencyTestScene;
-      delete (window as any).toggleAutoOrbit;
+    if (typeof window !== 'undefined') {
+      if (window.RayEngine === this.rayEngineApi) delete window.RayEngine;
+      this.rayEngineApi = null;
+      if ((window as any).__STUDIO_ENGINE__ === this) {
+        delete (window as any).__STUDIO_ENGINE__;
+        delete (window as any).toggleTransparencyMode;
+        delete (window as any).setTransparencyMode;
+        delete (window as any).spawnTransparencyTestScene;
+        delete (window as any).spawnOverlappingStrokes;
+        delete (window as any).toggleAutoOrbit;
+        delete (window as any).getTransparencyTelemetry;
+        delete (window as any).runTransparencyBenchmarkSuite;
+      }
     }
   }
 
@@ -6615,6 +6709,7 @@ export class StudioEngine {
       }
     }
     this.updateAllStrokeRenderOrders();
+    this.markTransparencyDirty();
     this.markDirty();
     this.updateTelemetryHud();
   }
@@ -6643,6 +6738,7 @@ export class StudioEngine {
         }
       }
     });
+    this.markTransparencyDirty();
     this.markDirty();
   }
 
@@ -6836,6 +6932,7 @@ export class StudioEngine {
       9
     );
 
+    this.markTransparencyDirty();
     this.markDirty();
     this.updateTelemetryHud();
   }
@@ -6949,6 +7046,7 @@ export class StudioEngine {
       this.strokes.set(strokeId, { descriptor: desc, meshes: [mesh] });
     }
 
+    this.markTransparencyDirty();
     this.markDirty();
     this.updateTelemetryHud();
   }

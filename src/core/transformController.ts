@@ -34,6 +34,7 @@ export interface TransformContext {
   getContainer: () => HTMLElement | null;
   getNavigatorSensitivity: () => number;
   markDirty: () => void;
+  markTransparencyDirty: () => void;
   notifyHistory: () => void;
   pushHistoryUndo: (entry: {
     kind: 'transform';
@@ -360,6 +361,14 @@ export class TransformController {
           scaffoldRoot.updateMatrixWorld(true);
         }
       }
+    }
+    if (
+      scope === 'all' ||
+      scope === 'strokes' ||
+      scope === 'active_layer' ||
+      scope === 'selected_strokes'
+    ) {
+      this.ctx.markTransparencyDirty();
     }
     this.ctx.markDirty();
   }
@@ -858,6 +867,8 @@ export class TransformController {
       const minY = box.min.y;
       this.ctx.modelRoot.position.y -= minY;
       this.ctx.modelRoot.updateMatrixWorld(true);
+      this.ctx.markTransparencyDirty();
+      this.ctx.markDirty();
     }
   }
 
@@ -927,6 +938,8 @@ export class TransformController {
         break;
     }
     this.ctx.modelRoot.updateMatrixWorld(true);
+    this.ctx.markTransparencyDirty();
+    this.ctx.markDirty();
   }
 
   /**
@@ -943,6 +956,8 @@ export class TransformController {
     const factor = Math.max(0.5, Math.min(2.0, scaleFactor));
     this.ctx.modelRoot.scale.multiplyScalar(factor);
     this.ctx.modelRoot.updateMatrixWorld(true);
+    this.ctx.markTransparencyDirty();
+    this.ctx.markDirty();
   }
 
   private getPickedModel(): THREE.Object3D | undefined {

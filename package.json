@@ -21,7 +21,8 @@
     "preview": "vite preview --host=0.0.0.0",
     "clean": "node -e \"const fs=require('fs'); fs.rmSync('dist',{recursive:true,force:true}); try{fs.unlinkSync('server.js')}catch(e){}\"",
     "lint": "tsc --noEmit",
-    "test": "node scripts/smoke-test.mjs",
+    "test": "node scripts/smoke-test.mjs && node scripts/wboit-unit-test.mjs",
+    "test:release": "node scripts/release-regression-test.mjs",
     "dev:remote": "node scripts/remote-server.mjs"
   },
   "dependencies": {

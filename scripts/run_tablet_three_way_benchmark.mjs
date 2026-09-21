@@ -169,6 +169,11 @@ async function runTabletBenchmark() {
     console.log(`>>> VALIDATING: ${ver.name} on Galaxy Tab S6 Lite (${page.url()})`);
     console.log(`========================================================================`);
     await page.bringToFront();
+    const benchmarkUrl = new URL(page.url());
+    if (benchmarkUrl.searchParams.get('transparencyBenchmark') !== '1') {
+      benchmarkUrl.searchParams.set('transparencyBenchmark', '1');
+      await page.goto(benchmarkUrl.toString(), { waitUntil: 'domcontentloaded', timeout: 30000 });
+    }
     await page.waitForTimeout(1000);
     await page.waitForFunction(() => window.__STUDIO_ENGINE__ && window.__STUDIO_ENGINE__.scene && window.__STUDIO_ENGINE__.camera, null, { timeout: 30000 });
 
@@ -241,6 +246,9 @@ async function runTabletBenchmark() {
         for (const stroke of strokes) {
           engine.recreateStrokeFromDescriptor(stroke);
         }
+        if (typeof engine.markTransparencyDirty === 'function') engine.markTransparencyDirty();
+        if ('classificationDirty' in engine) engine.classificationDirty = true;
+        if ('transparencyClassificationDirty' in engine) engine.transparencyClassificationDirty = true;
         if (typeof engine.markDirty === 'function') engine.markDirty();
 
         // Capture geometry before timing. The same descriptor must produce the
@@ -343,10 +351,22 @@ async function runTabletBenchmark() {
           }
         };
 
+        const gl = engine.renderer.getContext();
+        const timerExt = typeof WebGL2RenderingContext !== 'undefined' && gl instanceof WebGL2RenderingContext
+          ? gl.getExtension('EXT_disjoint_timer_query_webgl2')
+          : null;
+        if (engine.gpuActiveQuery && gl instanceof WebGL2RenderingContext) {
+          try { gl.deleteQuery(engine.gpuActiveQuery); } catch (_) {}
+          engine.gpuActiveQuery = null;
+        }
+
         const cpuTimes = [];
+        const frameIntervals = [];
+        const gpuQueries = [];
         const MEASURE_FRAMES = 60;
         let initialMem = performance.memory ? performance.memory.usedJSHeapSize : 0;
         let peakMem = initialMem;
+        let previousRafTimestamp = await new Promise((resolve) => requestAnimationFrame(resolve));
 
         for (let f = 0; f < MEASURE_FRAMES; f++) {
           curFrameCalls = 0;
@@ -364,6 +384,17 @@ async function runTabletBenchmark() {
           engine.camera.lookAt(0, 0, 0);
           engine.camera.updateMatrixWorld(true);
 
+          let gpuQuery = null;
+          if (timerExt && f % 2 === 0) {
+            try {
+              gpuQuery = gl.createQuery();
+              if (gpuQuery) gl.beginQuery(timerExt.TIME_ELAPSED_EXT, gpuQuery);
+            } catch (_) {
+              if (gpuQuery) gl.deleteQuery(gpuQuery);
+              gpuQuery = null;
+            }
+          }
+
           const t0 = performance.now();
           if (typeof engine.renderSceneWboit === 'function') {
             engine.renderSceneWboit(null);
@@ -374,6 +405,14 @@ async function runTabletBenchmark() {
           }
           const t1 = performance.now();
           cpuTimes.push(t1 - t0);
+          if (gpuQuery) {
+            try {
+              gl.endQuery(timerExt.TIME_ELAPSED_EXT);
+              gpuQueries.push(gpuQuery);
+            } catch (_) {
+              try { gl.deleteQuery(gpuQuery); } catch (_) {}
+            }
+          }
 
           if (f === MEASURE_FRAMES - 1) {
             lastFrameTotalCalls = curFrameCalls;
@@ -385,8 +424,35 @@ async function runTabletBenchmark() {
             if (cur > peakMem) peakMem = cur;
           }
 
-          await new Promise((r) => requestAnimationFrame(r));
+          const rafTimestamp = await new Promise((resolve) => requestAnimationFrame(resolve));
+          frameIntervals.push(rafTimestamp - previousRafTimestamp);
+          previousRafTimestamp = rafTimestamp;
         }
+
+        const gpuTimes = [];
+        let pendingGpuQueries = gpuQueries.slice();
+        let gpuDisjoint = false;
+        for (let poll = 0; timerExt && pendingGpuQueries.length > 0 && poll < 120; poll++) {
+          if (gl.getParameter(timerExt.GPU_DISJOINT_EXT)) {
+            gpuDisjoint = true;
+            break;
+          }
+          const stillPending = [];
+          for (const query of pendingGpuQueries) {
+            if (gl.getQueryParameter(query, gl.QUERY_RESULT_AVAILABLE)) {
+              gpuTimes.push(gl.getQueryParameter(query, gl.QUERY_RESULT) / 1_000_000);
+              gl.deleteQuery(query);
+            } else {
+              stillPending.push(query);
+            }
+          }
+          pendingGpuQueries = stillPending;
+          if (pendingGpuQueries.length > 0) await new Promise((resolve) => requestAnimationFrame(resolve));
+        }
+        for (const query of pendingGpuQueries) {
+          try { gl.deleteQuery(query); } catch (_) {}
+        }
+        if (gpuDisjoint) gpuTimes.length = 0;
 
         // Restore original functions
         engine.renderer.render = origRender;
@@ -395,46 +461,64 @@ async function runTabletBenchmark() {
         cpuTimes.sort((a, b) => a - b);
         const cpuMedian = cpuTimes[Math.floor(cpuTimes.length * 0.5)];
         const cpuP95 = cpuTimes[Math.floor(cpuTimes.length * 0.95)];
-        const avgCpu = cpuTimes.reduce((a, b) => a + b, 0) / cpuTimes.length;
-        const fps = Math.min(60, 1000 / Math.max(16.66, avgCpu));
+        const averageFrameInterval = frameIntervals.reduce((a, b) => a + b, 0) / frameIntervals.length;
+        const fps = 1000 / averageFrameInterval;
+        gpuTimes.sort((a, b) => a - b);
+        const gpuMedian = gpuTimes.length > 0 ? gpuTimes[Math.floor(gpuTimes.length * 0.5)] : null;
+        const gpuP95 = gpuTimes.length > 0 ? gpuTimes[Math.floor(gpuTimes.length * 0.95)] : null;
 
         const accumPassExecuted = lastFramePasses.some(p => p.isAccum);
         const compositePassExecuted = lastFramePasses.some(p => p.isComposite);
         const accumPassInfo = lastFramePasses.find(p => p.isAccum);
         const wboitMeshesDrawn = accumPassInfo ? accumPassInfo.calls : 0;
 
-        let sortedMeshesDrawn = 0;
-        let classificationTime = 0;
-        if (engine.wboitVisibleSorted) {
-          sortedMeshesDrawn = engine.wboitVisibleSorted.length;
-          classificationTime = 0.15;
-        } else if (engine.transparencyClassifier) {
+        let classificationTime = null;
+        let classifiedWboitCount = null;
+        let sortedMeshesDrawn = null;
+        let scissorCoverage = null;
+        const engineMetrics = typeof engine.getTransparencyPerformanceMetrics === 'function'
+          ? engine.getTransparencyPerformanceMetrics()
+          : null;
+        if (engineMetrics) {
+          classificationTime = Number.isFinite(engineMetrics.classificationTimeMs)
+            ? engineMetrics.classificationTimeMs
+            : null;
+          classifiedWboitCount = engineMetrics.wboitTransparentCount ?? null;
+          sortedMeshesDrawn = engineMetrics.sortedTransparentCount ?? null;
+          scissorCoverage = engineMetrics.scissorCoveragePct ?? null;
+        } else if (engine.transparencyClassifier?.getCachedCollections) {
           const stats = engine.transparencyClassifier.getCachedCollections().stats;
-          sortedMeshesDrawn = stats.sortedTransparentCount;
-          classificationTime = stats.classificationTimeMs || 3.2;
+          classificationTime = Number.isFinite(stats.classificationTimeMs) ? stats.classificationTimeMs : null;
+          classifiedWboitCount = stats.wboitTransparentCount ?? null;
+          sortedMeshesDrawn = stats.sortedTransparentCount ?? null;
+        } else {
+          classifiedWboitCount = engine.wboitTransparent?.length ?? null;
+          sortedMeshesDrawn = engine.wboitTransparentSorted?.length ?? engine.wboitVisibleSorted?.length ?? null;
+        }
+        if (scissorCoverage === null && wboit && typeof wboit.getPerformanceMetrics === 'function') {
+          const metrics = wboit.getPerformanceMetrics();
+          scissorCoverage = metrics.scissorCoveragePct ?? null;
         }
 
-        let scissorCoverage = 100;
-        if (wboit && typeof wboit.getPerformanceMetrics === 'function') {
-          const m = wboit.getPerformanceMetrics();
-          scissorCoverage = m.scissorCoveragePct || 100;
-        }
-
-        const dpr = window.devicePixelRatio || 1.33;
-        const rtW = Math.round((wboit?.accumTarget?.width || window.innerWidth) * dpr);
-        const rtH = Math.round((wboit?.accumTarget?.height || window.innerHeight) * dpr);
-
-        const gpuMedian = Number((cpuMedian * 1.15).toFixed(2));
-        const gpuP95 = Number((cpuP95 * 1.15).toFixed(2));
+        const rtW = wboit?.accumTarget?.width ?? gl.drawingBufferWidth;
+        const rtH = wboit?.accumTarget?.height ?? gl.drawingBufferHeight;
+        const rtTexture = wboit?.accumTarget?.textures?.[0] ?? wboit?.accumTarget?.texture ?? null;
+        const typeNames = { 1009: 'UnsignedByte', 1015: 'Float', 1016: 'HalfFloat' };
+        const formatNames = { 1021: 'Alpha', 1023: 'RGBA', 1028: 'Red', 1029: 'RedInteger', 1030: 'RG', 1031: 'RGInteger' };
+        const rtFormat = rtTexture
+          ? `${formatNames[rtTexture.format] || `format-${rtTexture.format}`} / ${typeNames[rtTexture.type] || `type-${rtTexture.type}`}`
+          : 'screen-buffer';
 
         return {
           fps: Number(fps.toFixed(1)),
           geometry,
           cpuMedian: Number(cpuMedian.toFixed(2)),
           cpuP95: Number(cpuP95.toFixed(2)),
-          gpuMedian,
-          gpuP95,
-          classificationTime: Number(classificationTime.toFixed(3)),
+          gpuMedian: gpuMedian === null ? null : Number(gpuMedian.toFixed(2)),
+          gpuP95: gpuP95 === null ? null : Number(gpuP95.toFixed(2)),
+          isGpuMeasured: gpuTimes.length > 0,
+          classificationTime: classificationTime === null ? null : Number(classificationTime.toFixed(3)),
+          classifiedWboitCount,
           totalDrawCalls: lastFrameTotalCalls,
           totalTriangles: lastFrameTotalTris,
           renderPassCount: lastFramePasses.length,
@@ -442,9 +526,9 @@ async function runTabletBenchmark() {
           compositePassExecuted,
           wboitMeshesDrawn,
           sortedMeshesDrawn,
-          scissorCoverage: Number(scissorCoverage.toFixed(1)),
+          scissorCoverage: scissorCoverage === null ? null : Number(scissorCoverage.toFixed(1)),
           rtResolution: `${rtW}x${rtH}`,
-          rtFormat: 'HalfFloat (Mali FP16)',
+          rtFormat,
           passes: lastFramePasses.map(p => ({
             target: p.targetDesc,
             calls: p.calls,
@@ -460,7 +544,11 @@ async function runTabletBenchmark() {
       console.log(`  - WBOIT Accumulation Pass Executed : ${metrics.accumPassExecuted ? 'YES (TRUE)' : 'NO (FALSE)'}`);
       console.log(`  - Composite Pass Executed          : ${metrics.compositePassExecuted ? 'YES (TRUE)' : 'NO (FALSE)'}`);
       console.log(`  - WBOIT Meshes Actually Drawn      : ${metrics.wboitMeshesDrawn}`);
-      console.log(`  - Sorted-Alpha Meshes Drawn        : ${metrics.sortedMeshesDrawn}`);
+      console.log(`  - Classified WBOIT Meshes          : ${metrics.classifiedWboitCount ?? 'unavailable'}`);
+      console.log(`  - Sorted-Alpha Meshes Drawn        : ${metrics.sortedMeshesDrawn ?? 'unavailable'}`);
+      console.log(`  - Classification Time              : ${metrics.classificationTime === null ? 'unavailable' : `${metrics.classificationTime}ms`}`);
+      console.log(`  - WBOIT Scissor Coverage           : ${metrics.scissorCoverage === null ? 'unavailable' : `${metrics.scissorCoverage}%`}`);
+      console.log(`  - WBOIT Target                     : ${metrics.rtResolution} (${metrics.rtFormat})`);
       console.log(`  - COMPLETE Frame Draw Calls        : ${metrics.totalDrawCalls}`);
       console.log(`  - COMPLETE Frame Triangles         : ${metrics.totalTriangles.toLocaleString()}`);
       console.log(`  - Active Render Targets Per Pass   :`);
@@ -468,7 +556,7 @@ async function runTabletBenchmark() {
         console.log(`      Pass ${idx + 1}: ${p.target} -> ${p.calls} calls, ${p.triangles.toLocaleString()} triangles`);
       });
       console.log(`  - Geometry: ${metrics.geometry.meshCount} meshes, ${metrics.geometry.vertexCount} vertices, ${metrics.geometry.indexCount} indices, ${metrics.geometry.triangleCount} triangles`);
-      console.log(`  - FPS: ${metrics.fps} | CPU Med: ${metrics.cpuMedian}ms (p95: ${metrics.cpuP95}ms) | GPU Med [CALCULATED]: ${metrics.gpuMedian}ms`);
+      console.log(`  - FPS: ${metrics.fps} | CPU Med: ${metrics.cpuMedian}ms (p95: ${metrics.cpuP95}ms) | GPU Med [MEASURED]: ${metrics.gpuMedian === null ? 'unavailable' : `${metrics.gpuMedian}ms`}`);
     }
   }
 

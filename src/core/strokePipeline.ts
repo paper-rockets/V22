@@ -35,6 +35,8 @@ export interface StrokePipelineContext {
   onAutoSaveTrigger?: (reason: string) => void;
   notifyHistory: () => void;
   markDirty: () => void;
+  markTransparencyDirty: () => void;
+  invalidateTransparencyScissor: () => void;
   pushUndoAction: (action: { type: 'create' | 'erase'; strokes: StrokeDescriptor[] }) => void;
   clearRedoStacks: () => void;
   resetActiveDrawingState: () => void;
@@ -199,6 +201,7 @@ export class StrokePipeline {
         this.ctx.beadGenerator.updateBufferGeometry(mesh.geometry, mirroredPoints, settings, targetMeshes);
       }
     }
+    this.ctx.invalidateTransparencyScissor();
     this.ctx.markDirty();
   }
 
@@ -262,6 +265,11 @@ export class StrokePipeline {
         }
         this.ctx.strokes.delete(id);
       }
+    }
+
+    if (purged.length > 0) {
+      this.ctx.markTransparencyDirty();
+      this.ctx.markDirty();
     }
 
     return purged;
@@ -367,6 +375,8 @@ export class StrokePipeline {
    * Cancel active stroke without committing to history (useful for multi-touch gesture handoff)
    */
   public cancelStroke(): void {
+    const hadActiveMeshes = this.activeStrokeMeshes.length > 0;
+    let removedCommittedStroke = false;
     this.ctx.resetActiveDrawingState();
 
     // Clean up active stroke meshes
@@ -386,9 +396,17 @@ export class StrokePipeline {
           m.parent?.remove(m);
         }
         this.ctx.strokes.delete(desc.id);
+        removedCommittedStroke = true;
       }
     }
     this.activeStrokeBatch = [];
+
+    if (removedCommittedStroke) {
+      this.ctx.markTransparencyDirty();
+    } else if (hadActiveMeshes) {
+      this.ctx.invalidateTransparencyScissor();
+    }
+    if (removedCommittedStroke || hadActiveMeshes) this.ctx.markDirty();
   }
 
   /**
@@ -441,6 +459,8 @@ export class StrokePipeline {
     if (this.ctx.worldStrokeRoot) purgeGroup(this.ctx.worldStrokeRoot);
     if (this.ctx.cutoutRoot) purgeGroup(this.ctx.cutoutRoot);
     if (this.ctx.worldCutoutRoot) purgeGroup(this.ctx.worldCutoutRoot);
+    this.ctx.markTransparencyDirty();
+    this.ctx.markDirty();
   }
 
   /**
@@ -461,6 +481,10 @@ export class StrokePipeline {
     toDelete.forEach((id) => this.ctx.strokes.delete(id));
     this.ctx.filterHistoryForLayer(layerId);
     this.ctx.notifyHistory();
+    if (toDelete.length > 0) {
+      this.ctx.markTransparencyDirty();
+      this.ctx.markDirty();
+    }
   }
 
   /**
@@ -592,6 +616,8 @@ export class StrokePipeline {
       });
       this.ctx.clearRedoStacks();
       this.ctx.notifyHistory();
+      this.ctx.markTransparencyDirty();
+      this.ctx.markDirty();
     }
 
     return newBatch.length;
@@ -727,6 +753,8 @@ export class StrokePipeline {
     this.ctx.strokes.delete(this.selectedStrokeId);
     this.selectStroke(null);
     this.ctx.notifyHistory();
+    this.ctx.markTransparencyDirty();
+    this.ctx.markDirty();
     return true;
   }
 
@@ -780,5 +808,7 @@ export class StrokePipeline {
       },
       meshes: [mesh],
     });
+    this.ctx.markTransparencyDirty();
+    this.ctx.markDirty();
   }
 }
