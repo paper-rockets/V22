@@ -881,6 +881,11 @@ export class StudioEngine {
       getStrokes: () => this.strokes,
       getScene: () => this.scene,
       getWorldStrokeRoot: () => this.worldStrokeRoot,
+      getWorldCutoutRoot: () => this.worldCutoutRoot,
+      getCutoutRoot: () => this.cutoutRoot,
+      undo: () => this.undo(),
+      redo: () => this.redo(this.currentLayers || []),
+      clearAllStrokes: () => this.clearAllStrokes(),
       getRenderer: () => this.renderer,
       getMaterialCache: () => this.materialCache,
       getBeadGenerator: () => this.beadGenerator,
@@ -6613,6 +6618,18 @@ export class StudioEngine {
 
   public spawnOverlappingStrokes(count: number): void {
     this.transparencyTestBench.spawnOverlappingStrokes(count);
+  }
+
+  public spawnCutoutStressScene(): void {
+    this.transparencyTestBench.spawnCutoutStressScene();
+  }
+
+  public async runUserSimulationSuite(): Promise<any> {
+    return this.transparencyTestBench.runUserSimulationSuite();
+  }
+
+  public clearAllTestStrokes(): void {
+    this.transparencyTestBench.clearAllTestStrokes();
   }
 
   public getTransparencyTelemetry(): any {

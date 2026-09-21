@@ -12,5 +12,11 @@ export function isDiagnosticsEnabled(): boolean {
   }
 
   const params = new URLSearchParams(window.location.search);
-  return params.get('transparencyBenchmark') === '1' || params.get('automation') === '1';
+  return (
+    params.has('stressTest') ||
+    params.has('transparencyBench') ||
+    params.has('benchmark') ||
+    params.get('transparencyBenchmark') === '1' ||
+    params.get('automation') === '1'
+  );
 }

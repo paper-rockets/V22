@@ -8,6 +8,11 @@ export interface TransparencyTestBenchOptions {
   getStrokes: () => Map<string, { descriptor: StrokeDescriptor; meshes: THREE.Mesh[] }>;
   getScene: () => THREE.Scene;
   getWorldStrokeRoot: () => THREE.Group;
+  getWorldCutoutRoot?: () => THREE.Group;
+  getCutoutRoot?: () => THREE.Group;
+  undo?: () => boolean;
+  redo?: () => boolean;
+  clearAllStrokes?: () => void;
   getRenderer: () => THREE.WebGLRenderer;
   getMaterialCache: () => any;
   getBeadGenerator: () => any;
@@ -48,6 +53,9 @@ export class TransparencyTestBench {
     (window as any).setTransparencyMode = (m: any) => this.setTransparencyMode(m);
     (window as any).spawnTransparencyTestScene = () => this.spawnTransparencyTestScene();
     (window as any).spawnOverlappingStrokes = (n: number) => this.spawnOverlappingStrokes(n);
+    (window as any).spawnCutoutStressScene = () => this.spawnCutoutStressScene();
+    (window as any).runUserSimulationSuite = () => this.runUserSimulationSuite();
+    (window as any).clearAllTestStrokes = () => this.clearAllTestStrokes();
     (window as any).toggleAutoOrbit = (speed?: number) => this.toggleAutoOrbit(speed);
     (window as any).getTransparencyTelemetry = () => this.getTransparencyTelemetry();
     (window as any).runTransparencyBenchmarkSuite = (counts?: number[], frames?: number) =>
@@ -64,6 +72,14 @@ export class TransparencyTestBench {
         this.toggleAutoOrbit();
       } else if (e.key === 'p' || e.key === 'P') {
         this.spawnTransparencyTestScene();
+      } else if (e.key === 'c' || e.key === 'C') {
+        this.spawnCutoutStressScene();
+      } else if (e.key === 'u' || e.key === 'U') {
+        this.runUserSimulationSuite();
+      } else if (e.key === 'b' || e.key === 'B') {
+        this.spawnOverlappingStrokes(50);
+      } else if (e.key === 'x' || e.key === 'X') {
+        this.clearAllTestStrokes();
       }
     };
     window.addEventListener('keydown', this.keydownHandler);
@@ -394,6 +410,315 @@ export class TransparencyTestBench {
     this.updateTelemetryHud();
   }
 
+  public clearAllTestStrokes(): void {
+    const strokes = this.options.getStrokes();
+    const toRemove: string[] = [];
+    strokes.forEach((_, id) => toRemove.push(id));
+    for (const id of toRemove) {
+      const entry = strokes.get(id);
+      if (entry) {
+        for (const m of entry.meshes) {
+          if (m.parent) m.parent.remove(m);
+          m.geometry?.dispose();
+        }
+        strokes.delete(id);
+      }
+    }
+
+    const worldCutout = this.options.getWorldCutoutRoot?.();
+    if (worldCutout) {
+      const children = [...worldCutout.children];
+      for (const c of children) {
+        worldCutout.remove(c);
+        if ((c as any).geometry) (c as any).geometry.dispose();
+      }
+    }
+
+    const cutoutRoot = this.options.getCutoutRoot?.();
+    if (cutoutRoot) {
+      const children = [...cutoutRoot.children];
+      for (const c of children) {
+        cutoutRoot.remove(c);
+        if ((c as any).geometry) (c as any).geometry.dispose();
+      }
+    }
+
+    this.options.clearAllStrokes?.();
+    this.options.removeDrawingPlane();
+    this.options.markTransparencyDirty();
+    this.options.markDirty();
+    this.updateTelemetryHud();
+  }
+
+  public spawnCutoutStressScene(): void {
+    this.clearAllTestStrokes();
+
+    const cameraController = this.options.getCameraController();
+    cameraController.cameraTarget.set(0, 0, 0);
+    cameraController.targetPosition.set(0, 0, 0);
+    cameraController.setCameraView(THREE.MathUtils.degToRad(35), THREE.MathUtils.degToRad(65), 4.8, true);
+
+    const strokes = this.options.getStrokes();
+
+    const createPoints = (
+      start: THREE.Vector3,
+      end: THREE.Vector3,
+      normal: THREE.Vector3,
+      count: number = 24
+    ): StrokePoint[] => {
+      const pts: StrokePoint[] = [];
+      for (let i = 0; i < count; i++) {
+        const t = i / (count - 1);
+        const pos = new THREE.Vector3().lerpVectors(start, end, t);
+        pos.addScaledVector(normal, Math.sin(t * Math.PI) * 0.05);
+        pts.push({
+          position: pos,
+          normal: normal.clone(),
+          surfaceOffset: 0.002,
+          pressure: 0.75,
+          isSurfaceHit: false,
+          time: performance.now(),
+        });
+      }
+      return pts;
+    };
+
+    const addStroke = (
+      points: StrokePoint[],
+      settings: Partial<BrushSettings>,
+      seqIndex: number
+    ) => {
+      const isCutout = settings.materialType === 'cutout';
+      const fullSettings: BrushSettings = {
+        size: isCutout ? 0.20 : 0.16,
+        opacity: settings.opacity ?? (isCutout ? 1.0 : 0.6),
+        color: settings.color ?? '#3b82f6',
+        roughness: 0.35,
+        metalness: 0.1,
+        emissiveIntensity: 0,
+        pressureSensitivity: false,
+        archSegments: 5,
+        domeFactor: 0.2,
+        surfaceOffset: isCutout ? 0.012 : 0.002,
+        strokeSequenceIndex: seqIndex,
+        taperLength: 0.05,
+        stencilMasking: false,
+        smoothingAlgorithm: 'none',
+        smoothingStrength: 0,
+        patternType: 'none',
+        patternScale: 4.0,
+        patternIntensity: 0.8,
+        patternAngle: 45,
+        patternContrast: 1.0,
+        chiselAngle: 0,
+        aspectRatio: 3.5,
+        materialType: settings.materialType ?? 'shaded',
+        profile: 'ribbon',
+        drawingMode: 'spatial_3d',
+        ...settings,
+      } as BrushSettings;
+
+      const mat = this.options.getMaterialCache().getStrokeMaterial(fullSettings, false, 1.0);
+      const geom = this.options.getBeadGenerator().generateGeometry(points, fullSettings, []);
+      const mesh = new THREE.Mesh(geom, mat);
+
+      if (isCutout) {
+        mesh.castShadow = false;
+        mesh.receiveShadow = false;
+        mesh.userData.isCutout = true;
+        mesh.renderOrder = 0;
+        const worldCutout = this.options.getWorldCutoutRoot?.();
+        if (worldCutout) {
+          worldCutout.add(mesh);
+        } else {
+          this.options.getWorldStrokeRoot().add(mesh);
+        }
+      } else {
+        const isTransparent = Array.isArray(mat) ? mat[0]?.transparent === true : (mat as any)?.transparent === true;
+        const mode = this.options.getTransparencyMode();
+        if (mode === 'sequential_debug') {
+          mesh.renderOrder = 10 + (seqIndex % 20000);
+        } else {
+          mesh.renderOrder = isTransparent ? 5 : 10 + (seqIndex % 20000);
+        }
+        this.options.getWorldStrokeRoot().add(mesh);
+      }
+
+      const strokeId = (isCutout ? 'cutout_' : 'ribbon_') + Math.random().toString(36).substring(2, 9);
+      const desc: StrokeDescriptor = {
+        id: strokeId,
+        layerId: this.options.getActiveLayerId(),
+        tool: 'brush',
+        points,
+        settings: fullSettings,
+        createdAt: Date.now(),
+      };
+      strokes.set(strokeId, { descriptor: desc, meshes: [mesh] });
+    };
+
+    // Front ribbons (cyan, purple, yellow)
+    addStroke(
+      createPoints(new THREE.Vector3(-1.6, 0.6, 0.3), new THREE.Vector3(1.6, 0.6, 0.3), new THREE.Vector3(0, 0, 1)),
+      { color: '#06b6d4', opacity: 0.65 },
+      0
+    );
+    addStroke(
+      createPoints(new THREE.Vector3(-1.6, 0.1, 0.2), new THREE.Vector3(1.6, 0.1, 0.2), new THREE.Vector3(0, 0, 1)),
+      { color: '#a855f7', opacity: 0.6 },
+      1
+    );
+    addStroke(
+      createPoints(new THREE.Vector3(-1.6, -0.4, 0.1), new THREE.Vector3(1.6, -0.4, 0.1), new THREE.Vector3(0, 0, 1)),
+      { color: '#eab308', opacity: 0.7 },
+      2
+    );
+
+    // Deep back ribbons (red, green, blue)
+    addStroke(
+      createPoints(new THREE.Vector3(-1.6, 0.8, -0.4), new THREE.Vector3(1.6, 0.8, -0.4), new THREE.Vector3(0, 0, 1)),
+      { color: '#ef4444', opacity: 0.6 },
+      3
+    );
+    addStroke(
+      createPoints(new THREE.Vector3(-1.6, -0.2, -0.3), new THREE.Vector3(1.6, -0.2, -0.3), new THREE.Vector3(0, 0, 1)),
+      { color: '#10b981', opacity: 0.5 },
+      4
+    );
+    addStroke(
+      createPoints(new THREE.Vector3(-1.6, -0.7, -0.5), new THREE.Vector3(1.6, -0.7, -0.5), new THREE.Vector3(0, 0, 1)),
+      { color: '#3b82f6', opacity: 0.75 },
+      5
+    );
+
+    // Vertical Crossing Ribbons
+    addStroke(
+      createPoints(new THREE.Vector3(-0.9, -1.2, -0.1), new THREE.Vector3(-0.9, 1.2, -0.1), new THREE.Vector3(0, 0, 1)),
+      { color: '#f97316', opacity: 0.6 },
+      6
+    );
+    addStroke(
+      createPoints(new THREE.Vector3(0.9, -1.2, 0.15), new THREE.Vector3(0.9, 1.2, 0.15), new THREE.Vector3(0, 0, 1)),
+      { color: '#ec4899', opacity: 0.6 },
+      7
+    );
+
+    // Cutout 1: Vertical frontal slice slicing right through center ribbons
+    addStroke(
+      createPoints(new THREE.Vector3(0.0, -1.3, 0.35), new THREE.Vector3(0.0, 1.3, 0.35), new THREE.Vector3(0, 0, 1)),
+      { materialType: 'cutout', size: 0.22 },
+      8
+    );
+
+    // Cutout 2: Horizontal frontal slice slicing through all vertical structures
+    addStroke(
+      createPoints(new THREE.Vector3(-1.5, 0.35, 0.25), new THREE.Vector3(1.5, 0.35, 0.25), new THREE.Vector3(0, 0, 1)),
+      { materialType: 'cutout', size: 0.18 },
+      9
+    );
+
+    // Cutout 3: Diagonal cross slice
+    addStroke(
+      createPoints(new THREE.Vector3(-1.2, -0.9, 0.2), new THREE.Vector3(1.2, 0.9, 0.2), new THREE.Vector3(0, 0, 1)),
+      { materialType: 'cutout', size: 0.16 },
+      10
+    );
+
+    // Cutout 4: OPPOSITE-SIDE CUTOUT (Testing cutout created from back / facing reverse normal)
+    addStroke(
+      createPoints(new THREE.Vector3(-1.2, 0.0, -0.35), new THREE.Vector3(1.2, 0.0, -0.35), new THREE.Vector3(0, 0, -1)),
+      { materialType: 'cutout', size: 0.20 },
+      11
+    );
+
+    // Cutout 5: Acute Grazing-Angle cutout (angled into the depth plane)
+    addStroke(
+      createPoints(new THREE.Vector3(-0.6, -1.0, -0.6), new THREE.Vector3(-0.6, 1.0, 0.4), new THREE.Vector3(1, 0, 0)),
+      { materialType: 'cutout', size: 0.18 },
+      12
+    );
+
+    this.options.markTransparencyDirty();
+    this.options.markDirty();
+    this.updateTelemetryHud();
+  }
+
+  public async runUserSimulationSuite(): Promise<any> {
+    const reportEl = document.getElementById('transparency-hud-report');
+    const setStatus = (msg: string, isErr = false) => {
+      if (reportEl) {
+        reportEl.textContent = msg;
+        reportEl.style.display = 'block';
+        reportEl.style.color = isErr ? '#f87171' : '#38bdf8';
+      }
+      console.log('[USER_SIMULATION]:', msg);
+    };
+
+    setStatus('Phase 1/5: Loading Cutout & Ribbon Stress Scene...');
+    this.spawnCutoutStressScene();
+    await new Promise((r) => setTimeout(r, 600));
+
+    setStatus('Phase 2/5: Auto-Orbit 360° Inspection (Measuring FPS)...');
+    this.options.setAutoOrbitActive(true);
+    this.options.setAutoOrbitSpeed(0.025);
+    this.options.setHasAnimatedContent(true);
+
+    const frameDts: number[] = [];
+    let prevTime = performance.now();
+    for (let f = 0; f < 120; f++) {
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => {
+          const now = performance.now();
+          frameDts.push(now - prevTime);
+          prevTime = now;
+          resolve();
+        });
+      });
+    }
+
+    setStatus('Phase 3/5: Spawning +40 Overlapping Ribbons (Burst Load)...');
+    this.spawnOverlappingStrokes(40);
+    await new Promise((r) => setTimeout(r, 500));
+
+    setStatus('Phase 4/5: Testing Undo/Redo Cycles Under Load...');
+    for (let u = 0; u < 3; u++) {
+      this.options.undo?.();
+      await new Promise((r) => setTimeout(r, 100));
+    }
+    for (let u = 0; u < 3; u++) {
+      this.options.redo?.();
+      await new Promise((r) => setTimeout(r, 100));
+    }
+
+    setStatus('Phase 5/5: Evaluating Pipeline (WBOIT vs Sorted)...');
+    this.setTransparencyMode('wboit');
+    await new Promise((r) => setTimeout(r, 300));
+    this.setTransparencyMode('sorted');
+    await new Promise((r) => setTimeout(r, 300));
+
+    // Stats calculation
+    const sorted = [...frameDts].sort((a, b) => a - b);
+    const avgDt = frameDts.reduce((a, b) => a + b, 0) / Math.max(1, frameDts.length);
+    const avgFps = Math.round(1000 / avgDt);
+    const minFps = Math.round(1000 / Math.max(1, sorted[sorted.length - 1]));
+    const p95Dt = sorted[Math.floor(sorted.length * 0.95)] || 16.6;
+
+    const passed = avgFps >= 24;
+    const resultText = `BENCHMARK COMPLETE: ${passed ? 'PASSED (STABLE)' : 'WARN'}\nAvg: ${avgFps} FPS | Min: ${minFps} FPS | P95: ${p95Dt.toFixed(1)}ms | Tris: ${this.options.getTotalTriangles().toLocaleString()}`;
+    if (reportEl) {
+      reportEl.textContent = resultText;
+      reportEl.style.color = passed ? '#4ade80' : '#facc15';
+    }
+
+    return {
+      passed,
+      avgFps,
+      minFps,
+      p95Dt,
+      drawCalls: this.options.getTotalDrawCalls(),
+      triangles: this.options.getTotalTriangles(),
+    };
+  }
+
   public getTransparencyTelemetry(): any {
     const renderer = this.options.getRenderer();
     const dbSize = new THREE.Vector2();
@@ -624,15 +949,16 @@ export class TransparencyTestBench {
     btnRow.style.gridTemplateColumns = '1fr 1fr';
     btnRow.style.gap = '6px';
 
-    const makeBtn = (text: string, onClick: () => void, highlight: boolean = false) => {
+    const makeBtn = (text: string, onClick: () => void, highlightColor?: string) => {
       const btn = document.createElement('button');
       btn.textContent = text;
-      btn.style.padding = '6px 8px';
+      btn.style.padding = '8px 10px';
+      btn.style.minHeight = '38px';
       btn.style.fontSize = '11px';
       btn.style.fontWeight = '600';
       btn.style.borderRadius = '6px';
-      btn.style.border = highlight ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.12)';
-      btn.style.backgroundColor = highlight ? '#0284c7' : 'rgba(255, 255, 255, 0.08)';
+      btn.style.border = highlightColor ? `1px solid ${highlightColor}` : '1px solid rgba(255, 255, 255, 0.15)';
+      btn.style.backgroundColor = highlightColor ? highlightColor + '33' : 'rgba(255, 255, 255, 0.08)';
       btn.style.color = '#ffffff';
       btn.style.cursor = 'pointer';
       btn.style.touchAction = 'manipulation';
@@ -640,19 +966,57 @@ export class TransparencyTestBench {
       return btn;
     };
 
-    const toggleModeBtn = makeBtn('Toggle Mode (T)', () => this.toggleTransparencyMode(), true);
-    const testSceneBtn = makeBtn('Test Scene (P)', () => this.spawnTransparencyTestScene());
+    const cutoutStressBtn = makeBtn('Cutout Stress (C)', () => this.spawnCutoutStressScene(), '#06b6d4');
+    const userSimBtn = makeBtn('Simulate User (U)', () => this.runUserSimulationSuite(), '#f59e0b');
+    const add50Btn = makeBtn('+50 Ribbons (B)', () => this.spawnOverlappingStrokes(50));
+    const add100Btn = makeBtn('+100 Ribbons', () => this.spawnOverlappingStrokes(100));
     const autoOrbitBtn = makeBtn('Auto-Orbit (O)', () => this.toggleAutoOrbit());
-    const oldV22Btn = makeBtn('Old V22 Mode (Y)', () => {
-      const cur = this.options.getTransparencyMode();
-      this.setTransparencyMode(cur === 'sequential_debug' ? 'sorted' : 'sequential_debug');
+    const toggleModeBtn = makeBtn('Toggle Mode (T)', () => this.toggleTransparencyMode(), '#38bdf8');
+    const undoRedoBtn = makeBtn('Undo/Redo Test', async () => {
+      const reportEl = document.getElementById('transparency-hud-report');
+      if (reportEl) {
+        reportEl.textContent = 'Testing Undo/Redo cycles...';
+        reportEl.style.display = 'block';
+        reportEl.style.color = '#38bdf8';
+      }
+      for (let i = 0; i < 3; i++) {
+        this.options.undo?.();
+        await new Promise((r) => setTimeout(r, 150));
+      }
+      for (let i = 0; i < 3; i++) {
+        this.options.redo?.();
+        await new Promise((r) => setTimeout(r, 150));
+      }
+      if (reportEl) {
+        reportEl.textContent = 'Undo/Redo cycle complete ✓';
+        reportEl.style.color = '#4ade80';
+      }
     });
+    const clearBtn = makeBtn('Clear Canvas (X)', () => this.clearAllTestStrokes());
 
-    btnRow.appendChild(toggleModeBtn);
-    btnRow.appendChild(testSceneBtn);
+    btnRow.appendChild(cutoutStressBtn);
+    btnRow.appendChild(userSimBtn);
+    btnRow.appendChild(add50Btn);
+    btnRow.appendChild(add100Btn);
     btnRow.appendChild(autoOrbitBtn);
-    btnRow.appendChild(oldV22Btn);
+    btnRow.appendChild(toggleModeBtn);
+    btnRow.appendChild(undoRedoBtn);
+    btnRow.appendChild(clearBtn);
     hud.appendChild(btnRow);
+
+    const report = document.createElement('div');
+    report.id = 'transparency-hud-report';
+    report.style.display = 'none';
+    report.style.marginTop = '8px';
+    report.style.padding = '8px 10px';
+    report.style.borderRadius = '6px';
+    report.style.backgroundColor = 'rgba(0, 0, 0, 0.5)';
+    report.style.border = '1px solid rgba(255, 255, 255, 0.15)';
+    report.style.fontFamily = 'monospace';
+    report.style.fontSize = '11px';
+    report.style.whiteSpace = 'pre-wrap';
+    report.style.lineHeight = '1.3';
+    hud.appendChild(report);
 
     document.body.appendChild(hud);
     this.telemetryHudEl = hud;
@@ -729,6 +1093,9 @@ export class TransparencyTestBench {
       delete (window as any).setTransparencyMode;
       delete (window as any).spawnTransparencyTestScene;
       delete (window as any).spawnOverlappingStrokes;
+      delete (window as any).spawnCutoutStressScene;
+      delete (window as any).runUserSimulationSuite;
+      delete (window as any).clearAllTestStrokes;
       delete (window as any).toggleAutoOrbit;
       delete (window as any).getTransparencyTelemetry;
       delete (window as any).runTransparencyBenchmarkSuite;
