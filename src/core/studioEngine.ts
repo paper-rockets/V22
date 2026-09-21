@@ -5051,6 +5051,18 @@ export class StudioEngine {
    * is a multi-megabyte GPU allocation. Requests are coalesced into a single
    * apply on the next animation frame.
    */
+  public flushPendingResize(): void {
+    if (!this.pendingResize) return;
+    if (this.resizeRafId !== null) {
+      cancelAnimationFrame(this.resizeRafId);
+      this.resizeRafId = null;
+    }
+    const pending = this.pendingResize;
+    this.pendingResize = null;
+    if (!pending) return;
+    this.applyResize(pending.width, pending.height);
+  }
+
   public resize(width: number, height: number): void {
     if (!width || !height) return;
     if (this.pendingResize) {
@@ -5202,6 +5214,8 @@ export class StudioEngine {
       }
       this.lastRenderTime = time;
       this.frameCount++;
+
+      this.flushPendingResize();
 
       this.updateCameraPosition();
 
@@ -5868,6 +5882,7 @@ export class StudioEngine {
    * see-through strokes blend by coverage instead of by draw order.
    */
   private renderSceneWboit(target: THREE.WebGLRenderTarget | null): void {
+    this.flushPendingResize();
     const wboit = this.postEngine?.wboit;
     const hasCutoutStrokes =
       this.cutoutRoot.children.length > 0 || this.worldCutoutRoot.children.length > 0;
@@ -5973,6 +5988,7 @@ export class StudioEngine {
   }
 
   private renderSceneWithoutWboit(target: THREE.WebGLRenderTarget | null, hasCutouts: boolean): void {
+    this.flushPendingResize();
     if (hasCutouts) {
       this.renderSceneWithCutoutPass(target);
       return;
