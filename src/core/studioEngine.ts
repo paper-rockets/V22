@@ -754,7 +754,6 @@ export class StudioEngine {
       markTransparencyDirty: () => this.markTransparencyDirty(),
       invalidateTransparencyScissor: () => this.invalidateWboitScissor(),
       pushUndoAction: (action) => {
-        this.undoStack.push(action);
         this.historyUndoStack.push({
           kind: 'stroke',
           action,
@@ -1020,7 +1019,6 @@ export class StudioEngine {
     };
 
     this.recreateStrokeFromDescriptor(descriptor);
-    this.undoStack.push({ type: 'create', strokes: [descriptor] });
     this.historyUndoStack.push({ kind: 'stroke', action: { type: 'create', strokes: [descriptor] }, timestamp: Date.now() });
     this.redoStack = [];
     this.historyRedoStack = [];
@@ -3233,7 +3231,6 @@ export class StudioEngine {
           type: 'erase' as const,
           strokes: [...this.activeVacuumPurgedBatch],
         };
-        this.undoStack.push(action);
         this.historyUndoStack.push({
           kind: 'stroke',
           action,
@@ -3348,7 +3345,6 @@ export class StudioEngine {
         type: 'create' as const,
         strokes: [...this.activeStrokeBatch],
       };
-      this.undoStack.push(action);
       this.historyUndoStack.push({
         kind: 'stroke',
         action,

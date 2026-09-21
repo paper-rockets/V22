@@ -582,9 +582,20 @@ export const Viewport: React.FC<ViewportProps> = ({
     const scope = scopeNow();
     const hit = engine.pickSelectable(point.x, point.y, isTouch ? PICK_RADIUS_TOUCH : PICK_RADIUS_MOUSE);
 
-    // Pinned to "Everything": the whole scene moves as one, so a tap inside it
-    // never changes what is picked.
-    if (!autoSelect && scope === 'all') return hit !== null;
+    // A pinned row is a hard filter. In particular, a user who has pinned Lines
+    // must not have a canvas tap switch them to Models (or the other way round).
+    // Returning false lets the normal camera gesture continue without changing
+    // either the selected object or the pinned row.
+    if (!autoSelect) {
+      if (scope === 'all') return hit !== null;
+      const acceptsHit =
+        (scope === 'active_layer' || scope === 'selected_strokes')
+          ? hit?.type === 'stroke'
+          : scope === 'model'
+            ? hit?.type === 'model' || hit?.type === 'canvas'
+            : false;
+      if (!acceptsHit) return false;
+    }
 
     if (hit?.type === 'stroke') {
       // Tapping single lines together is only for the pinned "Lines" row. In

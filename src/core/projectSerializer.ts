@@ -252,9 +252,6 @@ export class ProjectSerializer {
       });
       state.historyUndoStack.push(...restoredUndo);
 
-      if (Array.isArray(project.undoStack)) {
-        state.undoStack.push(...project.undoStack);
-      }
       if (Array.isArray(project.historyRedoStack)) {
         const restoredRedo: UnifiedHistoryEntry[] = project.historyRedoStack.map((entry: any) => {
           if (entry.kind === 'transform') {
@@ -279,7 +276,6 @@ export class ProjectSerializer {
           type: 'create' as const,
           strokes: [strokeDesc],
         };
-        state.undoStack.push(action);
         state.historyUndoStack.push({
           kind: 'stroke',
           action,

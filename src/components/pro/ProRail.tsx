@@ -459,7 +459,7 @@ export const ProRail: React.FC<ProRailProps> = ({
                   openSheet === 'select' ||
                   ((tool === 'select' || tool === 'pointer') && openSheet !== 'create' && openSheet !== 'deform' && openSheet !== 'layers');
                 if (isCurrentlyActive) {
-                  setTool?.('draw');
+                  setTool?.('brush');
                   closeSheet();
                   setPanel(null);
                 } else {

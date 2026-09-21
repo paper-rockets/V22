@@ -209,12 +209,6 @@ export class TransformController {
         const fwd = this.currentTransformTotalMatrix.clone();
         const layerId = this.transformActiveTargets.layerId ?? this.ctx.getActiveLayerId();
         const strokeIds = this.transformActiveTargets.strokeIds;
-        this.transformUndoStack.push({
-          scope: this.transformActiveScope,
-          inverseMatrix: inv,
-          layerId,
-          strokeIds,
-        });
         this.ctx.pushHistoryUndo({
           kind: 'transform',
           scope: this.transformActiveScope,
