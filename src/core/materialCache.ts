@@ -91,12 +91,13 @@ export class MaterialCache {
 
     if (matType === 'cutout') {
       // 1. Cutout: Spatial negative-space material punching through overlapping 3D curves & depth
+      const isSpatial = settings.drawingMode === 'spatial_3d';
       material = new THREE.MeshBasicMaterial({
         colorWrite: false,
         depthWrite: true,
         depthTest: true,
         transparent: false,
-        side: THREE.DoubleSide,
+        side: isSpatial ? THREE.DoubleSide : THREE.FrontSide,
         polygonOffset: true,
         polygonOffsetFactor: -4.0,
         polygonOffsetUnits: -4.0,

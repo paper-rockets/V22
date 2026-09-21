@@ -107,6 +107,21 @@ export interface BentGuideConfig {
   profileCurve?: 'ribbon' | 'arc' | 'uchannel' | 'pipe';
 }
 
+export interface LoftSurfaceConfig {
+  id: string;
+  name: string;
+  curves: THREE.Vector3[][];
+  divisionsU: number;
+  divisionsV: number;
+  tension: number;
+  opacity: number;
+  visible: boolean;
+  color?: string | number;
+  wireframe?: boolean;
+  manifoldMesh?: THREE.Mesh;
+  isBaked?: boolean;
+}
+
 export interface ReferenceImageItem {
   id: string;
   name: string;

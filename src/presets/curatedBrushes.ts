@@ -253,6 +253,10 @@ export function applyCuratedBrush(
   current: BrushSettings
 ): BrushSettings {
   const fullPreset = DEFAULT_BRUSH_PRESETS.find((p) => p.id === curated.id);
+  const isDedicatedMaterialBrush = curated.id === 'mask_cutout' || curated.id === 'neon_cable';
+  const hasActiveShaderOrMatcap = current.materialType === 'matcap' || current.materialType === 'animated_fx';
+  const preserveMaterial = !isDedicatedMaterialBrush && hasActiveShaderOrMatcap;
+
   if (fullPreset) {
     const applied = applyBrushPresetToSettings(fullPreset, current);
     return {
@@ -265,13 +269,20 @@ export function applyCuratedBrush(
       domeFactor: curated.domeFactor ?? applied.domeFactor,
       chiselAngle: curated.chiselAngle ?? applied.chiselAngle,
       smoothingStrength: curated.smoothingStrength ?? applied.smoothingStrength,
+      materialType: preserveMaterial ? current.materialType : applied.materialType,
+      matcapUrl: preserveMaterial ? current.matcapUrl : undefined,
+      matcapTexture: preserveMaterial ? current.matcapTexture : undefined,
+      previewUrl: preserveMaterial ? current.previewUrl : undefined,
+      customShader: preserveMaterial ? current.customShader : undefined,
+      shaderEffect: preserveMaterial ? current.shaderEffect : applied.shaderEffect,
+      activeLookName: preserveMaterial ? current.activeLookName : applied.activeLookName,
     };
   }
 
   return {
     ...current,
     profile: curated.profile,
-    materialType: curated.materialType,
+    materialType: preserveMaterial ? current.materialType : curated.materialType,
     patternType: (curated.patternType as any) || 'none',
     size: current.size ?? curated.defaultSize,
     solidColor: current.solidColor || current.color,
@@ -280,5 +291,11 @@ export function applyCuratedBrush(
     domeFactor: curated.domeFactor ?? current.domeFactor,
     chiselAngle: curated.chiselAngle ?? current.chiselAngle,
     smoothingStrength: curated.smoothingStrength ?? current.smoothingStrength,
+    matcapUrl: preserveMaterial ? current.matcapUrl : undefined,
+    matcapTexture: preserveMaterial ? current.matcapTexture : undefined,
+    previewUrl: preserveMaterial ? current.previewUrl : undefined,
+    customShader: preserveMaterial ? current.customShader : undefined,
+    shaderEffect: preserveMaterial ? current.shaderEffect : undefined,
+    activeLookName: preserveMaterial ? current.activeLookName : undefined,
   };
 }

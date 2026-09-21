@@ -12,6 +12,7 @@ import {
   ToolType,
   HolisticStrokeDNA,
   ReferenceImageItem,
+  NumpadTarget,
 } from '../../types';
 
 // Deferred Modals
@@ -35,6 +36,9 @@ const CustomMirrorModal = lazy(() =>
   import('../CustomMirrorModal').then((m) => ({ default: m.CustomMirrorModal }))
 );
 const BentGuideModal = lazy(() => import('../BentGuideModal').then((m) => ({ default: m.BentGuideModal })));
+const LoftSurfacingModal = lazy(() =>
+  import('../LoftSurfacingModal').then((m) => ({ default: m.LoftSurfacingModal }))
+);
 const ScaffoldingModal = lazy(() =>
   import('../ScaffoldingModal').then((m) => ({ default: m.ScaffoldingModal }))
 );
@@ -87,6 +91,9 @@ export interface AppModalHostProps {
   // Bent Guide
   isBentGuideOpen: boolean;
   setIsBentGuideOpen: (open: boolean) => void;
+  // Multi-Curve Lofting
+  isLoftModalOpen: boolean;
+  setIsLoftModalOpen: (open: boolean) => void;
   // Scaffolding
   isScaffoldingOpen: boolean;
   setIsScaffoldingOpen: (open: boolean) => void;
@@ -98,6 +105,8 @@ export interface AppModalHostProps {
   // Custom Mirror
   isCustomMirrorOpen: boolean;
   setIsCustomMirrorOpen: (open: boolean) => void;
+  // Precision Numpad
+  onOpenNumpad?: (target: NumpadTarget) => void;
   customMirrorConfig: CustomMirrorConfig;
   setCustomMirrorConfig: React.Dispatch<React.SetStateAction<CustomMirrorConfig>>;
   setSymmetry: (mode: SymmetryMode) => void;
@@ -147,6 +156,8 @@ export const AppModalHost: React.FC<AppModalHostProps> = ({
   setIsDecimateOpen,
   isBentGuideOpen,
   setIsBentGuideOpen,
+  isLoftModalOpen,
+  setIsLoftModalOpen,
   isScaffoldingOpen,
   setIsScaffoldingOpen,
   isClipboardOpen,
@@ -155,6 +166,7 @@ export const AppModalHost: React.FC<AppModalHostProps> = ({
   setReferenceImages,
   isCustomMirrorOpen,
   setIsCustomMirrorOpen,
+  onOpenNumpad,
   customMirrorConfig,
   setCustomMirrorConfig,
   setSymmetry,
@@ -257,6 +269,7 @@ export const AppModalHost: React.FC<AppModalHostProps> = ({
         <CurveDecimateModal
           isOpen={isDecimateOpen}
           onClose={() => setIsDecimateOpen(false)}
+          onOpenNumpad={onOpenNumpad}
           onApplyDecimation={(epsilon, preserveTopology) => {
             engine?.decimateActiveLayerCurves(epsilon, preserveTopology);
           }}
@@ -274,11 +287,23 @@ export const AppModalHost: React.FC<AppModalHostProps> = ({
         />
       </DeferredPanel>
 
+      {/* Multi-Curve 3D Lofting & Surface Skinning Modal */}
+      <DeferredPanel active={isLoftModalOpen}>
+        <LoftSurfacingModal
+          isOpen={isLoftModalOpen}
+          onClose={() => setIsLoftModalOpen(false)}
+          engine={engine}
+          onOpenNumpad={onOpenNumpad}
+          theme={theme === 'light' ? 'light' : 'dark'}
+        />
+      </DeferredPanel>
+
       {/* 3D Scaffolding & Armature Guides Modal */}
       <DeferredPanel active={isScaffoldingOpen}>
         <ScaffoldingModal
           isOpen={isScaffoldingOpen}
           onClose={() => setIsScaffoldingOpen(false)}
+          onOpenNumpad={onOpenNumpad}
           engine={engine}
           theme={theme === 'light' ? 'light' : 'dark'}
         />
@@ -300,6 +325,7 @@ export const AppModalHost: React.FC<AppModalHostProps> = ({
         <CustomMirrorModal
           isOpen={isCustomMirrorOpen}
           onClose={() => setIsCustomMirrorOpen(false)}
+          onOpenNumpad={onOpenNumpad}
           config={customMirrorConfig}
           onConfigChange={(newCfg) => {
             setCustomMirrorConfig(newCfg);

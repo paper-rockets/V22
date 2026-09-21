@@ -3,8 +3,6 @@ import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/examples/jsm/loaders/DRACOLoader.js';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader.js';
-import { GLTFExporter } from 'three/examples/jsm/exporters/GLTFExporter.js';
-import { OBJExporter } from 'three/examples/jsm/exporters/OBJExporter.js';
 import { computeBoundsTree, disposeBoundsTree, acceleratedRaycast } from 'three-mesh-bvh';
 import {
   BrushSettings,
@@ -27,6 +25,7 @@ import {
   LiquifySettings,
   CustomMirrorPlane,
   BentGuideConfig,
+  LoftSurfaceConfig,
   HolisticStrokeDNA,
   LoadedModelInfo,
   ProjectSaveData,
@@ -72,6 +71,9 @@ import { haptics } from '../utils/haptics';
 import { VolumetricLiquifyEngine } from './liquifyEngine';
 import { LoftGuideEngine } from './loftEngine';
 import { ScaffoldingEngine } from './scaffoldingEngine';
+import { XREngine } from './xrEngine';
+import { MediaCaptureController } from './mediaCaptureController';
+import { TransparencyTestBench } from './transparencyTestBench';
 import {
   CollisionGuideMeshConfig,
   ScaffoldProxyType,
@@ -82,8 +84,6 @@ import { PrimitiveGenerator } from './primitiveGenerator';
 import { modelLoader, LoadResult } from './modelLoader';
 import { ModelStorage } from './modelStorage';
 import { webgpuPipeline } from './webgpuPipeline';
-import { ensureGeometryLinearVertexColors, oklabMix } from './colorMath';
-import { modelExporter } from './modelExporter';
 import { projectSerializer, ProjectSerializationState } from './projectSerializer';
 import { CameraController } from './cameraController';
 import { LightingController, StudioLightingState } from './lightingController';
@@ -91,6 +91,7 @@ import { TransformController } from './transformController';
 import { LiveCameraManager } from './liveCameraManager';
 import { StrokePipeline } from './strokePipeline';
 import { modelNormalization } from './modelNormalization';
+import { GuideController } from './guideController';
 import { resolveAssetUrl } from '../utils/assetUrl';
 import { getQualityProfile, resolvePixelRatio, QualityProfile } from '../utils/deviceProfile';
 import { isDiagnosticsEnabled } from '../utils/diagnostics';
@@ -271,7 +272,11 @@ export class StudioEngine {
   public liquifyEngine: VolumetricLiquifyEngine;
   public loftEngine: LoftGuideEngine;
   public scaffoldingEngine: ScaffoldingEngine;
+  public xrEngine: XREngine;
+  public transparencyTestBench: TransparencyTestBench;
   public liveCamera: LiveCameraManager;
+  public guideController!: GuideController;
+  private mediaCaptureController: MediaCaptureController;
   private savedEngineSceneBackground: THREE.Color | THREE.Texture | null = null;
   private hasSavedEngineSceneBackground = false;
   private activeLiveCameraTexture: THREE.Texture | null = null;
@@ -279,7 +284,6 @@ export class StudioEngine {
   // Transparency Mode Test Bench
   public transparencyMode: 'wboit' | 'sorted' | 'sequential_debug' = 'wboit';
   private readonly transparencyDiagnosticsEnabled = isDiagnosticsEnabled();
-  private transparencyKeydownHandler: ((event: KeyboardEvent) => void) | null = null;
   private rayEngineApi: any = null;
   public isAutoOrbitActive: boolean = false;
   private autoOrbitSpeed: number = 0.012;
@@ -289,9 +293,6 @@ export class StudioEngine {
   private cpuFrameTimeMs: number = 0;
   private totalDrawCalls: number = 0;
   private totalTriangles: number = 0;
-  private telemetryHudEl: HTMLElement | null = null;
-  private telemetryHudTextEl: HTMLElement | null = null;
-  private telemetryBadgeEl: HTMLElement | null = null;
 
   // Visual & Lighting
   private ambientIntensity: number = 0.5;
@@ -322,13 +323,7 @@ export class StudioEngine {
   });
   private helperRoot: THREE.Group;
   private lightsRoot: THREE.Group;
-  private customMirrorOrigin: THREE.Vector3 = new THREE.Vector3(0, 0, 0);
-  private customMirrorNormal: THREE.Vector3 = new THREE.Vector3(1, 0, 0);
-  private customMirrorEnabled: boolean = false;
   private guideColliderMeshes: Map<string, THREE.Mesh> = new Map();
-  private xrSession: any = null;
-  private isSimulatedAR: boolean = false;
-  private arFloorGrid: THREE.GridHelper | null = null;
   private dracoLoader: DRACOLoader | null = null;
   private modelDisplayMode: ModelDisplayMode = 'texture';
 
@@ -493,9 +488,11 @@ export class StudioEngine {
   public set transformActiveScope(s: TransformTargetScope) { this.transformController.transformActiveScope = s; }
   public get currentTransformTotalMatrix(): THREE.Matrix4 { return this.transformController.currentTransformTotalMatrix; }
   public get transformUndoStack() { return this.transformController.transformUndoStack; }
-  public get transformRedoStack() { return this.transformController.transformRedoStack; }
-  public activeGuide: ActiveGuideReference | null = null;
-  private onActiveGuideChangeCallbacks: Set<(guide: ActiveGuideReference | null) => void> = new Set();
+  public get customMirrorOrigin(): THREE.Vector3 { return this.guideController.customMirrorOrigin; }
+  public get customMirrorNormal(): THREE.Vector3 { return this.guideController.customMirrorNormal; }
+  public get customMirrorEnabled(): boolean { return this.guideController.customMirrorEnabled; }
+  public get activeGuide(): ActiveGuideReference | null { return this.guideController.activeGuide; }
+  public set activeGuide(guide: ActiveGuideReference | null) { this.guideController.setActiveGuide(guide); }
   private lastPerfectViewInfo: PerfectViewInfo = {
     isPerfect: false,
     view: null,
@@ -682,6 +679,23 @@ export class StudioEngine {
     this.scene.add(this.loftEngine.getGuideRoot());
     this.scaffoldingEngine = new ScaffoldingEngine();
     this.scene.add(this.scaffoldingEngine.getScaffoldRoot());
+    this.guideController = new GuideController({
+      loftEngine: this.loftEngine,
+      scaffoldingEngine: this.scaffoldingEngine,
+      getCamera: () => this.camera,
+      getCameraTarget: () => this.cameraTarget,
+      getStrokes: () => this.strokes,
+      getActiveLayerId: () => this.activeLayerId,
+      addPrimitiveToScene: (mesh, name) => this.addPrimitiveToScene(mesh, name),
+      markDirty: () => this.markDirty(),
+    });
+    this.xrEngine = new XREngine({
+      renderer: this.renderer,
+      helperRoot: this.helperRoot,
+      modelRoot: this.modelRoot,
+      onDirty: () => this.markDirty(),
+      onTransparencyDirty: () => this.markTransparencyDirty(),
+    });
     this.postEngine = new PostProcessingEngine(
       this.renderer,
       this.scene,
@@ -806,6 +820,27 @@ export class StudioEngine {
     this.cursorDecal.visible = false;
     this.scene.add(this.cursorDecal);
 
+    this.mediaCaptureController = new MediaCaptureController({
+      getCanvas: () => this.renderer.domElement,
+      renderScene: (target) => this.renderSceneWboit(target ?? null),
+      getCursorDecalVisible: () => this.cursorDecal?.visible ?? false,
+      setCursorDecalVisible: (v) => {
+        if (this.cursorDecal) this.cursorDecal.visible = v;
+      },
+      getCutoutOutlineVisible: () => this.cutoutOutlineVisible,
+      setCutoutOutlineVisible: (v) => this.setCutoutOutlineVisible(v),
+      getStrokes: () => this.strokes,
+      getCameraSpherical: () => ({
+        theta: this.cameraController.cameraSpherical.theta,
+        phi: this.cameraController.cameraSpherical.phi,
+        radius: this.cameraController.cameraSpherical.radius,
+      }),
+      setCameraView: (theta, phi, radius, instant) =>
+        this.cameraController.setCameraView(theta, phi, radius, instant),
+      getModelRoot: () => this.modelRoot,
+      getStrokeRoot: () => this.strokeRoot,
+    });
+
     // 9. Attach global RayEngine interface for 100% interoperability
     if (typeof window !== 'undefined') {
       if (this.transparencyDiagnosticsEnabled) {
@@ -837,30 +872,53 @@ export class StudioEngine {
     }
 
     // 12. Attach Transparency Test Bench methods & keyboard hotkeys
-    if (typeof window !== 'undefined' && this.transparencyDiagnosticsEnabled) {
-      (window as any).toggleTransparencyMode = () => this.toggleTransparencyMode();
-      (window as any).setTransparencyMode = (m: any) => this.setTransparencyMode(m);
-      (window as any).spawnTransparencyTestScene = () => this.spawnTransparencyTestScene();
-      (window as any).spawnOverlappingStrokes = (n: number) => this.spawnOverlappingStrokes(n);
-      (window as any).toggleAutoOrbit = (speed?: number) => this.toggleAutoOrbit(speed);
-      (window as any).getTransparencyTelemetry = () => this.getTransparencyTelemetry();
-      (window as any).runTransparencyBenchmarkSuite = (counts?: number[], frames?: number) => this.runTransparencyBenchmarkSuite(counts, frames);
-
-      this.transparencyKeydownHandler = (e: KeyboardEvent) => {
-        if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-        if (e.key === 't' || e.key === 'T') {
-          this.toggleTransparencyMode();
-        } else if (e.key === 'y' || e.key === 'Y') {
-          this.setTransparencyMode(this.transparencyMode === 'sequential_debug' ? 'sorted' : 'sequential_debug');
-        } else if (e.key === 'o' || e.key === 'O') {
-          this.toggleAutoOrbit();
-        } else if (e.key === 'p' || e.key === 'P') {
-          this.spawnTransparencyTestScene();
+    this.transparencyTestBench = new TransparencyTestBench({
+      getTransparencyMode: () => this.transparencyMode,
+      setTransparencyMode: (mode) => {
+        this.transparencyMode = mode;
+      },
+      getPostEngine: () => this.postEngine,
+      getStrokes: () => this.strokes,
+      getScene: () => this.scene,
+      getWorldStrokeRoot: () => this.worldStrokeRoot,
+      getRenderer: () => this.renderer,
+      getMaterialCache: () => this.materialCache,
+      getBeadGenerator: () => this.beadGenerator,
+      getCameraController: () => this.cameraController,
+      getContainer: () => this.container,
+      getActiveLayerId: () => this.activeLayerId,
+      getTotalDrawCalls: () => this.totalDrawCalls,
+      getTotalTriangles: () => this.totalTriangles,
+      getFps: () => this.fps,
+      getCpuFrameTimeMs: () => this.cpuFrameTimeMs,
+      getGpuQueryTimeMs: () => this.gpuQueryTimeMs,
+      getGpuTimerExt: () => this.gpuTimerExt,
+      removeDrawingPlane: () => {
+        this.scene.traverse((obj) => {
+          if (obj.name === 'DrawingPlaneCanvas' || obj.name?.includes('DrawingPlane') || obj === this.drawingPlaneMesh) {
+            obj.visible = false;
+          }
+        });
+        if (this.drawingPlaneMesh) {
+          if (this.drawingPlaneMesh.parent) this.drawingPlaneMesh.parent.remove(this.drawingPlaneMesh);
+          this.drawingPlaneMesh = null;
         }
-      };
-      window.addEventListener('keydown', this.transparencyKeydownHandler);
+      },
+      markDirty: () => this.markDirty(),
+      markTransparencyDirty: () => this.markTransparencyDirty(),
+      setHasAnimatedContent: (v) => this.setHasAnimatedContent(v),
+      isAutoOrbitActive: () => this.isAutoOrbitActive,
+      setAutoOrbitActive: (v) => {
+        this.isAutoOrbitActive = v;
+      },
+      getAutoOrbitSpeed: () => this.autoOrbitSpeed,
+      setAutoOrbitSpeed: (v) => {
+        this.autoOrbitSpeed = v;
+      },
+    });
 
-      this.initTransparencyTestHud();
+    if (typeof window !== 'undefined' && this.transparencyDiagnosticsEnabled) {
+      this.transparencyTestBench.init();
     }
 
     // 13. Start Render Loop
@@ -4915,128 +4973,45 @@ export class StudioEngine {
    * Export Combined Scene to GLB
    */
   public async exportGLB(): Promise<Blob> {
-    const exportScene = new THREE.Scene();
-
-    // Clone model
-    const modelClone = this.modelRoot.clone(true);
-    this.prepareExportMaterials(modelClone);
-    exportScene.add(modelClone);
-
-    // Clone strokes
-    const strokeClone = this.strokeRoot.clone(true);
-    this.prepareExportMaterials(strokeClone);
-    exportScene.add(strokeClone);
-
-    const exporter = new GLTFExporter();
-    return new Promise((resolve, reject) => {
-      exporter.parse(
-        exportScene,
-        (gltf) => {
-          const blob = new Blob([gltf as ArrayBuffer], { type: 'model/gltf-binary' });
-          resolve(blob);
-        },
-        reject,
-        { binary: true }
-      );
-    });
-  }
-
-  /**
-   * Converts runtime-only shader materials into portable, static color data.
-   * GLTF has no interoperable representation for our animated GLSL effects;
-   * exporting them as ShaderMaterial silently drops their color in most
-   * viewers. A per-vertex sRGB color bake plus unlit material preserves the
-   * visible tint and opacity everywhere, while ordinary model materials retain
-   * their maps and PBR properties.
-   */
-  private prepareExportMaterials(root: THREE.Object3D): void {
-    root.traverse((child) => {
-      const mesh = child as THREE.Mesh;
-      if (!mesh.isMesh || !mesh.geometry || !mesh.material) return;
-      mesh.geometry = mesh.geometry.clone();
-
-      const bakeShaderMaterial = (source: THREE.Material): THREE.Material => {
-        const src = source as any;
-        const shader = src.isShaderMaterial === true;
-        let color = new THREE.Color(0xffffff);
-        if (src.color?.isColor) {
-          color.copy(src.color);
-        }
-        if (shader && src.uniforms) {
-          const candidate = src.uniforms.uColor?.value
-            || src.uniforms.u_color?.value
-            || src.uniforms.u_tint?.value;
-          if (candidate?.isColor) color.copy(candidate);
-          else if (candidate?.isVector3) color.setRGB(
-            THREE.MathUtils.clamp(candidate.x, 0, 1),
-            THREE.MathUtils.clamp(candidate.y, 0, 1),
-            THREE.MathUtils.clamp(candidate.z, 0, 1),
-          );
-          const position = mesh.geometry.getAttribute('position');
-          if (position && !mesh.geometry.getAttribute('color')) {
-            // Three.js stores material/uniform colors in the linear working
-            // space.  Vertex colors are serialized by GLTFExporter from their
-            // sRGB representation, then normalized back to linear for glTF;
-            // encode here first so the export does not apply a second gamma
-            // conversion and darken mid-tones.
-            const encodedColor = color.clone().convertLinearToSRGB();
-            const colors = new Float32Array(position.count * 3);
-            for (let i = 0; i < position.count; i++) {
-              colors[i * 3] = encodedColor.r;
-              colors[i * 3 + 1] = encodedColor.g;
-              colors[i * 3 + 2] = encodedColor.b;
-            }
-            mesh.geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3));
-            ensureGeometryLinearVertexColors(mesh.geometry);
-          }
-          return new THREE.MeshBasicMaterial({
-            color: 0xffffff,
-            vertexColors: !!mesh.geometry.getAttribute('color'),
-            transparent: src.transparent === true || Number(src.opacity ?? 1) < 1,
-            opacity: Number(src.opacity ?? 1),
-            side: src.side ?? THREE.DoubleSide,
-            depthTest: src.depthTest !== false,
-            depthWrite: src.depthWrite !== false,
-          });
-        }
-
-        const cloned = source.clone();
-        if ('map' in src && src.map) (cloned as any).map = src.map;
-        return cloned;
-      };
-
-      if (Array.isArray(mesh.material)) {
-        mesh.material = mesh.material.map((material) => bakeShaderMaterial(material));
-      } else {
-        mesh.material = bakeShaderMaterial(mesh.material);
-      }
-    });
+    return this.mediaCaptureController.exportGLB();
   }
 
   /**
    * Export Combined Scene to OBJ
    */
   public exportOBJ(): string {
-    const exportScene = new THREE.Scene();
-    exportScene.add(this.modelRoot.clone(true));
-    exportScene.add(this.strokeRoot.clone(true));
-
-    const exporter = new OBJExporter();
-    return exporter.parse(exportScene);
+    return this.mediaCaptureController.exportOBJ();
   }
 
   /**
    * Capture high-res screenshot
    */
   public captureSnapshot(): string {
-    this.cursorDecal.visible = false;
-    const prevCutoutVisible = this.cutoutOutlineVisible;
-    this.setCutoutOutlineVisible(false);
-    this.renderSceneWboit(null);
-    const dataUrl = this.renderer.domElement.toDataURL('image/png');
-    this.cursorDecal.visible = true;
-    this.setCutoutOutlineVisible(prevCutoutVisible);
-    return dataUrl;
+    return this.mediaCaptureController.captureSnapshot();
+  }
+
+  /**
+   * Records a 360-degree turntable spin video around the active model/drawing
+   */
+  public async recordTurntableVideo(options: {
+    durationSec?: number;
+    fps?: number;
+    onProgress?: (progress: number) => void;
+    signal?: AbortSignal;
+  } = {}): Promise<{ blob: Blob; mimeType: string; extension: string }> {
+    return this.mediaCaptureController.recordTurntableVideo(options);
+  }
+
+  /**
+   * Records a stroke-by-stroke timelapse reconstruction video
+   */
+  public async recordTimelapseVideo(options: {
+    durationSec?: number;
+    fps?: number;
+    onProgress?: (progress: number) => void;
+    signal?: AbortSignal;
+  } = {}): Promise<{ blob: Blob; mimeType: string; extension: string }> {
+    return this.mediaCaptureController.recordTimelapseVideo(options);
   }
 
   /**
@@ -5160,8 +5135,8 @@ export class StudioEngine {
 
   private notifyHistory(): void {
     if (this.onHistoryChange) {
-      const canUndo = this.historyUndoStack.length > 0 || this.undoStack.length > 0 || this.transformUndoStack.length > 0;
-      const canRedo = this.historyRedoStack.length > 0 || this.redoStack.length > 0 || this.transformRedoStack.length > 0;
+      const canUndo = (this.historyUndoStack?.length || 0) > 0 || (this.undoStack?.length || 0) > 0 || (this.transformUndoStack?.length || 0) > 0;
+      const canRedo = (this.historyRedoStack?.length || 0) > 0 || (this.redoStack?.length || 0) > 0;
       this.onHistoryChange(canUndo, canRedo);
     }
     this.onAutoSaveTrigger?.('history');
@@ -5556,7 +5531,7 @@ export class StudioEngine {
       if (scaffoldRoot) scaffoldRoot.visible = false;
 
       this.helperRoot.children.forEach((child) => {
-        if (child === this.gridHelper || child === this.arFloorGrid) {
+        if (child === this.gridHelper || child === this.xrEngine.getFloorGrid()) {
           child.visible = gridWasVisible;
         } else {
           child.visible = false;
@@ -5672,7 +5647,7 @@ export class StudioEngine {
       // depth clear would paint it over the models.
       this.helperRoot.children.forEach((child) => {
         child.visible =
-          child === this.gridHelper || child === this.arFloorGrid
+          child === this.gridHelper || child === this.xrEngine.getFloorGrid()
             ? false
             : helperChildVisibilities.get(child) ?? false;
       });
@@ -6002,7 +5977,7 @@ export class StudioEngine {
   ): 'background' | 'helper' | 'cutout' | 'stroke' | 'other' {
     let node: THREE.Object3D | null = obj;
     while (node) {
-      if (node === skyMesh || node === this.gridHelper || node === this.arFloorGrid) return 'background';
+      if (node === skyMesh || node === this.gridHelper || node === this.xrEngine.getFloorGrid()) return 'background';
       if (node === this.cutoutRoot || node === this.worldCutoutRoot) return 'cutout';
       if (node === this.strokeRoot || node === this.worldStrokeRoot) return 'stroke';
       if (
@@ -6230,26 +6205,11 @@ export class StudioEngine {
     normal: { x: number; y: number; z: number },
     enabled: boolean
   ): void {
-    this.customMirrorOrigin.set(origin.x, origin.y, origin.z);
-    this.customMirrorNormal.set(normal.x, normal.y, normal.z).normalize();
-    this.customMirrorEnabled = enabled;
-
-    this.loftEngine.createOrUpdateMirrorPlaneMesh(
-      this.customMirrorOrigin,
-      this.customMirrorNormal,
-      enabled,
-      0.4
-    );
+    this.guideController.setCustomMirrorPlane(origin, normal, enabled);
   }
 
   public toggleCustomMirrorPlane(enabled: boolean): void {
-    this.customMirrorEnabled = enabled;
-    this.loftEngine.createOrUpdateMirrorPlaneMesh(
-      this.customMirrorOrigin,
-      this.customMirrorNormal,
-      enabled,
-      0.4
-    );
+    this.guideController.toggleCustomMirrorPlane(enabled);
   }
 
   /**
@@ -6260,13 +6220,7 @@ export class StudioEngine {
     normal: { x: number; y: number; z: number };
     rotation: { x: number; y: number; z: number };
   } {
-    const forward = new THREE.Vector3();
-    this.camera.getWorldDirection(forward).negate(); // View normal facing camera
-    return {
-      target: { x: this.cameraTarget.x, y: this.cameraTarget.y, z: this.cameraTarget.z },
-      normal: { x: forward.x, y: forward.y, z: forward.z },
-      rotation: { x: this.camera.rotation.x, y: this.camera.rotation.y, z: this.camera.rotation.z },
-    };
+    return this.guideController.getCameraOrientationForMirror();
   }
 
   /**
@@ -6277,11 +6231,7 @@ export class StudioEngine {
     width: number = 0.35,
     opacity: number = 0.5
   ): BentGuideConfig {
-    const guide = this.loftEngine.createPresetGuide(preset, width, opacity);
-    if (guide) {
-      this.setActiveGuide({ type: 'bent', id: guide.id, name: guide.name });
-    }
-    return guide;
+    return this.guideController.createPresetBentGuide(preset, width, opacity);
   }
 
   /**
@@ -6291,48 +6241,67 @@ export class StudioEngine {
     width: number = 0.35,
     opacity: number = 0.5
   ): BentGuideConfig | null {
-    // Find the latest stroke in active layer
-    let latestStroke: StrokeDescriptor | null = null;
-    for (const entry of this.strokes.values()) {
-      if (entry.descriptor.layerId === this.activeLayerId) {
-        if (!latestStroke || entry.descriptor.createdAt > latestStroke.createdAt) {
-          latestStroke = entry.descriptor;
-        }
-      }
-    }
-
-    if (!latestStroke || latestStroke.points.length < 2) return null;
-    const curvePoints = latestStroke.points.map((p) => p.position);
-    const guide = this.loftEngine.createBentGuideFromPoints(
-      curvePoints,
-      `Scaffold from ${latestStroke.id}`,
-      width,
-      opacity
-    );
-    if (guide) {
-      this.setActiveGuide({ type: 'bent', id: guide.id, name: guide.name });
-    }
-    return guide;
+    return this.guideController.createBentGuideFromSelectedStroke(width, opacity);
   }
 
   public removeBentGuide(id: string): void {
-    if (this.activeGuide?.id === id) {
-      this.setActiveGuide(null);
-    }
-    this.loftEngine.removeBentGuide(id);
-    this.markDirty();
+    this.guideController.removeBentGuide(id);
   }
 
   public updateBentGuideParameters(id: string, params: Partial<BentGuideConfig>): BentGuideConfig | null {
-    return this.loftEngine.updateBentGuideParameters(id, params);
+    return this.guideController.updateBentGuideParameters(id, params);
   }
 
   public toggleBentGuideVisibility(id: string, visible: boolean): void {
-    this.loftEngine.toggleGuideVisibility(id, visible);
+    this.guideController.toggleBentGuideVisibility(id, visible);
   }
 
   public getBentGuides(): BentGuideConfig[] {
-    return this.loftEngine.getGuides();
+    return this.guideController.getBentGuides();
+  }
+
+  // ==========================================
+  // MULTI-CURVE LOFTING & SURFACE SKINNING
+  // ==========================================
+
+  public getActiveLayerCurves(): { id: string; name: string; points: THREE.Vector3[] }[] {
+    return this.guideController.getActiveLayerCurves();
+  }
+
+  public createLoftedSurface(
+    id: string,
+    name: string,
+    curves: THREE.Vector3[][],
+    options: {
+      tension?: number;
+      divisionsU?: number;
+      divisionsV?: number;
+      opacity?: number;
+      color?: string | number;
+      wireframe?: boolean;
+    } = {}
+  ): LoftSurfaceConfig | null {
+    return this.guideController.createLoftedSurface(id, name, curves, options);
+  }
+
+  public getLoftedSurfaces(): LoftSurfaceConfig[] {
+    return this.guideController.getLoftedSurfaces();
+  }
+
+  public removeLoftedSurface(id: string): void {
+    this.guideController.removeLoftedSurface(id);
+  }
+
+  public toggleLoftedSurfaceVisibility(id: string, visible: boolean): void {
+    this.guideController.toggleLoftedSurfaceVisibility(id, visible);
+  }
+
+  public bakeLoftedSurfaceToModel(id: string, name: string): THREE.Mesh | null {
+    return this.guideController.bakeLoftedSurfaceToModel(id, name);
+  }
+
+  public decimateActiveLayerCurves(epsilon: number, _preserveTopology?: boolean): any {
+    return this.decimateCurves(epsilon, 'layer');
   }
 
   // ==========================================
@@ -6340,41 +6309,23 @@ export class StudioEngine {
   // ==========================================
 
   public getActiveGuide(): ActiveGuideReference | null {
-    return this.activeGuide;
+    return this.guideController.getActiveGuide();
   }
 
   public setActiveGuide(guide: ActiveGuideReference | null): void {
-    this.activeGuide = guide;
-    this.onActiveGuideChangeCallbacks.forEach((cb) => {
-      try { cb(guide); } catch {}
-    });
-    this.markDirty();
+    this.guideController.setActiveGuide(guide);
   }
 
   public subscribeActiveGuideChange(cb: (guide: ActiveGuideReference | null) => void): () => void {
-    this.onActiveGuideChangeCallbacks.add(cb);
-    return () => this.onActiveGuideChangeCallbacks.delete(cb);
+    return this.guideController.subscribeActiveGuideChange(cb);
   }
 
   public getActiveGuideMesh(): THREE.Object3D | null {
-    if (!this.activeGuide) return null;
-    if (this.activeGuide.type === 'bent') {
-      const bent = this.loftEngine.getGuides().find((g) => g.id === this.activeGuide!.id);
-      return bent?.manifoldMesh || null;
-    } else if (this.activeGuide.type === 'scaffold') {
-      const scaffold = this.scaffoldingEngine.getScaffolds().find((s) => s.id === this.activeGuide!.id);
-      return scaffold?.mesh || null;
-    }
-    return null;
+    return this.guideController.getActiveGuideMesh();
   }
 
   public removeActiveGuide(): void {
-    if (!this.activeGuide) return;
-    if (this.activeGuide.type === 'bent') {
-      this.removeBentGuide(this.activeGuide.id);
-    } else {
-      this.removeScaffold(this.activeGuide.id);
-    }
+    this.guideController.removeActiveGuide();
   }
 
   // ==========================================
@@ -6382,39 +6333,27 @@ export class StudioEngine {
   // ==========================================
 
   public getScaffoldingEngine(): ScaffoldingEngine {
-    return this.scaffoldingEngine;
+    return this.guideController.getScaffoldingEngine();
   }
 
   public createProxyScaffold(type: ScaffoldProxyType, name?: string): CollisionGuideMeshConfig {
-    const scaffold = this.scaffoldingEngine.createProxyScaffold(type, name);
-    if (scaffold) {
-      this.setActiveGuide({ type: 'scaffold', id: scaffold.id, name: scaffold.name });
-    }
-    return scaffold;
+    return this.guideController.createProxyScaffold(type, name);
   }
 
   public loadCollisionMeshFromObject(object: THREE.Object3D, name: string = 'Collision Guide'): CollisionGuideMeshConfig {
-    const scaffold = this.scaffoldingEngine.loadCollisionMeshFromObject(object, name);
-    if (scaffold) {
-      this.setActiveGuide({ type: 'scaffold', id: scaffold.id, name: scaffold.name });
-    }
-    return scaffold;
+    return this.guideController.loadCollisionMeshFromObject(object, name);
   }
 
   public removeScaffold(id: string): void {
-    if (this.activeGuide?.id === id) {
-      this.setActiveGuide(null);
-    }
-    this.scaffoldingEngine.removeScaffold(id);
-    this.markDirty();
+    this.guideController.removeScaffold(id);
   }
 
   public updateScaffold(id: string, updates: Partial<CollisionGuideMeshConfig>): CollisionGuideMeshConfig | null {
-    return this.scaffoldingEngine.updateScaffold(id, updates);
+    return this.guideController.updateScaffold(id, updates);
   }
 
   public getScaffolds(): CollisionGuideMeshConfig[] {
-    return this.scaffoldingEngine.getScaffolds();
+    return this.guideController.getScaffolds();
   }
 
   // ==========================================
@@ -6486,73 +6425,20 @@ export class StudioEngine {
   // SPRINT 5: WEBXR AR BINDING & HIT-TESTING
   // ==========================================
 
-  /**
-   * Initializes WebXR immersive AR session with real-world hit-testing
-   */
   public async startWebXRSession(): Promise<boolean> {
-    if (typeof navigator === 'undefined' || !('xr' in navigator) || !(navigator as any).xr) {
-      return false;
-    }
-
-    try {
-      const isSupported = await (navigator as any).xr.isSessionSupported('immersive-ar');
-      if (!isSupported) return false;
-
-      const session = await (navigator as any).xr.requestSession('immersive-ar', {
-        requiredFeatures: ['hit-test'],
-        optionalFeatures: ['dom-overlay', 'light-estimation'],
-      });
-
-      this.xrSession = session;
-      this.renderer.xr.enabled = true;
-      await this.renderer.xr.setSession(session);
-
-      session.addEventListener('end', () => {
-        this.stopWebXRSession();
-      });
-
-      return true;
-    } catch (e) {
-      console.warn('WebXR start error:', e);
-      return false;
-    }
+    return this.xrEngine.startWebXRSession();
   }
 
   public stopWebXRSession(): void {
-    if (this.xrSession) {
-      try {
-        this.xrSession.end();
-      } catch (_) {}
-      this.xrSession = null;
-    }
-    this.renderer.xr.enabled = false;
+    this.xrEngine.stopWebXRSession();
   }
 
-  /**
-   * Activates Realistic Simulated AR Floor Mode on Desktop / non-XR devices
-   */
   public enableSimulatedARMode(enabled: boolean): void {
-    this.isSimulatedAR = enabled;
-    if (enabled) {
-      if (!this.arFloorGrid) {
-        this.arFloorGrid = new THREE.GridHelper(12, 24, 0x6366f1, 0x312e81);
-        this.arFloorGrid.position.y = -1.2;
-        this.helperRoot.add(this.arFloorGrid);
-      }
-      this.arFloorGrid.visible = true;
-    } else if (this.arFloorGrid) {
-      this.arFloorGrid.visible = false;
-    }
+    this.xrEngine.enableSimulatedARMode(enabled);
   }
 
-  /**
-   * Adjusts Y-Axis Levitation (Floor Elevation Offset)
-   */
   public setARSceneElevation(elevation: number): void {
-    this.modelRoot.position.y = elevation;
-    this.modelRoot.updateMatrixWorld(true);
-    this.markTransparencyDirty();
-    this.markDirty();
+    this.xrEngine.setARSceneElevation(elevation);
   }
 
   /**
@@ -6573,9 +6459,9 @@ export class StudioEngine {
     // 1. Listeners
     window.removeEventListener('resize', this.handleWindowResize);
     window.removeEventListener('scroll', this.handleWindowScroll, true);
-    if (this.transparencyKeydownHandler) {
-      window.removeEventListener('keydown', this.transparencyKeydownHandler);
-      this.transparencyKeydownHandler = null;
+    if ((this as any).transparencyKeydownHandler) {
+      window.removeEventListener('keydown', (this as any).transparencyKeydownHandler);
+      (this as any).transparencyKeydownHandler = null;
     }
     if (this.renderer.domElement) {
       this.renderer.domElement.removeEventListener('webglcontextlost', this.handleContextLost);
@@ -6603,6 +6489,8 @@ export class StudioEngine {
     try { (this.loftEngine as any)?.dispose?.(); } catch (_) {}
     try { (this.scaffoldingEngine as any)?.dispose?.(); } catch (_) {}
     try { this.liveCamera?.dispose(); } catch (_) {}
+    try { this.xrEngine?.dispose(); } catch (_) {}
+    try { this.transparencyTestBench?.dispose(); } catch (_) {}
     try { this.dracoLoader?.dispose(); } catch (_) {}
     this.dracoLoader = null;
 
@@ -6628,28 +6516,26 @@ export class StudioEngine {
     this.materialCache.clear();
 
     // 5. Bookkeeping collections
-    this.strokes.clear();
-    this.guideColliderMeshes.clear();
-    this.undoStack.length = 0;
-    this.redoStack.length = 0;
-    this.transformUndoStack.length = 0;
-    this.transformRedoStack.length = 0;
-    this.activePoints.length = 0;
-    this.activeStrokeMeshes.length = 0;
-    this.targetMeshes.length = 0;
-    this.raycastTargetScratch.length = 0;
-    this.intersectScratch.length = 0;
+    this.strokes?.clear?.();
+    this.guideColliderMeshes?.clear?.();
+    if (this.undoStack) this.undoStack.length = 0;
+    if (this.redoStack) this.redoStack.length = 0;
+    if (this.transformController) {
+      this.transformController.clearHistory();
+    }
+    if (this.strokePipeline) {
+      if (this.strokePipeline.activePoints) this.strokePipeline.activePoints.length = 0;
+      if (this.strokePipeline.activeStrokeMeshes) this.strokePipeline.activeStrokeMeshes.length = 0;
+    }
+    if (this.targetMeshes) this.targetMeshes.length = 0;
+    if (this.raycastTargetScratch) this.raycastTargetScratch.length = 0;
+    if (this.intersectScratch) this.intersectScratch.length = 0;
 
     // 6. Renderer & DOM
     this.renderer.dispose();
     this.renderer.forceContextLoss?.();
     if (this.container && this.renderer.domElement.parentNode === this.container) {
       this.container.removeChild(this.renderer.domElement);
-    }
-
-    if (this.telemetryHudEl && this.telemetryHudEl.parentNode) {
-      this.telemetryHudEl.parentNode.removeChild(this.telemetryHudEl);
-      this.telemetryHudEl = null;
     }
 
     // 7. Globals installed by the constructor. Only reclaim them if this engine
@@ -6660,13 +6546,6 @@ export class StudioEngine {
       this.rayEngineApi = null;
       if ((window as any).__STUDIO_ENGINE__ === this) {
         delete (window as any).__STUDIO_ENGINE__;
-        delete (window as any).toggleTransparencyMode;
-        delete (window as any).setTransparencyMode;
-        delete (window as any).spawnTransparencyTestScene;
-        delete (window as any).spawnOverlappingStrokes;
-        delete (window as any).toggleAutoOrbit;
-        delete (window as any).getTransparencyTelemetry;
-        delete (window as any).runTransparencyBenchmarkSuite;
       }
     }
   }
@@ -6713,680 +6592,41 @@ export class StudioEngine {
   // -------------------------------------------------------------------------
 
   public setTransparencyMode(mode: 'wboit' | 'sorted' | 'sequential_debug'): void {
-    this.transparencyMode = mode;
-    if (this.postEngine) {
-      this.postEngine.setWboitAllowed(mode === 'wboit');
-      if (this.postEngine.wboit) {
-        this.postEngine.wboit.setEnabled(mode === 'wboit');
-      }
-    }
-    this.updateAllStrokeRenderOrders();
-    this.markTransparencyDirty();
-    this.markDirty();
-    this.updateTelemetryHud();
+    this.transparencyTestBench.setTransparencyMode(mode);
   }
 
   public toggleTransparencyMode(): void {
-    if (this.transparencyMode === 'wboit') {
-      this.setTransparencyMode('sorted');
-    } else {
-      this.setTransparencyMode('wboit');
-    }
+    this.transparencyTestBench.toggleTransparencyMode();
   }
 
   public updateAllStrokeRenderOrders(): void {
-    let fallbackIdx = 0;
-    this.strokes.forEach(({ descriptor, meshes }) => {
-      const seq = descriptor.settings.strokeSequenceIndex ?? fallbackIdx++;
-      for (const mesh of meshes) {
-        const mat = mesh.material;
-        const isTransparent = Array.isArray(mat) ? mat[0]?.transparent === true : (mat as any)?.transparent === true;
-        if (this.transparencyMode === 'sequential_debug') {
-          // Old V22 behavior: sequential renderOrder blocks Three.js camera-depth sorting
-          mesh.renderOrder = 10 + (seq % 20000);
-        } else {
-          // Unified mode: All transparent strokes share renderOrder=5, allowing camera-depth sorting
-          mesh.renderOrder = isTransparent ? 5 : 10 + (seq % 20000);
-        }
-      }
-    });
-    this.markTransparencyDirty();
-    this.markDirty();
+    this.transparencyTestBench.updateAllStrokeRenderOrders();
   }
 
   public toggleAutoOrbit(speed: number = 0.012): void {
-    this.isAutoOrbitActive = !this.isAutoOrbitActive;
-    this.autoOrbitSpeed = speed;
-    this.setHasAnimatedContent(this.isAutoOrbitActive);
-    this.markDirty();
-    this.updateTelemetryHud();
+    this.transparencyTestBench.toggleAutoOrbit(speed);
   }
 
   public spawnTransparencyTestScene(): void {
-    // 1. Clear existing strokes cleanly
-    const toRemove: string[] = [];
-    this.strokes.forEach((_, id) => toRemove.push(id));
-    for (const id of toRemove) {
-      const entry = this.strokes.get(id);
-      if (entry) {
-        for (const m of entry.meshes) {
-          if (m.parent) m.parent.remove(m);
-          m.geometry?.dispose();
-        }
-        this.strokes.delete(id);
-      }
-    }
-
-    // Hide and remove default drawing plane so it does not occlude 3D test ribbons
-    this.scene.traverse((obj) => {
-      if (obj.name === 'DrawingPlaneCanvas' || obj.name?.includes('DrawingPlane') || obj === this.drawingPlaneMesh) {
-        obj.visible = false;
-      }
-    });
-    if (this.drawingPlaneMesh) {
-      if (this.drawingPlaneMesh.parent) this.drawingPlaneMesh.parent.remove(this.drawingPlaneMesh);
-      this.drawingPlaneMesh = null;
-    }
-
-    // Set camera to good isometric viewing angle centered on test ribbons
-    this.cameraController.cameraTarget.set(0, 0, 0);
-    this.cameraController.targetPosition.set(0, 0, 0);
-    this.cameraController.setCameraView(THREE.MathUtils.degToRad(35), THREE.MathUtils.degToRad(65), 4.5, true);
-
-    // Helper to generate ribbon points
-    const createPoints = (
-      start: THREE.Vector3,
-      end: THREE.Vector3,
-      normal: THREE.Vector3,
-      count: number = 24
-    ): StrokePoint[] => {
-      const pts: StrokePoint[] = [];
-      for (let i = 0; i < count; i++) {
-        const t = i / (count - 1);
-        const pos = new THREE.Vector3().lerpVectors(start, end, t);
-        pos.addScaledVector(normal, Math.sin(t * Math.PI) * 0.06);
-        pts.push({
-          position: pos,
-          normal: normal.clone(),
-          surfaceOffset: 0.002,
-          pressure: 0.75,
-          isSurfaceHit: false,
-          time: performance.now(),
-        });
-      }
-      return pts;
-    };
-
-    const addStroke = (
-      points: StrokePoint[],
-      settings: Partial<BrushSettings>,
-      seqIndex: number
-    ) => {
-      const fullSettings: BrushSettings = {
-        size: 0.14,
-        opacity: settings.opacity ?? 0.6,
-        color: settings.color ?? '#3b82f6',
-        roughness: 0.35,
-        metalness: 0.1,
-        emissiveIntensity: 0,
-        pressureSensitivity: false,
-        archSegments: 5,
-        domeFactor: 0.2,
-        surfaceOffset: 0.002,
-        strokeSequenceIndex: seqIndex,
-        taperLength: 0.05,
-        stencilMasking: false,
-        smoothingAlgorithm: 'none',
-        smoothingStrength: 0,
-        patternType: 'none',
-        patternScale: 4.0,
-        patternIntensity: 0.8,
-        patternAngle: 45,
-        patternContrast: 1.0,
-        chiselAngle: 0,
-        aspectRatio: 3.5,
-        materialType: 'shaded',
-        profile: 'ribbon',
-        drawingMode: 'spatial_3d',
-        ...settings,
-      } as BrushSettings;
-
-      const mat = this.materialCache.getStrokeMaterial(fullSettings, false, 1.0);
-      const geom = this.beadGenerator.generateGeometry(points, fullSettings, []);
-      const mesh = new THREE.Mesh(geom, mat);
-
-      const isTransparent = Array.isArray(mat) ? mat[0]?.transparent === true : (mat as any)?.transparent === true;
-      if (this.transparencyMode === 'sequential_debug') {
-        mesh.renderOrder = 10 + (seqIndex % 20000);
-      } else {
-        mesh.renderOrder = isTransparent ? 5 : 10 + (seqIndex % 20000);
-      }
-
-      this.worldStrokeRoot.add(mesh);
-      const strokeId = 'test_stroke_' + Math.random().toString(36).substring(2, 9);
-      const desc: StrokeDescriptor = {
-        id: strokeId,
-        layerId: this.activeLayerId,
-        tool: 'brush',
-        points,
-        settings: fullSettings,
-        createdAt: Date.now(),
-      };
-      this.strokes.set(strokeId, { descriptor: desc, meshes: [mesh] });
-    };
-
-    // TEST GROUP 1: Foreground drawn BEFORE background
-    // Stroke 0: Foreground Cyan ribbon (Z = +0.45) drawn FIRST
-    addStroke(
-      createPoints(new THREE.Vector3(-1.4, 0.7, 0.45), new THREE.Vector3(1.4, 0.7, 0.45), new THREE.Vector3(0, 0, 1)),
-      { color: '#06b6d4', opacity: 0.6 },
-      0
-    );
-    // Stroke 1: Background Red ribbon (Z = -0.45) drawn SECOND
-    addStroke(
-      createPoints(new THREE.Vector3(-1.4, 0.7, -0.45), new THREE.Vector3(1.4, 0.7, -0.45), new THREE.Vector3(0, 0, 1)),
-      { color: '#ef4444', opacity: 0.6 },
-      1
-    );
-
-    // TEST GROUP 2: Background drawn BEFORE foreground (standard sequence)
-    // Stroke 2: Background Yellow ribbon (Z = -0.45) drawn FIRST
-    addStroke(
-      createPoints(new THREE.Vector3(-1.4, 0.35, -0.45), new THREE.Vector3(1.4, 0.35, -0.45), new THREE.Vector3(0, 0, 1)),
-      { color: '#eab308', opacity: 0.6 },
-      2
-    );
-    // Stroke 3: Foreground Purple ribbon (Z = +0.45) drawn SECOND
-    addStroke(
-      createPoints(new THREE.Vector3(-1.4, 0.35, 0.45), new THREE.Vector3(1.4, 0.35, 0.45), new THREE.Vector3(0, 0, 1)),
-      { color: '#a855f7', opacity: 0.6 },
-      3
-    );
-
-    // TEST GROUP 3: 4 Translucent Opacity Steps (0.2, 0.4, 0.6, 0.8) arranged in depth
-    // Spaced along Z axis (-0.6, -0.2, +0.2, +0.6)
-    // Ribbon C1: Opacity 0.2 (Z = -0.6) - Deepest
-    addStroke(
-      createPoints(new THREE.Vector3(-1.3, -0.05, -0.6), new THREE.Vector3(1.3, -0.05, -0.6), new THREE.Vector3(0, 0, 1)),
-      { color: '#10b981', opacity: 0.2 },
-      4
-    );
-    // Ribbon C2: Opacity 0.4 (Z = -0.2)
-    addStroke(
-      createPoints(new THREE.Vector3(-1.3, -0.15, -0.2), new THREE.Vector3(1.3, -0.15, -0.2), new THREE.Vector3(0, 0, 1)),
-      { color: '#38bdf8', opacity: 0.4 },
-      5
-    );
-    // Ribbon C3: Opacity 0.6 (Z = +0.2)
-    addStroke(
-      createPoints(new THREE.Vector3(-1.3, -0.25, 0.2), new THREE.Vector3(1.3, -0.25, 0.2), new THREE.Vector3(0, 0, 1)),
-      { color: '#f59e0b', opacity: 0.6 },
-      6
-    );
-    // Ribbon C4: Opacity 0.8 (Z = +0.6) - Closest
-    addStroke(
-      createPoints(new THREE.Vector3(-1.3, -0.35, 0.6), new THREE.Vector3(1.3, -0.35, 0.6), new THREE.Vector3(0, 0, 1)),
-      { color: '#ec4899', opacity: 0.8 },
-      7
-    );
-
-    // TEST GROUP 4: Crossing Paths / Intersecting Ribbons
-    // Ribbon D1: Crosses diagonally from (-1.3, -0.65, -0.5) to (1.3, -1.05, 0.5)
-    addStroke(
-      createPoints(new THREE.Vector3(-1.3, -0.65, -0.5), new THREE.Vector3(1.3, -1.05, 0.5), new THREE.Vector3(0, 1, 0)),
-      { color: '#6366f1', opacity: 0.6 },
-      8
-    );
-    // Ribbon D2: Crosses diagonally from (-1.3, -1.05, 0.5) to (1.3, -0.65, -0.5)
-    addStroke(
-      createPoints(new THREE.Vector3(-1.3, -1.05, 0.5), new THREE.Vector3(1.3, -0.65, -0.5), new THREE.Vector3(0, 1, 0)),
-      { color: '#f97316', opacity: 0.6 },
-      9
-    );
-
-    this.markTransparencyDirty();
-    this.markDirty();
-    this.updateTelemetryHud();
+    this.transparencyTestBench.spawnTransparencyTestScene();
   }
 
   public spawnOverlappingStrokes(count: number): void {
-    // 1. Clear existing strokes cleanly
-    const toRemove: string[] = [];
-    this.strokes.forEach((_, id) => toRemove.push(id));
-    for (const id of toRemove) {
-      const entry = this.strokes.get(id);
-      if (entry) {
-        for (const m of entry.meshes) {
-          if (m.parent) m.parent.remove(m);
-          m.geometry?.dispose();
-        }
-        this.strokes.delete(id);
-      }
-    }
-
-    // Hide drawing plane
-    this.scene.traverse((obj) => {
-      if (obj.name === 'DrawingPlaneCanvas' || obj.name?.includes('DrawingPlane') || obj === this.drawingPlaneMesh) {
-        obj.visible = false;
-      }
-    });
-    if (this.drawingPlaneMesh) {
-      if (this.drawingPlaneMesh.parent) this.drawingPlaneMesh.parent.remove(this.drawingPlaneMesh);
-      this.drawingPlaneMesh = null;
-    }
-
-    // Set camera view centered on the stroke cluster
-    this.cameraController.cameraTarget.set(0, 0, 0);
-    this.cameraController.targetPosition.set(0, 0, 0);
-    this.cameraController.setCameraView(THREE.MathUtils.degToRad(35), THREE.MathUtils.degToRad(65), 5.5, true);
-
-    const colors = [
-      '#06b6d4', '#ef4444', '#eab308', '#a855f7', '#10b981',
-      '#38bdf8', '#f59e0b', '#ec4899', '#6366f1', '#f97316'
-    ];
-
-    for (let i = 0; i < count; i++) {
-      const angle = (i / count) * Math.PI * 2 * 3; // spirals/crosses across multiple revolutions
-      const radius = 0.5 + (i % 7) * 0.15;
-      const zBase = -0.8 + ((i * 1.6) / count); // spans Z from -0.8 to +0.8
-      const tilt = ((i % 5) - 2) * 0.2;
-
-      const pts: StrokePoint[] = [];
-      const numPoints = 20;
-      for (let p = 0; p < numPoints; p++) {
-        const t = (p / (numPoints - 1)) * 2 - 1; // -1 to 1
-        const x = Math.cos(angle + t * 1.2) * (radius + Math.abs(t) * 0.6);
-        const y = Math.sin(angle + t * 1.2) * (radius + Math.abs(t) * 0.6) + tilt * t;
-        const z = zBase + Math.sin(t * Math.PI) * 0.3;
-
-        pts.push({
-          position: new THREE.Vector3(x, y, z),
-          normal: new THREE.Vector3(0, 0, 1),
-          surfaceOffset: 0.002,
-          pressure: 0.75,
-          isSurfaceHit: false,
-          time: performance.now(),
-        });
-      }
-
-      const color = colors[i % colors.length];
-      const fullSettings: BrushSettings = {
-        size: 0.14,
-        opacity: 0.6,
-        color,
-        roughness: 0.35,
-        metalness: 0.1,
-        emissiveIntensity: 0,
-        pressureSensitivity: false,
-        archSegments: 5,
-        domeFactor: 0.2,
-        surfaceOffset: 0.002,
-        strokeSequenceIndex: i,
-        taperLength: 0.05,
-        stencilMasking: false,
-        smoothingAlgorithm: 'none',
-        smoothingStrength: 0,
-        patternType: 'none',
-        patternScale: 4.0,
-        patternIntensity: 0.8,
-        patternAngle: 45,
-        patternContrast: 1.0,
-        chiselAngle: 0,
-        aspectRatio: 3.5,
-        materialType: 'shaded',
-        profile: 'ribbon',
-        drawingMode: 'spatial_3d',
-      } as BrushSettings;
-
-      const mat = this.materialCache.getStrokeMaterial(fullSettings, false, 1.0);
-      const geom = this.beadGenerator.generateGeometry(pts, fullSettings, []);
-      const mesh = new THREE.Mesh(geom, mat);
-
-      const isTransparent = Array.isArray(mat) ? mat[0]?.transparent === true : (mat as any)?.transparent === true;
-      mesh.renderOrder = isTransparent ? 5 : 10 + (i % 20000);
-
-      this.worldStrokeRoot.add(mesh);
-      const strokeId = `bench_stroke_${i}`;
-      const desc: StrokeDescriptor = {
-        id: strokeId,
-        layerId: this.activeLayerId,
-        tool: 'brush',
-        points: pts,
-        settings: fullSettings,
-        createdAt: Date.now(),
-      };
-      this.strokes.set(strokeId, { descriptor: desc, meshes: [mesh] });
-    }
-
-    this.markTransparencyDirty();
-    this.markDirty();
-    this.updateTelemetryHud();
+    this.transparencyTestBench.spawnOverlappingStrokes(count);
   }
 
   public getTransparencyTelemetry(): any {
-    const dbSize = new THREE.Vector2();
-    this.renderer.getDrawingBufferSize(dbSize);
-    const dpr = this.renderer.getPixelRatio();
-    const wboit = this.postEngine?.wboit;
-    const isWboit = this.transparencyMode === 'wboit' && wboit && wboit.getEnabled();
-
-    // Actual internal render-target dimensions
-    const rtWidth = isWboit && wboit?.accumTarget ? wboit.accumTarget.width : dbSize.x;
-    const rtHeight = isWboit && wboit?.accumTarget ? wboit.accumTarget.height : dbSize.y;
-
-    // Measured values
-    const measured = {
-      viewportWidth: this.container ? this.container.clientWidth : window.innerWidth,
-      viewportHeight: this.container ? this.container.clientHeight : window.innerHeight,
-      pixelRatio: dpr,
-      drawingBufferWidth: dbSize.x,
-      drawingBufferHeight: dbSize.y,
-      internalRenderTargetWidth: rtWidth,
-      internalRenderTargetHeight: rtHeight,
-      totalSceneDrawCalls: this.totalDrawCalls,
-      totalSceneTriangles: this.totalTriangles,
-      activeStrokeCount: this.strokes.size,
-      renderPasses: isWboit ? 3 : 1,
-      mode: this.transparencyMode,
-    };
-
-    // Calculated estimates
-    let offscreenAllocBytes = 0;
-    const breakdown: any[] = [];
-
-    if (isWboit && wboit?.accumTarget && wboit?.opaqueTarget && wboit?.sharedDepthTexture) {
-      const accumW = wboit.accumTarget.width;
-      const accumH = wboit.accumTarget.height;
-      const opaqueW = wboit.opaqueTarget.width;
-      const opaqueH = wboit.opaqueTarget.height;
-      const depthW = wboit.sharedDepthTexture.image?.width || accumW;
-      const depthH = wboit.sharedDepthTexture.image?.height || accumH;
-
-      // 1. accumTarget Attachment 0 (Accumulation RGB + Revealage A)
-      // Format: RGBAFormat, Type: HalfFloatType (4 channels * 16-bit float = 8 bytes/pixel)
-      const b0 = accumW * accumH * 8;
-      breakdown.push({
-        target: 'accumTarget.attachment0 (Color Accum + Revealage)',
-        format: 'RGBA16F',
-        bytesPerPixel: 8,
-        width: accumW,
-        height: accumH,
-        bytes: b0,
-        mb: b0 / (1024 * 1024),
-      });
-
-      // 2. accumTarget Attachment 1 (Weight Sum R)
-      // Format: RGBAFormat, Type: HalfFloatType (8 bytes/pixel)
-      const b1 = accumW * accumH * 8;
-      breakdown.push({
-        target: 'accumTarget.attachment1 (Weight Sum)',
-        format: 'RGBA16F',
-        bytesPerPixel: 8,
-        width: accumW,
-        height: accumH,
-        bytes: b1,
-        mb: b1 / (1024 * 1024),
-      });
-
-      // 3. opaqueTarget (Opaque scene color)
-      // Format: RGBAFormat, Type: HalfFloatType (8 bytes/pixel)
-      const bOpaque = opaqueW * opaqueH * 8;
-      breakdown.push({
-        target: 'opaqueTarget (Opaque Color)',
-        format: 'RGBA16F',
-        bytesPerPixel: 8,
-        width: opaqueW,
-        height: opaqueH,
-        bytes: bOpaque,
-        mb: bOpaque / (1024 * 1024),
-      });
-
-      // 4. sharedDepthTexture
-      // Format: DepthFormat, Type: UnsignedIntType (32-bit = 4 bytes/pixel)
-      const bDepth = depthW * depthH * 4;
-      breakdown.push({
-        target: 'sharedDepthTexture (Depth Buffer)',
-        format: 'DEPTH24_STENCIL8 / DEPTH32F',
-        bytesPerPixel: 4,
-        width: depthW,
-        height: depthH,
-        bytes: bDepth,
-        mb: bDepth / (1024 * 1024),
-      });
-
-      offscreenAllocBytes = b0 + b1 + bOpaque + bDepth;
-    }
-
-    const calculated = {
-      totalOffscreenAllocatedBytes: offscreenAllocBytes,
-      totalOffscreenAllocatedMB: offscreenAllocBytes / (1024 * 1024),
-      targetsBreakdown: breakdown,
-      // Theoretical memory bandwidth per frame:
-      // In WBOIT: Pass 1 clear+write (12 B/pix) + Pass 2 clear (16 B/pix) + Pass 3 read+write (28 B/pix) = 56 B/pix minimum
-      theoreticalBandwidthPerFrameMB: isWboit ? (rtWidth * rtHeight * 56) / (1024 * 1024) : 0,
-    };
-
-    return {
-      mode: this.transparencyMode,
-      measured,
-      calculated,
-    };
+    return this.transparencyTestBench.getTransparencyTelemetry();
   }
 
   public async runTransparencyBenchmarkSuite(
     strokeCounts: number[] = [50, 100, 200],
     framesPerTest: number = 100
   ): Promise<any> {
-    const results: any[] = [];
-    const modes: ('sorted' | 'wboit')[] = ['sorted', 'wboit'];
-
-    // Ensure auto orbit is active so camera moves and dynamic sorting runs
-    this.isAutoOrbitActive = true;
-    this.setHasAnimatedContent(true);
-
-    for (const count of strokeCounts) {
-      this.spawnOverlappingStrokes(count);
-      // Wait for geometry to upload and settle
-      await new Promise((r) => setTimeout(r, 500));
-
-      for (const mode of modes) {
-        this.setTransparencyMode(mode);
-        // Warm up for 20 frames so shaders compile and GPU caches warm
-        for (let w = 0; w < 20; w++) {
-          await new Promise((r) => requestAnimationFrame(r));
-        }
-
-        const cpuSamples: number[] = [];
-        const rafSamples: number[] = [];
-        let prevTime = performance.now();
-
-        for (let f = 0; f < framesPerTest; f++) {
-          await new Promise<void>((resolve) => {
-            requestAnimationFrame(() => {
-              const now = performance.now();
-              const rafDt = now - prevTime;
-              prevTime = now;
-              rafSamples.push(rafDt);
-              cpuSamples.push(this.cpuFrameTimeMs);
-              resolve();
-            });
-          });
-        }
-
-        // Compute statistics helper
-        const computeStats = (arr: number[]) => {
-          const sorted = [...arr].sort((a, b) => a - b);
-          const p50 = sorted[Math.floor(sorted.length * 0.5)];
-          const p95 = sorted[Math.floor(sorted.length * 0.95)];
-          const min = sorted[0];
-          const max = sorted[sorted.length - 1];
-          const sum = sorted.reduce((a, b) => a + b, 0);
-          const mean = sum / sorted.length;
-          return { p50, p95, min, max, mean };
-        };
-
-        const cpuStats = computeStats(cpuSamples);
-        const rafStats = computeStats(rafSamples);
-
-        const telem = this.getTransparencyTelemetry();
-
-        results.push({
-          strokeCount: count,
-          mode,
-          cpuFrameTime: cpuStats,
-          rafFrameTime: rafStats,
-          fps: Math.round(1000 / rafStats.mean),
-          measured: telem.measured,
-          calculated: telem.calculated,
-        });
-      }
-    }
-
-    console.log('BENCHMARK_COMPLETE:', JSON.stringify(results));
-    (window as any).__lastBenchmarkResults = results;
-    return results;
-  }
-
-  private initTransparencyTestHud(): void {
-    if (typeof document === 'undefined') return;
-    if (document.getElementById('transparency-test-hud')) return;
-
-    const hud = document.createElement('div');
-    hud.id = 'transparency-test-hud';
-    hud.style.position = 'fixed';
-    hud.style.top = '12px';
-    hud.style.left = '12px';
-    hud.style.zIndex = '999999';
-    hud.style.fontFamily = 'system-ui, -apple-system, Segoe UI, Roboto, monospace';
-    hud.style.fontSize = '12px';
-    hud.style.lineHeight = '1.35';
-    hud.style.color = '#f1f5f9';
-    hud.style.backgroundColor = 'rgba(15, 23, 42, 0.90)';
-    hud.style.backdropFilter = 'blur(10px)';
-    (hud.style as any).webkitBackdropFilter = 'blur(10px)';
-    hud.style.border = '1px solid rgba(255, 255, 255, 0.18)';
-    hud.style.borderRadius = '10px';
-    hud.style.padding = '10px 14px';
-    hud.style.boxShadow = '0 6px 20px rgba(0,0,0,0.5)';
-    hud.style.userSelect = 'none';
-    hud.style.maxWidth = '360px';
-
-    const header = document.createElement('div');
-    header.style.display = 'flex';
-    header.style.alignItems = 'center';
-    header.style.justifyContent = 'space-between';
-    header.style.marginBottom = '8px';
-
-    const title = document.createElement('span');
-    title.textContent = 'TRANSPARENCY BENCHMARK';
-    title.style.fontWeight = '700';
-    title.style.letterSpacing = '0.04em';
-    title.style.fontSize = '11px';
-    title.style.color = '#94a3b8';
-
-    const badge = document.createElement('span');
-    badge.id = 'transparency-hud-badge';
-    badge.style.padding = '2px 8px';
-    badge.style.borderRadius = '6px';
-    badge.style.fontWeight = '700';
-    badge.style.fontSize = '11px';
-    header.appendChild(title);
-    header.appendChild(badge);
-    hud.appendChild(header);
-
-    const stats = document.createElement('div');
-    stats.id = 'transparency-hud-stats';
-    stats.style.marginBottom = '10px';
-    stats.style.fontFamily = 'monospace';
-    stats.style.fontSize = '11px';
-    stats.style.color = '#cbd5e1';
-    hud.appendChild(stats);
-
-    const btnRow = document.createElement('div');
-    btnRow.style.display = 'grid';
-    btnRow.style.gridTemplateColumns = '1fr 1fr';
-    btnRow.style.gap = '6px';
-
-    const makeBtn = (text: string, onClick: () => void, highlight: boolean = false) => {
-      const btn = document.createElement('button');
-      btn.textContent = text;
-      btn.style.padding = '6px 8px';
-      btn.style.fontSize = '11px';
-      btn.style.fontWeight = '600';
-      btn.style.borderRadius = '6px';
-      btn.style.border = highlight ? '1px solid #38bdf8' : '1px solid rgba(255, 255, 255, 0.12)';
-      btn.style.backgroundColor = highlight ? '#0284c7' : 'rgba(255, 255, 255, 0.08)';
-      btn.style.color = '#ffffff';
-      btn.style.cursor = 'pointer';
-      btn.style.touchAction = 'manipulation';
-      btn.onclick = onClick;
-      return btn;
-    };
-
-    const toggleModeBtn = makeBtn('Toggle Mode (T)', () => this.toggleTransparencyMode(), true);
-    const testSceneBtn = makeBtn('Test Scene (P)', () => this.spawnTransparencyTestScene());
-    const autoOrbitBtn = makeBtn('Auto-Orbit (O)', () => this.toggleAutoOrbit());
-    const oldV22Btn = makeBtn('Old V22 Mode (Y)', () => {
-      this.setTransparencyMode(this.transparencyMode === 'sequential_debug' ? 'sorted' : 'sequential_debug');
-    });
-
-    btnRow.appendChild(toggleModeBtn);
-    btnRow.appendChild(testSceneBtn);
-    btnRow.appendChild(autoOrbitBtn);
-    btnRow.appendChild(oldV22Btn);
-    hud.appendChild(btnRow);
-
-    document.body.appendChild(hud);
-    this.telemetryHudEl = hud;
-    this.telemetryHudTextEl = stats;
-    this.telemetryBadgeEl = badge;
-    this.updateTelemetryHud();
+    return this.transparencyTestBench.runTransparencyBenchmarkSuite(strokeCounts, framesPerTest);
   }
 
   public updateTelemetryHud(): void {
-    if (!this.telemetryBadgeEl || !this.telemetryHudTextEl) return;
-
-    if (this.transparencyMode === 'wboit') {
-      this.telemetryBadgeEl.textContent = 'MODE A: WBOIT';
-      this.telemetryBadgeEl.style.backgroundColor = '#0e7490';
-      this.telemetryBadgeEl.style.color = '#e0f2fe';
-    } else if (this.transparencyMode === 'sorted') {
-      this.telemetryBadgeEl.textContent = 'MODE B: SORTED';
-      this.telemetryBadgeEl.style.backgroundColor = '#15803d';
-      this.telemetryBadgeEl.style.color = '#dcfce7';
-    } else {
-      this.telemetryBadgeEl.textContent = 'MODE C: OLD V22';
-      this.telemetryBadgeEl.style.backgroundColor = '#b45309';
-      this.telemetryBadgeEl.style.color = '#fef3c7';
-    }
-
-    const gpuStr = this.gpuTimerExt
-      ? `${this.gpuQueryTimeMs.toFixed(2)} ms`
-      : 'N/A (timer query disabled)';
-
-    const sortDetail =
-      this.transparencyMode === 'wboit'
-        ? 'MRT Accum + Revealage Quad'
-        : this.transparencyMode === 'sorted'
-        ? 'Three.js Native Painter (b.z - a.z)'
-        : 'Sequential RenderOrder (Order Locked)';
-
-    const telem = this.getTransparencyTelemetry();
-    const calls = this.totalDrawCalls;
-    const tris = this.totalTriangles;
-    const passes = telem.measured.renderPasses === 3 ? '3 Passes (Opaque + MRT + Quad)' : '1 Pass (Direct Forward)';
-    const offscreenBW = this.transparencyMode === 'wboit'
-      ? `${telem.measured.internalRenderTargetWidth}x${telem.measured.internalRenderTargetHeight} (~${telem.calculated.totalOffscreenAllocatedMB.toFixed(1)} MB VRAM)`
-      : `Swapchain ${telem.measured.drawingBufferWidth}x${telem.measured.drawingBufferHeight} (0 MB Offscreen)`;
-
-    this.telemetryHudTextEl.innerHTML = `
-      <div><strong>FPS:</strong> ${this.fps} ${this.fps >= 58 ? '✓' : ''} | <strong>CPU Frame:</strong> ${this.cpuFrameTimeMs.toFixed(1)} ms</div>
-      <div><strong>GPU Query:</strong> ${gpuStr}</div>
-      <div><strong>Draw Calls:</strong> ${calls} | <strong>Triangles:</strong> ${tris.toLocaleString()}</div>
-      <div><strong>Passes:</strong> ${passes}</div>
-      <div><strong>Bandwidth:</strong> ${offscreenBW}</div>
-      <div><strong>Strokes:</strong> ${this.strokes.size} | <strong>Auto-Orbit:</strong> ${this.isAutoOrbitActive ? 'ON' : 'OFF'}</div>
-      <div style="margin-top: 4px; color: #94a3b8; font-size: 10px;">Sort: ${sortDetail}</div>
-    `;
+    this.transparencyTestBench.updateTelemetryHud();
   }
 }

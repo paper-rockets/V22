@@ -56,6 +56,7 @@ import {
 } from './utils/storagePermission';
 
 import { AppModalHost } from './components/modals/AppModalHost';
+import { NumpadModal } from './components/NumpadModal';
 import { useAppShortcuts } from './hooks/useAppShortcuts';
 import { useAppAutoSave } from './hooks/useAppAutoSave';
 import { haptics } from './utils/haptics';
@@ -184,6 +185,15 @@ const synchronizeBrushSettings = (previous: BrushSettings, next: BrushSettings):
 
   if (next.materialType !== previous.materialType && next.activeLookName === previous.activeLookName) {
     synchronized.activeLookName = MATERIAL_LABELS[next.materialType] || next.activeLookName;
+  }
+
+  if (next.materialType !== 'matcap' && next.materialType !== 'animated_fx') {
+    if (synchronized.matcapUrl || synchronized.previewUrl || synchronized.customShader || synchronized.shaderEffect) {
+      synchronized.matcapUrl = undefined;
+      synchronized.previewUrl = undefined;
+      synchronized.customShader = undefined;
+      synchronized.shaderEffect = undefined;
+    }
   }
 
   return synchronized;
@@ -551,8 +561,10 @@ export function App() {
   });
   const [isDecimateOpen, setIsDecimateOpen] = useState<boolean>(false);
   const [isBentGuideOpen, setIsBentGuideOpen] = useState<boolean>(false);
+  const [isLoftModalOpen, setIsLoftModalOpen] = useState<boolean>(false);
   const [isScaffoldingOpen, setIsScaffoldingOpen] = useState<boolean>(false);
   const [isCustomMirrorOpen, setIsCustomMirrorOpen] = useState<boolean>(false);
+  const [numpadTarget, setNumpadTarget] = useState<NumpadTarget | null>(null);
   const [customMirrorConfig, setCustomMirrorConfig] = useState<CustomMirrorConfig>({
     planeOrigin: [0, 0, 0],
     planeNormal: [1, 0, 0],
@@ -1667,6 +1679,7 @@ export function App() {
     isSessionModalOpen ||
     isExportOpen ||
     isBentGuideOpen ||
+    isLoftModalOpen ||
     isCustomMirrorOpen ||
     isDecimateOpen ||
     isARViewerOpen ||
@@ -1745,6 +1758,7 @@ export function App() {
         onToggleDisableContextMenu={handleToggleDisableContextMenu}
         theme={theme}
         onStylusDetected={setIsStylusDetected}
+        onOpenNumpad={setNumpadTarget}
       />
 
       {/* Top Strip (Studio Workspace Surface) */}
@@ -1882,6 +1896,10 @@ export function App() {
               closeSheet();
               setIsBentGuideOpen(true);
             }}
+            onOpenLoftSurface={() => {
+              closeSheet();
+              setIsLoftModalOpen(true);
+            }}
             onOpenScaffolding={() => {
               closeSheet();
               setIsScaffoldingOpen(true);
@@ -1906,6 +1924,7 @@ export function App() {
               setIsIlluminationOpen(true);
             }}
             isIlluminationOpen={isIlluminationOpen}
+            onOpenNumpad={setNumpadTarget}
           />
 
       {/* First-Stroke Teaching Hint (Non-modal, non-blocking) */}
@@ -2044,6 +2063,8 @@ export function App() {
         setIsDecimateOpen={setIsDecimateOpen}
         isBentGuideOpen={isBentGuideOpen}
         setIsBentGuideOpen={setIsBentGuideOpen}
+        isLoftModalOpen={isLoftModalOpen}
+        setIsLoftModalOpen={setIsLoftModalOpen}
         isScaffoldingOpen={isScaffoldingOpen}
         setIsScaffoldingOpen={setIsScaffoldingOpen}
         isClipboardOpen={isClipboardOpen}
@@ -2065,6 +2086,7 @@ export function App() {
         setTool={handleSetTool}
         activeDNA={activeDNA}
         setActiveDNA={setActiveDNA}
+        onOpenNumpad={setNumpadTarget}
         snappedShapeNotice={snappedShapeNotice}
         windowDragOver={windowDragOver}
       />
@@ -2139,6 +2161,13 @@ export function App() {
           hideSaveOption={pendingWorkLoss.actionLabel === 'Clear Canvas'}
         />
       )}
+
+      {/* Precision On-Screen Numeric Keypad Modal */}
+      <NumpadModal
+        target={numpadTarget}
+        onClose={() => setNumpadTarget(null)}
+        theme={theme === 'light' ? 'light' : 'dark'}
+      />
 
       </div>
     </DeviceSimulatorFrame>

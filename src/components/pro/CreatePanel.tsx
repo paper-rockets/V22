@@ -29,6 +29,7 @@ interface CreatePanelProps {
   onOpenImporter: () => void;
   onOpenScaffolding?: () => void;
   onOpenBentGuide?: () => void;
+  onOpenLoftSurface?: () => void;
   onShapeSpawned?: (shapeName: string) => void;
   theme?: 'light' | 'dark';
 }
@@ -56,6 +57,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
   onOpenImporter,
   onOpenScaffolding,
   onOpenBentGuide,
+  onOpenLoftSurface,
   onShapeSpawned,
   theme = 'dark',
 }) => {
@@ -240,6 +242,28 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
                     <div className="flex flex-col text-left leading-tight overflow-hidden">
                       <span className="text-xs font-semibold truncate">Bend Path</span>
                       <span className="text-[9.5px] opacity-65 truncate">Curved guides</span>
+                    </div>
+                  </button>
+                )}
+
+                {onOpenLoftSurface && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      haptics.trigger('light');
+                      onOpenLoftSurface();
+                    }}
+                    className={`h-12 min-h-[44px] px-2.5 py-1 rounded-lg border flex items-center gap-2 font-medium transition-[background-color,border-color,color,transform] duration-150 ease-out active:scale-[0.98] ${
+                      isLight
+                        ? 'bg-white border-black/10 hover:bg-neutral-200/50 text-neutral-900 shadow-xs'
+                        : 'bg-black/30 border-white/10 hover:bg-white/10 text-neutral-100 shadow-xs'
+                    }`}
+                    title="Open Multi-Curve Loft Surface (Skin across curves)"
+                  >
+                    <Spline className="w-4 h-4 shrink-0 text-sky-400" />
+                    <div className="flex flex-col text-left leading-tight overflow-hidden">
+                      <span className="text-xs font-semibold truncate">Loft Surface</span>
+                      <span className="text-[9.5px] opacity-65 truncate">Bridge curves</span>
                     </div>
                   </button>
                 )}

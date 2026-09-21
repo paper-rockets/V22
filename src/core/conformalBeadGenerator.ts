@@ -438,6 +438,18 @@ export class ConformalBeadGenerator {
         } else {
           currN.copy(prevN);
         }
+
+        // Compute binormal as tangent cross normal
+        const currB = _vecPool.get().crossVectors(currT, currN).normalize();
+
+        // Ensure smooth phase continuity across consecutive samples for mid-air 3D curves
+        if (currB.dot(prevB) < 0) {
+          currB.negate();
+        }
+        currN.crossVectors(currB, currT).normalize();
+
+        normals.push(currN);
+        binormals.push(currB);
       } else {
         // Surface-attached conformal frame: frame normal tracks the 3D model surface smoothly
         const surfN = initialNormals[i] || prevN;
@@ -452,19 +464,13 @@ export class ConformalBeadGenerator {
         if (currN.dot(surfN) < 0) {
           currN.negate();
         }
+
+        // Surface binormal is strictly tangent cross normal: lies in tangent plane of surface
+        const currB = _vecPool.get().crossVectors(currT, currN).normalize();
+
+        normals.push(currN);
+        binormals.push(currB);
       }
-
-      // Compute binormal as tangent cross normal
-      const currB = _vecPool.get().crossVectors(currT, currN).normalize();
-
-      // Ensure smooth phase continuity across consecutive samples
-      if (currB.dot(prevB) < 0) {
-        currB.negate();
-      }
-      currN.crossVectors(currB, currT).normalize();
-
-      normals.push(currN);
-      binormals.push(currB);
     }
 
     return { tangents, normals, binormals };
@@ -679,8 +685,11 @@ export class ConformalBeadGenerator {
       }
 
       // Dynamic curvature clearance lift for flat ribbons on convex models so outer edges never submerge
+      const isCutout = settings.materialType === 'cutout';
       const curvatureLift = Math.max(0, width * 0.05);
-      const effectiveBaseOffset = baseOffset + curvatureLift;
+      const effectiveBaseOffset = isCutout
+        ? Math.max(0.012, baseOffset + 0.006)
+        : baseOffset + curvatureLift;
 
       _scratchCenter.copy(pos).addScaledVector(normal, effectiveBaseOffset).add(_scratchJitter);
       let effLeftWidth = width;
@@ -717,6 +726,7 @@ export class ConformalBeadGenerator {
       _workUvs.push(1.0, t);
     }
 
+    // Front face quads
     for (let i = 0; i < numPoints - 1; i++) {
       const a = i * 2;
       const b = (i + 1) * 2;
@@ -812,8 +822,11 @@ export class ConformalBeadGenerator {
       }
 
       // Minimal curvature clearance lift so flat marker ribbons on convex models never submerge
+      const isCutout = settings.materialType === 'cutout';
       const curvatureLift = Math.max(0, width * 0.03);
-      const effectiveBaseOffset = baseOffset + curvatureLift;
+      const effectiveBaseOffset = isCutout
+        ? Math.max(0.012, baseOffset + 0.006)
+        : baseOffset + curvatureLift;
 
       _scratchCenter.copy(pos).addScaledVector(normal, effectiveBaseOffset).add(_scratchJitter);
 
@@ -852,13 +865,13 @@ export class ConformalBeadGenerator {
       _workUvs.push(1.0, t);
     }
 
+    // Front face quads
     for (let i = 0; i < numPoints - 1; i++) {
       const a = i * 2;
       const b = (i + 1) * 2;
       const c = (i + 1) * 2 + 1;
       const d = i * 2 + 1;
 
-      // Double-sided friendly winding
       _workIndices.push(a, d, b);
       _workIndices.push(d, c, b);
     }
@@ -1103,7 +1116,8 @@ export class ConformalBeadGenerator {
     const radius = settings.size * pressureScale;
     const seq = settings.strokeSequenceIndex ?? 0;
     const seqElevation = (seq % 2000) * 0.0005;
-    const baseOffset = (settings.surfaceOffset ?? 0.0015) + seqElevation;
+    const isCutout = settings.materialType === 'cutout';
+    const baseOffset = isCutout ? 0.012 : (settings.surfaceOffset ?? 0.0015) + seqElevation;
 
     let tangent = _scratchTan.set(0, 1, 0);
     if (Math.abs(normal.y) > 0.9) {

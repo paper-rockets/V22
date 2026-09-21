@@ -1,9 +1,10 @@
 import React, { useEffect } from 'react';
-import { BrushSettings } from '../../types';
+import { BrushSettings, NumpadTarget } from '../../types';
 
 export interface RealBrushSizeControlProps {
   brushSettings: BrushSettings;
   onSizeChange: (newSize: number) => void;
+  onOpenNumpad?: (target: NumpadTarget) => void;
   theme?: 'light' | 'dark';
   showHeading?: boolean;
 }
@@ -11,6 +12,7 @@ export interface RealBrushSizeControlProps {
 export const RealBrushSizeControl: React.FC<RealBrushSizeControlProps> = ({
   brushSettings,
   onSizeChange,
+  onOpenNumpad,
   theme = 'dark',
 }) => {
   const isLight = theme === 'light';
@@ -18,7 +20,8 @@ export const RealBrushSizeControl: React.FC<RealBrushSizeControlProps> = ({
   const isMarker = brushSettings.profile === 'marker';
   const isGlow = brushSettings.materialType === 'glow' || (brushSettings.emissiveIntensity && brushSettings.emissiveIntensity > 0.4);
   const isPattern = Boolean(brushSettings.patternType && brushSettings.patternType !== 'none');
-  const hasTexture = Boolean(brushSettings.previewUrl || brushSettings.matcapUrl);
+  const isShaderOrMatcap = brushSettings.materialType === 'matcap' || brushSettings.materialType === 'animated_fx';
+  const hasTexture = isShaderOrMatcap && Boolean(brushSettings.previewUrl || brushSettings.matcapUrl);
 
   const usesWidthMultiplier = isFlat || isMarker;
   const widthMultiplier = usesWidthMultiplier
@@ -40,7 +43,7 @@ export const RealBrushSizeControl: React.FC<RealBrushSizeControlProps> = ({
   )));
 
   const pixelSize = Math.max(4, Math.min(64, Math.round((effectiveSize / maximumEffectiveSize) * 60 + 4)));
-  const color = brushSettings.color || brushSettings.solidColor || '#38bdf8';
+  const color = brushSettings.color || brushSettings.solidColor || '#000000';
   const opacity = brushSettings.opacity ?? 1.0;
 
   // Active brush style label
@@ -82,12 +85,45 @@ export const RealBrushSizeControl: React.FC<RealBrushSizeControlProps> = ({
           {brushDisplayName}
         </span>
 
-        {/* Live size number on the top right */}
-        <span className={`absolute top-1 right-1.5 text-[10px] font-mono font-bold ${
-          isLight ? 'text-neutral-600' : 'text-neutral-300'
-        }`}>
-          {displaySizeNumber}
-        </span>
+        {/* Live size number on the top right (clickable precision keypad trigger) */}
+        {onOpenNumpad ? (
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenNumpad({
+                title: 'Brush Size',
+                value: displaySizeNumber,
+                min: 1,
+                max: 100,
+                step: 1,
+                unit: 'pt',
+                onChange: (val) => {
+                  const norm = minimumWorldSize + ((val - 1) / 99) * (maximumEffectiveSize - minimumWorldSize);
+                  onSizeChange(norm / widthMultiplier);
+                },
+                onConfirm: (val) => {
+                  const norm = minimumWorldSize + ((val - 1) / 99) * (maximumEffectiveSize - minimumWorldSize);
+                  onSizeChange(norm / widthMultiplier);
+                },
+              });
+            }}
+            className={`absolute top-1 right-1.5 px-1.5 py-0.2 rounded text-[10px] font-mono font-bold transition-all cursor-pointer ${
+              isLight
+                ? 'bg-black/5 hover:bg-black/10 text-neutral-700 hover:text-black border border-black/10'
+                : 'bg-white/10 hover:bg-white/20 text-neutral-300 hover:text-sky-400 border border-white/10'
+            }`}
+            title="Open numeric keypad to set brush size"
+          >
+            {displaySizeNumber}
+          </button>
+        ) : (
+          <span className={`absolute top-1 right-1.5 text-[10px] font-mono font-bold ${
+            isLight ? 'text-neutral-600' : 'text-neutral-300'
+          }`}>
+            {displaySizeNumber}
+          </span>
+        )}
 
         {/* Realistic Brush Stroke Shape */}
         {isFlat ? (
@@ -118,7 +154,11 @@ export const RealBrushSizeControl: React.FC<RealBrushSizeControlProps> = ({
               height: `${Math.max(3, Math.round(pixelSize * 0.4))}px`,
               borderRadius: '1.5px',
               backgroundColor: color,
-              backgroundImage: 'linear-gradient(135deg, rgba(255,255,255,0.25) 0%, transparent 60%, rgba(0,0,0,0.2) 100%)',
+              backgroundImage: hasTexture
+                ? `url(${brushSettings.previewUrl || brushSettings.matcapUrl})`
+                : 'linear-gradient(135deg, rgba(255,255,255,0.25) 0%, transparent 60%, rgba(0,0,0,0.2) 100%)',
+              backgroundSize: 'cover',
+              backgroundPosition: 'center',
               opacity: opacity,
               border: `1px solid ${shapeBorderColor}`,
               transform: 'rotate(-35deg)',

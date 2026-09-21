@@ -1,8 +1,9 @@
 import * as THREE from 'three';
-import { BentGuideConfig, StrokePoint } from '../types';
+import { BentGuideConfig, LoftSurfaceConfig, StrokePoint } from '../types';
 
 export class LoftGuideEngine {
   private bentGuides: Map<string, BentGuideConfig> = new Map();
+  private loftSurfaces: Map<string, LoftSurfaceConfig> = new Map();
   private guideRoot: THREE.Group;
   private customPlaneMesh: THREE.Mesh | null = null;
   private customPlaneArrow: THREE.ArrowHelper | null = null;
@@ -470,6 +471,220 @@ export class LoftGuideEngine {
     }
   }
 
+  /**
+   * Generates a multi-curve lofted ruled or Catmull-Rom skinned 3D surface
+   * bridging across 2 or more independent curves with tension and resolution controls.
+   */
+  public createLoftedSurfaceBetweenCurves(
+    id: string,
+    name: string,
+    curves: THREE.Vector3[][],
+    options: {
+      tension?: number;
+      divisionsU?: number;
+      divisionsV?: number;
+      opacity?: number;
+      color?: string | number;
+      wireframe?: boolean;
+    } = {}
+  ): LoftSurfaceConfig | null {
+    this.removeLoftedSurface(id);
+
+    // Validate curves
+    const validCurves = (curves || []).filter((c) => c && c.length >= 2);
+    if (validCurves.length < 2) {
+      console.warn('[LoftGuideEngine] Lofting requires at least 2 valid curves.');
+      return null;
+    }
+
+    const tension = options.tension ?? 0.5;
+    const divisionsU = Math.max(8, Math.min(128, options.divisionsU ?? 32));
+    const divisionsV = Math.max(4, Math.min(64, options.divisionsV ?? Math.max(8, validCurves.length * 4)));
+    const opacity = options.opacity ?? 0.6;
+    const color = options.color ?? 0x38bdf8;
+    const wireframe = options.wireframe ?? true;
+
+    // 1. Build Catmull-Rom splines for each curve
+    let curveType: 'catmullrom' | 'centripetal' | 'chordal' = 'centripetal';
+    let curveTension = 0.5;
+    if (tension < 0.25) {
+      curveType = 'catmullrom';
+      curveTension = 0.0;
+    } else if (tension > 0.75) {
+      curveType = 'chordal';
+      curveTension = 1.0;
+    } else {
+      curveType = 'centripetal';
+      curveTension = tension;
+    }
+
+    const splines = validCurves.map(
+      (pts) => new THREE.CatmullRomCurve3(pts, false, curveType, curveTension)
+    );
+
+    // 2. Uniformly sample points along each curve
+    const sampledCurves: THREE.Vector3[][] = splines.map((sp) => sp.getPoints(divisionsU));
+
+    // 3. Align curve directions to avoid twisted / hourglass skins
+    for (let k = 0; k < sampledCurves.length - 1; k++) {
+      const p0Start = sampledCurves[k][0];
+      const p1Start = sampledCurves[k + 1][0];
+      const p1End = sampledCurves[k + 1][divisionsU];
+      if (p0Start.distanceTo(p1End) < p0Start.distanceTo(p1Start)) {
+        sampledCurves[k + 1].reverse();
+      }
+    }
+
+    // 4. Construct surface 2D grid of (divisionsU + 1) x (divisionsV + 1)
+    const grid: THREE.Vector3[][] = [];
+    const numCurves = sampledCurves.length;
+
+    for (let u = 0; u <= divisionsU; u++) {
+      // Column of points across curves at parameter index u
+      const colPts: THREE.Vector3[] = [];
+      for (let c = 0; c < numCurves; c++) {
+        colPts.push(sampledCurves[c][u]);
+      }
+
+      // If exactly 2 curves, interpolate linearly across V
+      if (numCurves === 2) {
+        const row: THREE.Vector3[] = [];
+        for (let v = 0; v <= divisionsV; v++) {
+          const t = v / divisionsV;
+          const pt = new THREE.Vector3().lerpVectors(colPts[0], colPts[1], t);
+          row.push(pt);
+        }
+        grid.push(row);
+      } else {
+        // Transverse Catmull-Rom spline across 3+ curves
+        const transverseSpline = new THREE.CatmullRomCurve3(
+          colPts,
+          false,
+          curveType,
+          curveTension
+        );
+        const row = transverseSpline.getPoints(divisionsV);
+        grid.push(row);
+      }
+    }
+
+    // 5. Build BufferGeometry from grid
+    const vertices: number[] = [];
+    const uvs: number[] = [];
+    const indices: number[] = [];
+
+    // Grid orientation: u along curve, v across curves
+    for (let v = 0; v <= divisionsV; v++) {
+      for (let u = 0; u <= divisionsU; u++) {
+        const pt = grid[u][v];
+        vertices.push(pt.x, pt.y, pt.z);
+        uvs.push(u / divisionsU, v / divisionsV);
+      }
+    }
+
+    // Generate quad strip triangle indices
+    for (let v = 0; v < divisionsV; v++) {
+      for (let u = 0; u < divisionsU; u++) {
+        const row1 = v * (divisionsU + 1);
+        const row2 = (v + 1) * (divisionsU + 1);
+
+        const i0 = row1 + u;
+        const i1 = row1 + u + 1;
+        const i2 = row2 + u;
+        const i3 = row2 + u + 1;
+
+        indices.push(i0, i2, i1);
+        indices.push(i1, i2, i3);
+      }
+    }
+
+    const geometry = new THREE.BufferGeometry();
+    geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+    geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
+    geometry.setIndex(indices);
+    geometry.computeVertexNormals();
+
+    // Material
+    const material = new THREE.MeshStandardMaterial({
+      color: typeof color === 'string' ? new THREE.Color(color) : color,
+      roughness: 0.35,
+      metalness: 0.1,
+      transparent: opacity < 0.99,
+      opacity: opacity,
+      side: THREE.DoubleSide,
+      depthWrite: opacity >= 0.9,
+    });
+
+    const mesh = new THREE.Mesh(geometry, material);
+    mesh.name = `loft_surface_${id}`;
+    mesh.renderOrder = 3;
+
+    if (wireframe) {
+      const wireMat = new THREE.MeshBasicMaterial({
+        color: 0xbae6fd,
+        wireframe: true,
+        transparent: true,
+        opacity: Math.min(1.0, opacity * 0.7),
+      });
+      const wireMesh = new THREE.Mesh(geometry, wireMat);
+      wireMesh.name = `loft_wireframe_${id}`;
+      mesh.add(wireMesh);
+    }
+
+    this.guideRoot.add(mesh);
+
+    const config: LoftSurfaceConfig = {
+      id,
+      name,
+      curves: validCurves,
+      divisionsU,
+      divisionsV,
+      tension,
+      opacity,
+      visible: true,
+      color,
+      wireframe,
+      manifoldMesh: mesh,
+    };
+
+    this.loftSurfaces.set(id, config);
+    return config;
+  }
+
+  public getLoftedSurfaces(): LoftSurfaceConfig[] {
+    return Array.from(this.loftSurfaces.values());
+  }
+
+  public removeLoftedSurface(id: string): void {
+    const existing = this.loftSurfaces.get(id);
+    if (!existing) return;
+    if (existing.manifoldMesh) {
+      this.guideRoot.remove(existing.manifoldMesh);
+      existing.manifoldMesh.geometry.dispose();
+      if (Array.isArray(existing.manifoldMesh.material)) {
+        existing.manifoldMesh.material.forEach((m) => m.dispose());
+      } else {
+        existing.manifoldMesh.material.dispose();
+      }
+    }
+    this.loftSurfaces.delete(id);
+  }
+
+  public toggleLoftedSurfaceVisibility(id: string, visible: boolean): void {
+    const existing = this.loftSurfaces.get(id);
+    if (!existing) return;
+    existing.visible = visible;
+    if (existing.manifoldMesh) {
+      existing.manifoldMesh.visible = visible;
+    }
+  }
+
+  public bakeLoftedSurfaceToGeometry(id: string): THREE.BufferGeometry | null {
+    const existing = this.loftSurfaces.get(id);
+    if (!existing || !existing.manifoldMesh) return null;
+    return existing.manifoldMesh.geometry.clone();
+  }
+
   public dispose(): void {
     this.bentGuides.forEach((g) => {
       if (g.manifoldMesh) {
@@ -477,6 +692,14 @@ export class LoftGuideEngine {
       }
     });
     this.bentGuides.clear();
+
+    this.loftSurfaces.forEach((s) => {
+      if (s.manifoldMesh) {
+        s.manifoldMesh.geometry.dispose();
+      }
+    });
+    this.loftSurfaces.clear();
+
     if (this.customPlaneMesh) {
       this.guideRoot.remove(this.customPlaneMesh);
       this.customPlaneMesh.geometry.dispose();

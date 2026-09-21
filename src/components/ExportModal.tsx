@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { StudioEngine } from '../core/studioEngine';
-import { Download, Camera, Image, Box, X, Check, Loader2, FolderHeart } from 'lucide-react';
+import { Download, Camera, Image, Box, X, Check, Loader2, FolderHeart, Video, RotateCw, Film, Square } from 'lucide-react';
 import { ModelStorage } from '../core/modelStorage';
 import { Saved3DModel } from '../types';
 
 import { PlatformBridge } from '../core/platformBridge';
+import { isVideoRecordingSupported } from '../core/mediaRecorderService';
 
 interface ExportModalProps {
   engine: StudioEngine | null;
@@ -22,6 +23,11 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   const isLight = theme === 'light';
   const [exporting, setExporting] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [recordingType, setRecordingType] = useState<'turntable' | 'timelapse' | null>(null);
+  const [recordingProgress, setRecordingProgress] = useState<number | null>(null);
+  const [turntableDuration, setTurntableDuration] = useState<number>(6);
+  const [timelapseDuration, setTimelapseDuration] = useState<number>(8);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -163,6 +169,82 @@ export const ExportModal: React.FC<ExportModalProps> = ({
       console.error(e);
     } finally {
       setExporting(null);
+    }
+  };
+
+  const handleRecordTurntable = async () => {
+    if (!engine) return;
+    const ac = new AbortController();
+    abortControllerRef.current = ac;
+    setRecordingType('turntable');
+    setRecordingProgress(0);
+    try {
+      const result = await engine.recordTurntableVideo({
+        durationSec: turntableDuration,
+        fps: 60,
+        onProgress: (p) => setRecordingProgress(p),
+        signal: ac.signal,
+      });
+      const ext = result.extension || 'webm';
+      const filename = `${activeModelName.replace(/\s+/g, '_')}_360_turntable.${ext}`;
+      const savedPath = await PlatformBridge.saveModelFile(
+        filename,
+        result.blob,
+        [{ name: `Video (${ext.toUpperCase()})`, extensions: [ext] }]
+      );
+      if (savedPath) {
+        PlatformBridge.triggerHaptic('success');
+        setSuccess('360° Turntable video exported successfully!');
+      }
+    } catch (e: any) {
+      if (e?.message !== 'Turntable recording aborted') {
+        console.error(e);
+      }
+    } finally {
+      setRecordingType(null);
+      setRecordingProgress(null);
+      abortControllerRef.current = null;
+    }
+  };
+
+  const handleRecordTimelapse = async () => {
+    if (!engine) return;
+    const ac = new AbortController();
+    abortControllerRef.current = ac;
+    setRecordingType('timelapse');
+    setRecordingProgress(0);
+    try {
+      const result = await engine.recordTimelapseVideo({
+        durationSec: timelapseDuration,
+        fps: 60,
+        onProgress: (p) => setRecordingProgress(p),
+        signal: ac.signal,
+      });
+      const ext = result.extension || 'webm';
+      const filename = `${activeModelName.replace(/\s+/g, '_')}_creation_timelapse.${ext}`;
+      const savedPath = await PlatformBridge.saveModelFile(
+        filename,
+        result.blob,
+        [{ name: `Video (${ext.toUpperCase()})`, extensions: [ext] }]
+      );
+      if (savedPath) {
+        PlatformBridge.triggerHaptic('success');
+        setSuccess('Stroke-by-stroke timelapse video exported successfully!');
+      }
+    } catch (e: any) {
+      if (e?.message !== 'Timelapse recording aborted') {
+        console.error(e);
+      }
+    } finally {
+      setRecordingType(null);
+      setRecordingProgress(null);
+      abortControllerRef.current = null;
+    }
+  };
+
+  const handleCancelRecording = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
     }
   };
 
@@ -368,7 +450,186 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               <Download className={`w-4 h-4 transition-colors ${isLight ? 'text-neutral-400 group-hover:text-neutral-900' : 'text-neutral-500 group-hover:text-neutral-200'}`} />
             )}
           </div>
+
+          {/* Section Divider: Video & Animation Studio */}
+          <div className="pt-2 pb-1">
+            <div className="flex items-center gap-2">
+              <span className={`text-[11px] font-bold uppercase tracking-wider ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
+                3D Video & Replay Capture
+              </span>
+              <div className={`flex-1 h-px ${isLight ? 'bg-black/10' : 'bg-neutral-800'}`} />
+            </div>
+          </div>
+
+          {/* 360 Turntable Video */}
+          <div
+            className={`flex flex-col p-4 rounded-2xl border transition-all ${
+              isLight
+                ? 'bg-[#f4f0e9]/80 border-black/10'
+                : 'bg-neutral-950/50 border-neutral-800'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`p-2.5 rounded-xl transition-all ${
+                  isLight ? 'bg-black/5 text-neutral-900' : 'bg-white/10 text-white'
+                }`}>
+                  <RotateCw className="w-5 h-5" />
+                </div>
+                <div className="flex flex-col text-left">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm font-semibold ${isLight ? 'text-neutral-900' : 'text-neutral-100'}`}>
+                      360° Turntable Video
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-purple-500/15 text-purple-400 border border-purple-500/30">
+                      HD WebM
+                    </span>
+                  </div>
+                  <span className={`text-xs ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
+                    Smooth full 360-degree rotation video around your model
+                  </span>
+                </div>
+              </div>
+
+              <button
+                disabled={Boolean(recordingType || exporting)}
+                onClick={handleRecordTurntable}
+                className="px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 active:scale-95 disabled:opacity-50 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+              >
+                {recordingType === 'turntable' ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Video className="w-3.5 h-3.5" />
+                )}
+                <span>Record</span>
+              </button>
+            </div>
+
+            {/* Duration Selector */}
+            <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-neutral-800/40">
+              <span className={`text-[10px] uppercase font-semibold ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
+                Duration:
+              </span>
+              {[4, 6, 10].map((dur) => (
+                <button
+                  key={dur}
+                  disabled={Boolean(recordingType)}
+                  onClick={() => setTurntableDuration(dur)}
+                  className={`px-2 py-0.5 rounded-lg text-xs font-mono transition-colors ${
+                    turntableDuration === dur
+                      ? 'bg-purple-600/20 text-purple-400 border border-purple-500/40 font-bold'
+                      : isLight
+                      ? 'bg-black/5 text-neutral-600 hover:bg-black/10'
+                      : 'bg-white/5 text-neutral-400 hover:bg-white/10'
+                  }`}
+                >
+                  {dur}s
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Stroke-by-Stroke Timelapse Video */}
+          <div
+            className={`flex flex-col p-4 rounded-2xl border transition-all ${
+              isLight
+                ? 'bg-[#f4f0e9]/80 border-black/10'
+                : 'bg-neutral-950/50 border-neutral-800'
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`p-2.5 rounded-xl transition-all ${
+                  isLight ? 'bg-black/5 text-neutral-900' : 'bg-white/10 text-white'
+                }`}>
+                  <Film className="w-5 h-5" />
+                </div>
+                <div className="flex flex-col text-left">
+                  <div className="flex items-center gap-2">
+                    <span className={`text-sm font-semibold ${isLight ? 'text-neutral-900' : 'text-neutral-100'}`}>
+                      Stroke Creation Timelapse
+                    </span>
+                    <span className="px-1.5 py-0.5 rounded-full text-[9px] font-bold bg-amber-500/15 text-amber-400 border border-amber-500/30">
+                      Replay
+                    </span>
+                  </div>
+                  <span className={`text-xs ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
+                    Replays artwork stroke by stroke from blank canvas to finished model
+                  </span>
+                </div>
+              </div>
+
+              <button
+                disabled={Boolean(recordingType || exporting)}
+                onClick={handleRecordTimelapse}
+                className="px-3 py-2 rounded-xl bg-amber-600 hover:bg-amber-500 active:scale-95 disabled:opacity-50 text-white text-xs font-semibold flex items-center gap-1.5 shadow-md transition-all cursor-pointer"
+              >
+                {recordingType === 'timelapse' ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Video className="w-3.5 h-3.5" />
+                )}
+                <span>Record</span>
+              </button>
+            </div>
+
+            {/* Duration Selector */}
+            <div className="flex items-center gap-2 mt-3 pt-2.5 border-t border-neutral-800/40">
+              <span className={`text-[10px] uppercase font-semibold ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
+                Replay Length:
+              </span>
+              {[5, 8, 15].map((dur) => (
+                <button
+                  key={dur}
+                  disabled={Boolean(recordingType)}
+                  onClick={() => setTimelapseDuration(dur)}
+                  className={`px-2 py-0.5 rounded-lg text-xs font-mono transition-colors ${
+                    timelapseDuration === dur
+                      ? 'bg-amber-600/20 text-amber-400 border border-amber-500/40 font-bold'
+                      : isLight
+                      ? 'bg-black/5 text-neutral-600 hover:bg-black/10'
+                      : 'bg-white/5 text-neutral-400 hover:bg-white/10'
+                  }`}
+                >
+                  {dur}s
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
+
+        {/* Active Recording Progress Banner */}
+        {recordingType && (
+          <div className="p-3.5 rounded-2xl bg-neutral-900 border border-purple-500/40 text-neutral-100 flex flex-col gap-2.5 shadow-xl animate-in fade-in my-2">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                <span className="text-xs font-semibold">
+                  Recording {recordingType === 'turntable' ? '360° Turntable' : 'Creation Timelapse'}...
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-mono text-purple-300 font-bold">
+                  {recordingProgress !== null ? `${recordingProgress}%` : 'Processing...'}
+                </span>
+                <button
+                  onClick={handleCancelRecording}
+                  className="px-2 py-0.5 rounded-lg bg-red-500/20 hover:bg-red-500/30 text-red-400 text-xs font-medium border border-red-500/30 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+
+            {/* Progress Track */}
+            <div className="w-full h-1.5 bg-neutral-800 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-purple-500 to-amber-500 transition-all duration-150 ease-out"
+                style={{ width: `${recordingProgress ?? 10}%` }}
+              />
+            </div>
+          </div>
+        )}
 
         {success && (
           <div className="flex items-center gap-2 p-3 rounded-xl bg-neutral-900 dark:bg-white/10 border border-neutral-900 dark:border-white/30 text-xs text-neutral-900 dark:text-white font-medium">

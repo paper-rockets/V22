@@ -27,6 +27,7 @@ export const ProShell: React.FC<ProShellProps> = (props) => {
         targetScope={props.targetScope}
         onSelectTargetScope={props.onSelectTargetScope}
         isModalActive={props.isModalActive}
+        onOpenNumpad={props.onOpenNumpad}
       />
     </>
   );

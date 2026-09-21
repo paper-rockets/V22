@@ -61,6 +61,7 @@ export interface ProPanelProps {
   onCancelLiquify?: () => void;
   onOpenScaffolding?: () => void;
   onOpenBentGuide?: () => void;
+  onOpenLoftSurface?: () => void;
   onOpenCustomMirror?: () => void;
   onOpenDecimate?: () => void;
   // Layers Mode props
@@ -118,6 +119,7 @@ export const ProPanel: React.FC<ProPanelProps> = ({
   onCancelLiquify,
   onOpenScaffolding,
   onOpenBentGuide,
+  onOpenLoftSurface,
   onOpenCustomMirror,
   onOpenDecimate,
   layers,
@@ -243,6 +245,7 @@ export const ProPanel: React.FC<ProPanelProps> = ({
             onOpenImporter={onOpenImporter}
             onOpenScaffolding={onOpenScaffolding}
             onOpenBentGuide={onOpenBentGuide}
+            onOpenLoftSurface={onOpenLoftSurface}
             onShapeSpawned={() => {
               if (!isGizmoActive) onToggleGizmo();
               setTool('select');

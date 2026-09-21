@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { ProMode, useOpenSheet, closeSheet, openSheetId, setStudioShelfOpen } from '../studio/panelStore';
 import { haptics } from '../../utils/haptics';
-import { ToolType, BrushSettings, ActiveGuideReference, TransformTargetScope } from '../../types';
+import { ToolType, BrushSettings, ActiveGuideReference, TransformTargetScope, NumpadTarget } from '../../types';
 import { RealBrushSizeControl } from '../common/RealBrushSizeControl';
 import {
   CURATED_BRUSHES,
@@ -53,6 +53,7 @@ export interface ProRailProps {
   targetScope?: TransformTargetScope;
   onSelectTargetScope?: (scope: TransformTargetScope) => void;
   isModalActive?: boolean;
+  onOpenNumpad?: (target: NumpadTarget) => void;
 }
 
 interface ModeButton {
@@ -99,6 +100,7 @@ export const ProRail: React.FC<ProRailProps> = ({
   targetScope = 'all',
   onSelectTargetScope,
   isModalActive = false,
+  onOpenNumpad,
 }) => {
   const openSheet = useOpenSheet();
   const closeColorStudio = () => window.dispatchEvent(new Event('remix3d:close-color-studio'));
@@ -147,17 +149,18 @@ export const ProRail: React.FC<ProRailProps> = ({
   );
 
   useEffect(() => {
-    if (brushSettings?.previewUrl || brushSettings?.matcapUrl) return;
+    if ((brushSettings?.materialType === 'matcap' || brushSettings?.materialType === 'animated_fx') && (brushSettings?.previewUrl || brushSettings?.matcapUrl)) return;
     const normalized = activeColor.toLowerCase();
-    if (STAPLE_COLORS.some((color) => color.toLowerCase() === normalized)) return;
     setRecentColors((previous) => {
+      if (previous[0]?.toLowerCase() === normalized) return previous;
       const next = [activeColor, ...previous.filter((color) => color.toLowerCase() !== normalized)].slice(0, 2);
       try {
-        localStorage.setItem('remix3d.recentColors', JSON.stringify(next));
-      } catch {}
+        const STUDIO_RECENT_COLORS_STORAGE_KEY = 'remix3d.recentColors';
+        localStorage.setItem(STUDIO_RECENT_COLORS_STORAGE_KEY, JSON.stringify(next));
+      } catch (_) {}
       return next;
     });
-  }, [activeColor, brushSettings?.previewUrl, brushSettings?.matcapUrl]);
+  }, [activeColor, brushSettings?.materialType, brushSettings?.previewUrl, brushSettings?.matcapUrl]);
 
   useEffect(() => {
     const onDockChange = (event: Event) => {
@@ -360,7 +363,7 @@ export const ProRail: React.FC<ProRailProps> = ({
                   isLight ? 'border-black/15' : 'border-white/20'
                 }`}
                 style={{
-                  background: (brushSettings?.previewUrl || brushSettings?.matcapUrl)
+                  background: ((brushSettings?.materialType === 'matcap' || brushSettings?.materialType === 'animated_fx') && (brushSettings?.previewUrl || brushSettings?.matcapUrl))
                     ? `url(${brushSettings.previewUrl || brushSettings.matcapUrl}) center/cover no-repeat`
                     : activeColor,
                   boxShadow: brushSettings?.materialType === 'glow' ? `0 0 10px ${activeColor}` : undefined,
@@ -806,7 +809,7 @@ export const ProRail: React.FC<ProRailProps> = ({
                       <span
                         className="w-3.5 h-3.5 rounded-full border border-black/15 dark:border-white/20 shadow-xs shrink-0"
                         style={{
-                          background: (currentBrushSettings.previewUrl || currentBrushSettings.matcapUrl)
+                          background: ((currentBrushSettings.materialType === 'matcap' || currentBrushSettings.materialType === 'animated_fx') && (currentBrushSettings.previewUrl || currentBrushSettings.matcapUrl))
                             ? `url(${currentBrushSettings.previewUrl || currentBrushSettings.matcapUrl}) center/cover no-repeat`
                             : activeColor,
                           boxShadow: currentBrushSettings.materialType === 'glow' ? `0 0 8px ${activeColor}` : undefined,
@@ -856,7 +859,7 @@ export const ProRail: React.FC<ProRailProps> = ({
                   {/* Preset Swatches with Selection Indicator */}
                   <div className="grid grid-cols-4 gap-2 py-1 justify-items-center">
                     {quickColors.map((color) => {
-                      const isEquippedShaderOrMatcap = Boolean(currentBrushSettings.previewUrl || currentBrushSettings.matcapUrl);
+                      const isEquippedShaderOrMatcap = (currentBrushSettings.materialType === 'matcap' || currentBrushSettings.materialType === 'animated_fx') && Boolean(currentBrushSettings.previewUrl || currentBrushSettings.matcapUrl);
                       const isSelected =
                         !isEquippedShaderOrMatcap &&
                         (currentBrushSettings.activeLookName === 'Flat Paint' || currentBrushSettings.activeLookName === 'Lit' || !currentBrushSettings.activeLookName) &&
@@ -964,6 +967,7 @@ export const ProRail: React.FC<ProRailProps> = ({
                       setBrushSettings((p) => ({ ...p, size: newSize }));
                     }
                   }}
+                  onOpenNumpad={onOpenNumpad}
                   theme={theme}
                 />
               </div>
