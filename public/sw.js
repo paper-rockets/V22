@@ -44,11 +44,14 @@ const SHELL_PRECACHE = [
   './draco/draco_decoder.js',
   './icons/icon-192.png',
   './icons/icon-512.png',
+  './icons/icon-maskable-192.png',
+  './icons/icon-maskable-512.png',
   './icons/icon.svg',
+  './favicon.png',
 ];
 
 // Runtime caching allowlist: only same-origin assets under verified paths
-const RUNTIME_ALLOWLIST = /\/(?:assets|models|draco|fonts|icons)\//;
+const RUNTIME_ALLOWLIST = /\/(?:assets|models|draco|fonts|icons|demos)\//;
 
 async function trimCache(cacheName, maxItems) {
   try {
@@ -68,9 +71,13 @@ self.addEventListener('install', (event) => {
   event.waitUntil(
     (async () => {
       const shellCache = await caches.open(SHELL_CACHE_NAME);
-      await shellCache.addAll(SHELL_PRECACHE).catch((err) => {
-        console.warn('[SW] App shell pre-cache partial fail:', err);
-      });
+      await Promise.allSettled(
+        SHELL_PRECACHE.map((url) =>
+          shellCache.add(url).catch((err) => {
+            console.warn(`[SW] Precache item failed for ${url}:`, err);
+          })
+        )
+      );
     })()
   );
 });

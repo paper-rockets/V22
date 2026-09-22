@@ -31,7 +31,7 @@ export function registerPWA() {
 
   // 2. Register service worker in production / modern environments
   if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
+    const register = () => {
       const swUrl = './sw.js';
       navigator.serviceWorker
         .register(swUrl)
@@ -57,7 +57,13 @@ export function registerPWA() {
         .catch((err) => {
           console.warn('[PWA] Service Worker registration failed:', err);
         });
-    });
+    };
+
+    if (document.readyState === 'complete') {
+      register();
+    } else {
+      window.addEventListener('load', register);
+    }
   }
 }
 

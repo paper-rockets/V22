@@ -1,0 +1,86 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#141824"/>
+      <stop offset="50%" stop-color="#0c0e14"/>
+      <stop offset="100%" stop-color="#06070a"/>
+    </linearGradient>
+    <linearGradient id="ribbon1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#00f0ff"/>
+      <stop offset="45%" stop-color="#3b82f6"/>
+      <stop offset="100%" stop-color="#8b5cf6"/>
+    </linearGradient>
+    <linearGradient id="ribbon2" x1="100%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#ec4899"/>
+      <stop offset="60%" stop-color="#a855f7"/>
+      <stop offset="100%" stop-color="#3b82f6"/>
+    </linearGradient>
+    <linearGradient id="penBody" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f8fafc"/>
+      <stop offset="60%" stop-color="#cbd5e1"/>
+      <stop offset="100%" stop-color="#64748b"/>
+    </linearGradient>
+    <radialGradient id="glowGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#38bdf8" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#38bdf8" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="neonBlur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+
+  <!-- Dark container background -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)"/>
+  
+  <!-- Subtle ambient glow in center -->
+  <circle cx="256" cy="256" r="180" fill="url(#glowGlow)"/>
+
+  <!-- 3D Spatial Ribbon swirl (Back arc) -->
+  <path d="M140 330 C110 240, 160 140, 260 130 C350 120, 390 190, 370 270 C350 350, 240 380, 170 340"
+        fill="none"
+        stroke="url(#ribbon2)"
+        stroke-width="36"
+        stroke-linecap="round"
+        opacity="0.6"
+        filter="url(#neonBlur)"/>
+
+  <!-- 3D Spatial Ribbon swirl (Front arc) -->
+  <path d="M150 320 C120 220, 190 140, 290 150 C370 160, 390 240, 350 310 C310 380, 200 380, 150 320"
+        fill="none"
+        stroke="url(#ribbon1)"
+        stroke-width="38"
+        stroke-linecap="round"
+        filter="url(#neonBlur)"/>
+
+  <!-- Inner highlight curve -->
+  <path d="M165 305 C145 225, 200 160, 280 168 C345 175, 365 235, 335 295"
+        fill="none"
+        stroke="#ffffff"
+        stroke-width="6"
+        stroke-linecap="round"
+        opacity="0.75"/>
+
+  <!-- Precision Stylus Pen Body -->
+  <g transform="translate(190, 100) rotate(38)">
+    <!-- Pen Barrel -->
+    <path d="M-14 -160 L14 -160 L12 20 L-12 20 Z" fill="url(#penBody)"/>
+    <!-- Pen Grip band -->
+    <rect x="-13" y="-30" width="26" height="35" rx="3" fill="#1e293b"/>
+    <!-- Pen Nib Cone -->
+    <path d="M-12 20 L0 52 L12 20 Z" fill="#0f172a"/>
+    <!-- Stylus tip -->
+    <circle cx="0" cy="52" r="3" fill="#38bdf8"/>
+    <!-- Glow spark at tip -->
+    <circle cx="0" cy="52" r="8" fill="#38bdf8" opacity="0.6" filter="url(#neonBlur)"/>
+  </g>
+
+  <!-- 3D Orbit spark dots -->
+  <circle cx="372" cy="188" r="8" fill="#a855f7" filter="url(#neonBlur)"/>
+  <circle cx="396" cy="204" r="4" fill="#ffffff"/>
+  <circle cx="132" cy="270" r="6" fill="#38bdf8" filter="url(#neonBlur)"/>
+  <circle cx="270" cy="384" r="5" fill="#ec4899" filter="url(#neonBlur)"/>
+</svg>

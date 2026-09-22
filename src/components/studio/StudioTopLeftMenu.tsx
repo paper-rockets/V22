@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { getMenuSurfaceClasses } from '../ui/MenuPrimitives';
 import {
@@ -9,7 +9,9 @@ import {
   Save,
   X,
   ChevronRight,
+  Smartphone,
 } from 'lucide-react';
+import { subscribeInstallAvailability, promptPWAInstall } from '../../registerServiceWorker';
 
 interface StudioTopLeftMenuProps {
   open: boolean;
@@ -71,6 +73,11 @@ export const StudioTopLeftMenu: React.FC<StudioTopLeftMenuProps> = ({
 }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
   const isLight = theme === 'light';
+  const [canInstall, setCanInstall] = useState(false);
+
+  useEffect(() => {
+    return subscribeInstallAvailability(setCanInstall);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -213,6 +220,19 @@ export const StudioTopLeftMenu: React.FC<StudioTopLeftMenuProps> = ({
               }}
               isLight={isLight}
               destructive
+            />
+          )}
+
+          {canInstall && (
+            <ActionRow
+              icon={Smartphone}
+              label="Install App"
+              hint="Add Remix 3D to home screen or desktop"
+              onClick={async () => {
+                onClose();
+                await promptPWAInstall();
+              }}
+              isLight={isLight}
             />
           )}
 
