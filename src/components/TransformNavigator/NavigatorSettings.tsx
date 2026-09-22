@@ -56,13 +56,6 @@ export function NavigatorSettings({
         </div>
       </fieldset>
 
-      {onSelectLayer && layers.length > 0 && <label className="navigator-field">
-        <span>Active layer</span>
-        <select aria-label="Layer to move and rotate" value={activeLayerId ?? layers[0].id} onChange={(event) => tap(() => { onSelectLayer(event.target.value); onSelectTargetScope?.('active_layer'); })}>
-          {layers.map((layer) => <option key={layer.id} value={layer.id}>{layer.name || 'Untitled layer'}{layer.locked ? ' (locked)' : ''}</option>)}
-        </select>
-      </label>}
-
       {onLayoutChange && <fieldset className="navigator-field">
         <legend>Navigator style</legend>
         <div className="navigator-segments" role="group" aria-label="Gizmo version">

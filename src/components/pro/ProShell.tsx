@@ -6,6 +6,12 @@ export type ProShellProps = ProPanelProps & {
   onOpenIllumination?: () => void;
   isIlluminationOpen?: boolean;
   isModalActive?: boolean;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  fingerDraw?: boolean;
+  onToggleFingerDraw?: (val: boolean) => void;
 };
 
 export const ProShell: React.FC<ProShellProps> = (props) => {
@@ -28,6 +34,12 @@ export const ProShell: React.FC<ProShellProps> = (props) => {
         onSelectTargetScope={props.onSelectTargetScope}
         isModalActive={props.isModalActive}
         onOpenNumpad={props.onOpenNumpad}
+        onUndo={props.onUndo}
+        onRedo={props.onRedo}
+        canUndo={props.canUndo}
+        canRedo={props.canRedo}
+        fingerDraw={props.fingerDraw}
+        onToggleFingerDraw={props.onToggleFingerDraw}
       />
     </>
   );

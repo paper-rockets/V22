@@ -14,3 +14,11 @@ scripts/screenshots/
 screenshots/
 ALL_SCREENSHOTS/
 test-results/
+
+# deconstructor working files
+scripts/deconstruct3d/.cache/
+public/demos/source-model.glb
+recordings/
+tablet_screen.png
+scripts/temp_texture*
+

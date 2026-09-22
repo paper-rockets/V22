@@ -18,6 +18,10 @@ import {
   Box,
   Orbit,
   Spline,
+  Undo2,
+  Redo2,
+  Hand,
+  Calculator,
 } from 'lucide-react';
 import {
   IcPointer,
@@ -54,6 +58,12 @@ export interface ProRailProps {
   onSelectTargetScope?: (scope: TransformTargetScope) => void;
   isModalActive?: boolean;
   onOpenNumpad?: (target: NumpadTarget) => void;
+  onUndo?: () => void;
+  onRedo?: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
+  fingerDraw?: boolean;
+  onToggleFingerDraw?: (val: boolean) => void;
 }
 
 interface ModeButton {
@@ -101,7 +111,13 @@ export const ProRail: React.FC<ProRailProps> = ({
   onSelectTargetScope,
   isModalActive = false,
   onOpenNumpad,
-}) => {
+  onUndo,
+  onRedo,
+  canUndo = false,
+  canRedo = false,
+  fingerDraw = true,
+  onToggleFingerDraw,
+}: ProRailProps) => {
   const openSheet = useOpenSheet();
   const closeColorStudio = () => window.dispatchEvent(new Event('remix3d:close-color-studio'));
   const light = theme === 'light';
@@ -200,12 +216,12 @@ export const ProRail: React.FC<ProRailProps> = ({
     touchTolerance: 20,
   });
 
-  const currentBrushSettings: BrushSettings = brushSettings || {
+  const currentBrushSettings: BrushSettings = brushSettings || ({
     color: '#000000',
     size: 0.03,
     opacity: 1.0,
     profile: 'tube',
-  };
+  } as BrushSettings);
 
   const activeBrush = getActiveCuratedBrush(currentBrushSettings);
   const displayedBrushes = QUICK_BRUSH_IDS.flatMap((id) => CURATED_BRUSHES.filter((brush) => brush.id === id));
@@ -266,8 +282,104 @@ export const ProRail: React.FC<ProRailProps> = ({
         className="paperrocket-studio-rail fixed z-40 select-none pointer-events-none"
       >
         <div className={`paperrocket-studio-rail-inner pointer-events-auto flex items-center ${light ? 'text-neutral-800' : 'text-white/85'}`}>
-          {/* Left Rail Tools: Draw, Brush, Color, Size, Erase, Select, Layers */}
+          {/* Left Rail Tools: History (Undo/Redo), Draw, Brush, Color, Size, Erase, Select, Layers */}
           <div className="paperrocket-studio-mode-group">
+            {/* History: Undo & Redo in Left Rail */}
+            {onUndo && (
+              <button
+                type="button"
+                data-pro-rail-button="true"
+                data-testid="tool-undo"
+                onClick={() => {
+                  haptics.trigger('light');
+                  onUndo();
+                }}
+                disabled={!canUndo}
+                className={`paperrocket-studio-mode flex items-center justify-center rounded-xl transition-colors active:scale-95 border-0 bg-transparent disabled:opacity-25 ${
+                  light ? 'text-neutral-600 hover:text-neutral-900' : 'text-neutral-400 hover:text-white'
+                }`}
+                aria-label="Undo"
+                title="Undo (Ctrl+Z)"
+              >
+                <Undo2 className="h-[18px] w-[18px] shrink-0" strokeWidth={1.8} />
+                <span className="paperrocket-studio-mode-label">Undo</span>
+              </button>
+            )}
+            {onRedo && (
+              <button
+                type="button"
+                data-pro-rail-button="true"
+                data-testid="tool-redo"
+                onClick={() => {
+                  haptics.trigger('light');
+                  onRedo();
+                }}
+                disabled={!canRedo}
+                className={`paperrocket-studio-mode flex items-center justify-center rounded-xl transition-colors active:scale-95 border-0 bg-transparent disabled:opacity-25 ${
+                  light ? 'text-neutral-600 hover:text-neutral-900' : 'text-neutral-400 hover:text-white'
+                }`}
+                aria-label="Redo"
+                title="Redo (Ctrl+Y)"
+              >
+                <Redo2 className="h-[18px] w-[18px] shrink-0" strokeWidth={1.8} />
+                <span className="paperrocket-studio-mode-label">Redo</span>
+              </button>
+            )}
+
+            {/* Finger-Draw Quick Toggle */}
+            {onToggleFingerDraw && (
+              <button
+                type="button"
+                data-pro-rail-button="true"
+                data-testid="tool-finger-draw"
+                data-active={fingerDraw}
+                onClick={() => {
+                  haptics.trigger('light');
+                  onToggleFingerDraw(!fingerDraw);
+                }}
+                className={`paperrocket-studio-mode flex items-center justify-center rounded-xl transition-colors active:scale-95 border-0 bg-transparent ${
+                  fingerDraw
+                    ? light ? 'text-blue-600 font-semibold' : 'text-sky-400 font-semibold'
+                    : light ? 'text-neutral-400 hover:text-neutral-700' : 'text-neutral-500 hover:text-neutral-300'
+                }`}
+                aria-label="Finger Draw Toggle"
+                title={fingerDraw ? 'Finger-Draw ON: Fingers draw on canvas' : 'Finger-Draw OFF: Touch navigates camera'}
+              >
+                <Hand className="h-[18px] w-[18px] shrink-0" strokeWidth={1.8} />
+                <span className="paperrocket-studio-mode-label">Touch</span>
+              </button>
+            )}
+
+            {/* Virtual Numpad Trigger */}
+            {onOpenNumpad && (
+              <button
+                type="button"
+                data-pro-rail-button="true"
+                data-testid="tool-numpad"
+                onClick={() => {
+                  haptics.trigger('light');
+                  onOpenNumpad({
+                    id: 'brush-size',
+                    title: 'Precision Size',
+                    value: brushSettings?.size ?? 16,
+                    unit: 'px',
+                    min: 1,
+                    max: 250,
+                    step: 1,
+                    onConfirm: (v) => setBrushSettings?.(prev => ({ ...prev, size: v })),
+                  });
+                }}
+                className={`paperrocket-studio-mode flex items-center justify-center rounded-xl transition-colors active:scale-95 border-0 bg-transparent ${
+                  light ? 'text-neutral-600 hover:text-neutral-900' : 'text-neutral-400 hover:text-white'
+                }`}
+                aria-label="Virtual Numpad"
+                title="Virtual Numpad for numeric precision"
+              >
+                <Calculator className="h-[18px] w-[18px] shrink-0" strokeWidth={1.8} />
+                <span className="paperrocket-studio-mode-label">123</span>
+              </button>
+            )}
+
             {/* 1. Draw */}
             <button
               type="button"

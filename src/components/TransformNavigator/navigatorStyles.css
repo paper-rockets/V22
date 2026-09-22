@@ -196,6 +196,22 @@
   left: calc(16px + env(safe-area-inset-left));
   bottom: calc(90px + env(safe-area-inset-bottom));
   pointer-events: none;
+  opacity: 0.15;
+  transition: opacity 0.24s cubic-bezier(0.16, 1, 0.3, 1), transform 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.nv-dock:hover,
+.nv-dock:focus-within,
+#nv[data-menu="open"] .nv-dock,
+#nv.nv-interacting .nv-dock,
+#nv[data-active="true"] .nv-dock {
+  opacity: 1;
+}
+
+#nv[data-drawer-open="true"] .nv-dock {
+  transform: translateY(180px);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .nv-dock > * {

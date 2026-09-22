@@ -61,7 +61,19 @@ export const DeviceSimulatorFrame: React.FC<DeviceSimulatorFrameProps> = ({
   const initialResolved = useMemo<SimulatedDevice>(() => {
     if (initialDevice) return initialDevice;
     if (typeof window === 'undefined') return 'none';
+
+    // Critical: Real cellphones and tablets MUST be 100% full screen edge-to-edge
+    const isTouch = 'ontouchstart' in window || (navigator.maxTouchPoints && navigator.maxTouchPoints > 0);
+    const isMobileUA = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
+    const isSmallScreen = window.innerWidth <= 1024;
+    const isRealMobileOrTablet = isMobileUA || (isTouch && isSmallScreen);
+
     const params = new URLSearchParams(window.location.search);
+    const forceSim = params.get('forceSimulator') === 'true';
+    if (isRealMobileOrTablet && !forceSim) {
+      return 'none';
+    }
+
     const d = params.get('device')?.toLowerCase();
     if (d === 's25ultra') return 's25ultra';
     if (d === 's6lite') return 's6lite';

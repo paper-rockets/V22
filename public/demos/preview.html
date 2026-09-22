@@ -1,0 +1,366 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Deconstructor preview</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #111214; color: #e8e8ea; font: 13px/1.5 ui-sans-serif, system-ui, sans-serif; overflow: hidden; }
+  #stage { display: grid; grid-template-columns: 1fr 1fr; height: 100vh; }
+  .pane { position: relative; border-right: 1px solid #232428; }
+  .pane:last-child { border-right: 0; }
+  .pane canvas { display: block; width: 100%; height: 100%; }
+  .tag { position: absolute; top: 10px; left: 12px; font-weight: 600; letter-spacing: .04em;
+         text-transform: uppercase; font-size: 11px; color: #9aa0a6; pointer-events: none; }
+  .sub { position: absolute; top: 28px; left: 12px; font-size: 11px; color: #6b7076; pointer-events: none; }
+  #bar { position: fixed; left: 50%; transform: translateX(-50%); bottom: 14px; display: flex; gap: 14px;
+         align-items: center; background: #1b1c1fee; border: 1px solid #2c2e33; border-radius: 10px;
+         padding: 8px 14px; backdrop-filter: blur(8px); }
+  #bar label { display: flex; gap: 6px; align-items: center; color: #b9bec4; }
+  input[type=range] { width: 170px; }
+  button { background: #26282d; color: #e8e8ea; border: 1px solid #34363c; border-radius: 6px;
+           padding: 5px 10px; cursor: pointer; font: inherit; }
+  button.off { opacity: .4; }
+  #err { position: fixed; inset: auto 12px 12px 12px; color: #ff9f9f; font-family: ui-monospace, monospace;
+         white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <div class="pane" id="left"><div class="tag">source model</div><div class="sub" id="leftSub"></div></div>
+  <div class="pane" id="right"><div class="tag">deconstructed drawing</div><div class="sub" id="rightSub"></div></div>
+</div>
+<div id="bar">
+  <label>strokes <input id="count" type="range" min="1" max="100" value="100" /></label>
+  <span id="countLabel"></span>
+  <span id="passes"></span>
+  <button id="spin">spin</button>
+</div>
+<div id="err"></div>
+
+<script type="importmap">
+{ "imports": {
+  "three": "/node_modules/three/build/three.module.js",
+  "three/webgpu": "/node_modules/three/build/three.webgpu.js",
+  "three/tsl": "/node_modules/three/build/three.tsl.js",
+  "three/addons/": "/node_modules/three/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+const params = new URLSearchParams(location.search);
+const MODEL = params.get('model');                       // url of the source glb
+const DATA = params.get('data') || '/demos/model-paint.json';
+const FIT = Number(params.get('fit') || 3.6);
+
+const errBox = document.getElementById('err');
+const fail = (e) => { errBox.textContent += `\n${e.message || e}`; console.error(e); };
+
+// ---------------------------------------------------------------- scaffolding
+
+function makeView(host) {
+  const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: true });
+  renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  host.appendChild(renderer.domElement);
+
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0x111214);
+  // The studio's default framing, so the preview matches what the app shows.
+  const camera = new THREE.PerspectiveCamera(45, 1, 0.05, 2000);
+  const target = new THREE.Vector3(-0.08, 0.42, 0);
+  camera.position.set(0, 0.6, 7.85);
+
+  const controls = new OrbitControls(camera, renderer.domElement);
+  controls.target.copy(target);
+  controls.enableDamping = true;
+
+  // Neutral light on both sides, so any colour difference between the model
+  // and the drawing is the drawing's fault and not the lighting's.
+  scene.add(new THREE.HemisphereLight(0xffffff, 0x555555, 2.0));
+  const key = new THREE.DirectionalLight(0xffffff, 2.2);
+  key.position.set(4, 7, 5);
+  scene.add(key);
+  const rim = new THREE.DirectionalLight(0xffffff, 0.9);
+  rim.position.set(-5, 2, -4);
+  scene.add(rim);
+
+  const resize = () => {
+    const w = host.clientWidth, h = host.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  };
+  resize();
+  new ResizeObserver(resize).observe(host);
+  return { renderer, scene, camera, controls };
+}
+
+const left = makeView(document.getElementById('left'));
+const right = makeView(document.getElementById('right'));
+
+// Keep both cameras locked together so the comparison is honest.
+let syncing = false;
+const sync = (from, to) => {
+  if (syncing) return;
+  syncing = true;
+  to.camera.position.copy(from.camera.position);
+  to.controls.target.copy(from.controls.target);
+  to.camera.quaternion.copy(from.camera.quaternion);
+  syncing = false;
+};
+
+// ------------------------------------------------------------- source model
+
+if (MODEL) {
+  const loader = new GLTFLoader();
+  const draco = new DRACOLoader();
+  draco.setDecoderPath('/node_modules/three/examples/jsm/libs/draco/gltf/');
+  loader.setDRACOLoader(draco);
+  loader.load(MODEL, (gltf) => {
+    const root = gltf.scene;
+    const box = new THREE.Box3().setFromObject(root);
+    const size = new THREE.Vector3(); box.getSize(size);
+    const center = new THREE.Vector3(); box.getCenter(center);
+    const scale = FIT / Math.max(size.x, size.y, size.z);
+    root.scale.setScalar(scale);
+    root.position.set(
+      -center.x * scale - 0.08,
+      -center.y * scale + 0.42,
+      -center.z * scale
+    );
+    left.scene.add(root);
+    let tris = 0;
+    root.traverse((o) => { if (o.isMesh) tris += (o.geometry.index?.count || o.geometry.attributes.position.count) / 3; });
+    document.getElementById('leftSub').textContent = `${Math.round(tris).toLocaleString()} triangles`;
+  }, undefined, fail);
+} else {
+  document.getElementById('leftSub').textContent = 'no ?model= given';
+}
+
+// --------------------------------------------------------- stroke rendering
+//
+// Mirrors the app's bead generator closely enough to judge the result: a
+// ribbon is a flat band centred on the point, widened along the binormal by
+// 3 * size * pressure; a tube is a round sweep of radius size * pressure.
+
+function frames(points) {
+  const tangents = [], binormals = [];
+  let previous = null;
+  for (let i = 0; i < points.length; i++) {
+    const a = points[Math.max(0, i - 1)], b = points[Math.min(points.length - 1, i + 1)];
+    const t = new THREE.Vector3(b.x - a.x, b.y - a.y, b.z - a.z);
+    if (t.lengthSq() < 1e-12) t.set(0, 0, 1);
+    t.normalize();
+    const n = new THREE.Vector3(points[i].nx, points[i].ny, points[i].nz).normalize();
+    const bn = new THREE.Vector3().crossVectors(n, t);
+    if (bn.lengthSq() < 1e-10) bn.crossVectors(new THREE.Vector3(0, 1, 0), t);
+    bn.normalize();
+    // Carry the cross-section along the stroke. Recomputing it independently
+    // at every point lets it flip sign wherever the tangent wobbles, which
+    // twists the ribbon inside out and renders half of it in shadow. The app's
+    // own bead generator uses rotation-minimising frames for the same reason.
+    if (previous && bn.dot(previous) < 0) bn.negate();
+    previous = bn;
+    tangents.push(t); binormals.push(bn);
+  }
+  return { tangents, binormals };
+}
+
+function ribbonGeometry(stroke) {
+  const pts = stroke.points;
+  const { binormals } = frames(pts);
+  const position = [], normal = [], index = [];
+  for (let i = 0; i < pts.length; i++) {
+    const p = pts[i];
+    const n = new THREE.Vector3(p.nx, p.ny, p.nz).normalize();
+    const half = stroke.size * 1.5 * (p.pressure ?? 1);
+    const c = new THREE.Vector3(p.x, p.y, p.z).addScaledVector(n, 0.002);
+    const l = c.clone().addScaledVector(binormals[i], -half);
+    const r = c.clone().addScaledVector(binormals[i], half);
+    position.push(l.x, l.y, l.z, r.x, r.y, r.z);
+    normal.push(n.x, n.y, n.z, n.x, n.y, n.z);
+    if (i > 0) {
+      // Wound so the triangle normal agrees with the supplied surface normal.
+      // The other order makes every ribbon back-facing, and three.js then
+      // flips the shading normal and lights the whole drawing from behind.
+      const a = (i - 1) * 2;
+      index.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+    }
+  }
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute(position, 3));
+  g.setAttribute('normal', new THREE.Float32BufferAttribute(normal, 3));
+  g.setIndex(index);
+  return g;
+}
+
+function tubeGeometry(stroke) {
+  const pts = stroke.points.map((p) => new THREE.Vector3(p.x, p.y, p.z));
+  const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal', 0.5);
+  const segments = Math.max(2, Math.min(64, pts.length * 2));
+  const mean = stroke.points.reduce((a, p) => a + (p.pressure ?? 1), 0) / stroke.points.length;
+  return new THREE.TubeGeometry(curve, segments, stroke.size * mean, 6, false);
+}
+
+// Pass names come from the data, in the order the strokes were drawn.
+let PASS_ORDER = [];
+let strokeMeshes = [];
+let strokes = [];
+const passOn = {};
+
+function build() {
+  for (const m of strokeMeshes) { right.scene.remove(m); m.geometry.dispose(); m.material.dispose(); }
+  strokeMeshes = [];
+  const limit = Math.round((document.getElementById('count').value / 100) * strokes.length);
+  let drawn = 0;
+  for (let i = 0; i < limit; i++) {
+    const s = strokes[i];
+    if (passOn[s.pass ?? 'default'] === false) continue;
+    const geometry = s.profile === 'tube' ? tubeGeometry(s) : ribbonGeometry(s);
+    const opacity = s.opacity ?? 1;
+    const material = new THREE.MeshStandardMaterial({
+      color: new THREE.Color(s.color),
+      roughness: s.roughness ?? 0.6,
+      metalness: s.metalness ?? 0.1,
+      side: THREE.DoubleSide,
+      flatShading: false,
+      transparent: opacity < 0.999,
+      opacity,
+      depthWrite: opacity > 0.9,
+    });
+    const mesh = new THREE.Mesh(geometry, material);
+    right.scene.add(mesh);
+    strokeMeshes.push(mesh);
+    drawn++;
+  }
+  document.getElementById('countLabel').textContent = `${drawn.toLocaleString()} / ${strokes.length.toLocaleString()}`;
+  if (window.__dbg) window.__dbg.render();
+}
+
+fetch(DATA).then((r) => r.json()).then((data) => {
+  strokes = data;
+  const counts = {};
+  for (const s of data) {
+    const name = s.pass ?? 'default';
+    if (!(name in counts)) { counts[name] = 0; PASS_ORDER.push(name); }
+    counts[name]++;
+    passOn[name] = true;
+  }
+  const points = data.reduce((a, s) => a + s.points.length, 0);
+  document.getElementById('rightSub').textContent =
+    `${data.length.toLocaleString()} strokes / ${points.toLocaleString()} points`;
+  const host = document.getElementById('passes');
+  for (const pass of PASS_ORDER) {
+    if (!counts[pass]) continue;
+    const b = document.createElement('button');
+    b.textContent = `${pass} ${counts[pass]}`;
+    b.onclick = () => { passOn[pass] = !passOn[pass]; b.classList.toggle('off', !passOn[pass]); build(); };
+    host.appendChild(b);
+  }
+  build();
+}).catch(fail);
+
+document.getElementById('count').oninput = build;
+let spinning = false;
+document.getElementById('spin').onclick = (e) => { spinning = !spinning; e.target.classList.toggle('off', !spinning); };
+
+const axis = new THREE.Vector3(0, 1, 0);
+function renderAll() {
+  left.controls.update();
+  sync(left, right);
+  right.controls.update();
+  left.renderer.render(left.scene, left.camera);
+  right.renderer.render(right.scene, right.camera);
+  window.__dbg.frames++;
+}
+// Background tabs get no animation frames, so keep a way to draw on demand.
+window.__dbg = {
+  frames: 0, left, right, THREE, render: renderAll,
+  orbit(radians) {
+    const t = right.controls.target;
+    for (const v of [left, right]) {
+      v.camera.position.sub(t).applyAxisAngle(axis, radians).add(t);
+      v.camera.lookAt(t);
+    }
+    renderAll();
+  },
+  get strokes() { return strokes; },
+  /**
+   * Objective accuracy: render both panes from the same camera, then compare.
+   *  silhouette - intersection over union of the two coverage masks
+   *  colour     - mean per-pixel error where both are covered (0 = identical)
+   */
+  score(size = 720) {
+    // Both panes are forced to the same square viewport so the comparison is
+    // pixel for pixel, then put back.
+    const restore = [left, right].map((v) => ({ v, w: v.renderer.domElement.width, h: v.renderer.domElement.height }));
+    for (const v of [left, right]) {
+      v.renderer.setPixelRatio(1);
+      v.renderer.setSize(size, size, false);
+      v.camera.aspect = 1;
+      v.camera.updateProjectionMatrix();
+    }
+    renderAll();
+    const grab = (view) => {
+      const gl = view.renderer.getContext();
+      const w = gl.drawingBufferWidth, h = gl.drawingBufferHeight;
+      const buf = new Uint8Array(w * h * 4);
+      gl.readPixels(0, 0, w, h, gl.RGBA, gl.UNSIGNED_BYTE, buf);
+      return { buf, w, h };
+    };
+    const A = grab(left), B = grab(right);
+    for (const r of restore) {
+      r.v.renderer.setPixelRatio(Math.min(2, devicePixelRatio));
+      r.v.renderer.setSize(r.v.renderer.domElement.parentElement.clientWidth, r.v.renderer.domElement.parentElement.clientHeight, false);
+      r.v.camera.aspect = r.v.renderer.domElement.parentElement.clientWidth / r.v.renderer.domElement.parentElement.clientHeight;
+      r.v.camera.updateProjectionMatrix();
+    }
+    if (A.w !== B.w || A.h !== B.h) return { error: 'panes differ in size' };
+    const bg = [0x11, 0x12, 0x14];
+    const covered = (b, i) =>
+      Math.abs(b[i] - bg[0]) + Math.abs(b[i + 1] - bg[1]) + Math.abs(b[i + 2] - bg[2]) > 18;
+    let inter = 0, union = 0, onlyA = 0, onlyB = 0, err = 0, lumA = 0, lumB = 0;
+    for (let i = 0; i < A.buf.length; i += 4) {
+      const a = covered(A.buf, i), b = covered(B.buf, i);
+      if (a || b) union++;
+      if (a && b) {
+        inter++;
+        err += (Math.abs(A.buf[i] - B.buf[i]) + Math.abs(A.buf[i+1] - B.buf[i+1]) + Math.abs(A.buf[i+2] - B.buf[i+2])) / 3;
+        lumA += (A.buf[i] + A.buf[i+1] + A.buf[i+2]) / 3;
+        lumB += (B.buf[i] + B.buf[i+1] + B.buf[i+2]) / 3;
+      } else if (a) onlyA++;
+      else if (b) onlyB++;
+    }
+    return {
+      silhouetteIoU: +(inter / Math.max(1, union)).toFixed(4),
+      missed: +(onlyA / Math.max(1, union)).toFixed(4),
+      spilled: +(onlyB / Math.max(1, union)).toFixed(4),
+      colourError: +(err / Math.max(1, inter)).toFixed(2),
+      meanLuma: [Math.round(lumA / Math.max(1, inter)), Math.round(lumB / Math.max(1, inter))],
+    };
+  },
+};
+function tick() {
+  requestAnimationFrame(tick);
+  if (spinning) {
+    const t = right.controls.target;
+    for (const v of [left, right]) {
+      v.camera.position.sub(t).applyAxisAngle(axis, 0.004).add(t);
+      v.camera.lookAt(t);
+    }
+  }
+  renderAll();
+}
+left.controls.addEventListener('change', () => sync(left, right));
+right.controls.addEventListener('change', () => sync(right, left));
+tick();
+</script>
+</body>
+</html>

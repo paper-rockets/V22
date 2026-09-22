@@ -6,11 +6,12 @@ import {
   Compass,
   Droplets,
   Grid,
+  Layers,
   Maximize2,
   Minimize2,
-  Moon,
   MoveDiagonal2,
   Palette,
+  Sliders,
   Sun,
   X,
   ChevronRight,
@@ -22,14 +23,7 @@ interface StudioTopMoreMenuProps {
   theme: 'light' | 'dark';
   isFullscreen: boolean;
   onClose: () => void;
-  onOpenIllumination?: () => void;
-  onToggleTheme?: () => void;
-  showGrid?: boolean;
-  onToggleGrid?: () => void;
-  onToggleFullscreen: () => void;
-  isGizmoActive?: boolean;
-  onToggleGizmo?: () => void;
-  // Scene & Canvas controls (Image 3)
+  // Canvas controls
   canvasFormat?: 'portrait' | 'square' | 'landscape' | 'custom';
   onCanvasFormatChange?: (format: 'portrait' | 'square' | 'landscape') => void;
   canvasWidth?: number;
@@ -39,6 +33,17 @@ interface StudioTopMoreMenuProps {
   onCanvasTransparencyChange?: (transparency: number) => void;
   canvasColor?: string;
   onCanvasColorChange?: (color: string) => void;
+  // Scene controls
+  showGrid?: boolean;
+  onToggleGrid?: () => void;
+  showPlane?: boolean;
+  onTogglePlane?: () => void;
+  onOpenIllumination?: () => void;
+  onOpenRenderSettings?: () => void;
+  // View controls
+  isGizmoActive?: boolean;
+  onToggleGizmo?: () => void;
+  onToggleFullscreen: () => void;
 }
 
 const Row: React.FC<{
@@ -130,13 +135,6 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
   theme,
   isFullscreen,
   onClose,
-  onOpenIllumination,
-  onToggleTheme,
-  showGrid = true,
-  onToggleGrid,
-  onToggleFullscreen,
-  isGizmoActive = true,
-  onToggleGizmo,
   canvasFormat = 'portrait',
   onCanvasFormatChange,
   canvasWidth = 2.7,
@@ -146,6 +144,15 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
   onCanvasTransparencyChange,
   canvasColor = '#ffffff',
   onCanvasColorChange,
+  showGrid = true,
+  onToggleGrid,
+  showPlane = false,
+  onTogglePlane,
+  onOpenIllumination,
+  onOpenRenderSettings,
+  isGizmoActive = true,
+  onToggleGizmo,
+  onToggleFullscreen,
 }) => {
   const dialogRef = useRef<HTMLDivElement>(null);
   const isLight = theme === 'light';
@@ -219,10 +226,10 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
         <div className="shrink-0 mb-0.5 flex min-h-8 items-center justify-between border-b border-black/5 dark:border-white/5 pb-1">
           <div>
             <h2 id="studio-more-title" className="text-xs font-semibold tracking-tight">
-              Canvas & View
+              Scene
             </h2>
             <span className={`block text-[10px] ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
-              Drawing surface and display
+              Canvas & workspace
             </span>
           </div>
           <button
@@ -351,20 +358,26 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
           </Row>
         )}
 
+        {/* 2. Scene */}
+        <SectionHeader title="Scene" isLight={isLight} />
+
         {onToggleGrid && (
           <Row icon={Grid} label="Ground Grid" hint="Floor reference plane" isLight={isLight}>
             <Toggle on={Boolean(showGrid)} onChange={() => onToggleGrid()} label="Ground Grid" />
           </Row>
         )}
 
-        {/* 2. View & Display */}
-        <SectionHeader title="View" isLight={isLight} />
+        {onTogglePlane && (
+          <Row icon={Layers} label="Drawing Plane" hint="Flat surface for drawing lines" isLight={isLight}>
+            <Toggle on={Boolean(showPlane)} onChange={() => onTogglePlane()} label="Drawing Plane" />
+          </Row>
+        )}
 
         {onOpenIllumination && (
           <ActionRow
             icon={Sun}
             label="Studio Lighting"
-            hint="Sunlight, angles, and shadows"
+            hint="Sunlight, angles & shadows"
             onClick={() => {
               onClose();
               onOpenIllumination();
@@ -374,40 +387,22 @@ export const StudioTopMoreMenu: React.FC<StudioTopMoreMenuProps> = ({
           />
         )}
 
-        {onToggleTheme && (
-          <Row icon={isLight ? Sun : Moon} label="Studio Theme" hint="Color scheme" isLight={isLight}>
-            <div className="flex gap-1 w-32">
-              <button
-                type="button"
-                onClick={() => {
-                  if (!isLight) {
-                    haptics.trigger('light');
-                    onToggleTheme();
-                  }
-                }}
-                className={`flex-1 h-[26px] rounded-md text-[11px] font-medium flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                  isLight ? 'bg-neutral-900 text-white shadow-sm' : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
-                }`}
-              >
-                <Sun className="w-3 h-3" /> Light
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  if (isLight) {
-                    haptics.trigger('light');
-                    onToggleTheme();
-                  }
-                }}
-                className={`flex-1 h-[26px] rounded-md text-[11px] font-medium flex items-center justify-center gap-1 transition-all cursor-pointer ${
-                  !isLight ? 'bg-white text-zinc-950 shadow-sm' : 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200'
-                }`}
-              >
-                <Moon className="w-3 h-3" /> Dark
-              </button>
-            </div>
-          </Row>
+        {onOpenRenderSettings && (
+          <ActionRow
+            icon={Sliders}
+            label="Picture Quality"
+            hint="Bloom, glow & anti-aliasing"
+            onClick={() => {
+              onClose();
+              onOpenRenderSettings();
+            }}
+            isLight={isLight}
+            chevron
+          />
         )}
+
+        {/* 3. View */}
+        <SectionHeader title="View" isLight={isLight} />
 
         {onToggleGizmo && (
           <Row icon={Compass} label="3D Navigator" hint="Corner view controller" isLight={isLight}>

@@ -63,6 +63,7 @@ export interface ProPanelProps {
   onOpenBentGuide?: () => void;
   onOpenLoftSurface?: () => void;
   onOpenCustomMirror?: () => void;
+  onOpenClipboard?: () => void;
   onOpenDecimate?: () => void;
   // Layers Mode props
   layers?: Layer[];
@@ -121,6 +122,7 @@ export const ProPanel: React.FC<ProPanelProps> = ({
   onOpenBentGuide,
   onOpenLoftSurface,
   onOpenCustomMirror,
+  onOpenClipboard,
   onOpenDecimate,
   layers,
   setLayers,
@@ -243,6 +245,7 @@ export const ProPanel: React.FC<ProPanelProps> = ({
             onSetModelDisplayMode={onSetModelDisplayMode}
             onOpenModelLibrary={onOpenModelLibrary}
             onOpenImporter={onOpenImporter}
+            onOpenClipboard={onOpenClipboard}
             onOpenScaffolding={onOpenScaffolding}
             onOpenBentGuide={onOpenBentGuide}
             onOpenLoftSurface={onOpenLoftSurface}

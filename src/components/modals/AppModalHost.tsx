@@ -233,6 +233,7 @@ export const AppModalHost: React.FC<AppModalHostProps> = ({
             onClose={() => setIsExportOpen(false)}
             activeModelName={activeModelName}
             theme={theme}
+            onOpenARViewer={() => setIsARViewerOpen(true)}
           />
         </Suspense>
       )}

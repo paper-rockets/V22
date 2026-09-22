@@ -1,5 +1,5 @@
 import React from 'react';
-import { Copy, Trash2, RotateCcw, X, Box, Spline } from 'lucide-react';
+import { Copy, Trash2, RotateCcw, X, Box, Spline, Waves, Layers } from 'lucide-react';
 import { haptics } from '../../utils/haptics';
 
 export interface SelectionInfo {
@@ -14,6 +14,8 @@ interface SelectionActionBarProps {
   onDelete: () => void;
   onResetTransform?: () => void;
   onDeselect: () => void;
+  onLiquify?: () => void;
+  onLoft?: () => void;
   theme?: 'light' | 'dark';
 }
 
@@ -23,6 +25,8 @@ export const SelectionActionBar: React.FC<SelectionActionBarProps> = ({
   onDelete,
   onResetTransform,
   onDeselect,
+  onLiquify,
+  onLoft,
   theme = 'dark',
 }) => {
   if (!selection) return null;
@@ -83,7 +87,7 @@ export const SelectionActionBar: React.FC<SelectionActionBarProps> = ({
         </span>
       </div>
 
-      {/* Clone Action Button */}
+      {/* Duplicate Action Button */}
       <button
         type="button"
         onClick={handleCloneClick}
@@ -97,6 +101,48 @@ export const SelectionActionBar: React.FC<SelectionActionBarProps> = ({
         <Copy className="w-3.5 h-3.5" />
         <span>Duplicate</span>
       </button>
+
+      {/* Liquify Action Button (Strokes / Curves) */}
+      {selection.type === 'stroke' && onLiquify && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            haptics.trigger('medium');
+            onLiquify();
+          }}
+          className={`h-9 min-h-[36px] px-2.5 rounded-xl border flex items-center gap-1.5 font-semibold text-xs transition-all active:scale-95 ${
+            isLight
+              ? 'bg-neutral-100 hover:bg-neutral-200 border-black/10 text-neutral-800'
+              : 'bg-white/5 hover:bg-white/10 border-white/10 text-neutral-200'
+          }`}
+          title="Liquify curve shape"
+        >
+          <Waves className="w-3.5 h-3.5 text-cyan-400" />
+          <span>Liquify</span>
+        </button>
+      )}
+
+      {/* Loft Action Button (Guides / Curves) */}
+      {selection.type === 'stroke' && onLoft && (
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation();
+            haptics.trigger('medium');
+            onLoft();
+          }}
+          className={`h-9 min-h-[36px] px-2.5 rounded-xl border flex items-center gap-1.5 font-semibold text-xs transition-all active:scale-95 ${
+            isLight
+              ? 'bg-neutral-100 hover:bg-neutral-200 border-black/10 text-neutral-800'
+              : 'bg-white/5 hover:bg-white/10 border-white/10 text-neutral-200'
+          }`}
+          title="Loft surface from curve"
+        >
+          <Layers className="w-3.5 h-3.5 text-purple-400" />
+          <span>Loft</span>
+        </button>
+      )}
 
       {/* Delete Action Button */}
       <button

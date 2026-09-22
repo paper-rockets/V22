@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ChevronDown, ChevronRight, Square, User, Spline } from 'lucide-react';
+import { ChevronDown, ChevronRight, Square, User, Spline, Image } from 'lucide-react';
 import {
   IcCube as Box,
   IcSphere as Circle,
@@ -27,6 +27,7 @@ interface CreatePanelProps {
   onSetModelDisplayMode: (mode: ModelDisplayMode) => void;
   onOpenModelLibrary: () => void;
   onOpenImporter: () => void;
+  onOpenClipboard?: () => void;
   onOpenScaffolding?: () => void;
   onOpenBentGuide?: () => void;
   onOpenLoftSurface?: () => void;
@@ -55,6 +56,7 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
   onSetModelDisplayMode,
   onOpenModelLibrary,
   onOpenImporter,
+  onOpenClipboard,
   onOpenScaffolding,
   onOpenBentGuide,
   onOpenLoftSurface,
@@ -90,8 +92,8 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
       {/* 1. 3D MODELS & IMPORT (Top priority) */}
       <div className={cardClass}>
         <div className="flex items-center justify-between">
-          <div className={subHeadingClass}>3D Models</div>
-          <span className="text-[10px] opacity-65 font-medium">80+ Ready Models</span>
+          <div className={subHeadingClass}>3D Models & Reference</div>
+          <span className="text-[10px] opacity-65 font-medium">Ready Assets</span>
         </div>
 
         <div className="space-y-1.5">
@@ -134,6 +136,28 @@ export const CreatePanel: React.FC<CreatePanelProps> = ({
             </div>
             <span className="text-[10px] opacity-60 font-mono">GLB, OBJ, STL</span>
           </button>
+
+          {/* Reference Board Button */}
+          {onOpenClipboard && (
+            <button
+              type="button"
+              onClick={() => {
+                haptics.trigger('light');
+                onOpenClipboard();
+              }}
+              className={`w-full min-h-[44px] px-3 py-2 rounded-lg border flex items-center justify-between font-medium transition-colors duration-150 ease-out ${
+                isLight
+                  ? 'bg-white border-black/10 hover:bg-neutral-200/50 text-neutral-800'
+                  : 'bg-black/30 border-white/10 hover:bg-white/10 text-neutral-200'
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <Image className="w-4 h-4" />
+                <span className="text-xs">Reference Board</span>
+              </div>
+              <span className="text-[10px] opacity-60">Pin concept photos</span>
+            </button>
+          )}
         </div>
       </div>
 

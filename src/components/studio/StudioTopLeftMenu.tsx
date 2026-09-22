@@ -6,6 +6,7 @@ import {
   Download,
   Trash2,
   Settings,
+  Save,
   X,
   ChevronRight,
 } from 'lucide-react';
@@ -16,6 +17,7 @@ interface StudioTopLeftMenuProps {
   onClose: () => void;
   projectName: string;
   onOpenSessions?: () => void;
+  onSaveProject?: () => void;
   onOpenExport?: () => void;
   onClearCanvas?: () => void;
   onOpenSettings?: () => void;
@@ -62,6 +64,7 @@ export const StudioTopLeftMenu: React.FC<StudioTopLeftMenuProps> = ({
   onClose,
   projectName,
   onOpenSessions,
+  onSaveProject,
   onOpenExport,
   onClearCanvas,
   onOpenSettings,
@@ -138,10 +141,10 @@ export const StudioTopLeftMenu: React.FC<StudioTopLeftMenuProps> = ({
         <div className="shrink-0 mb-0.5 flex min-h-8 items-center justify-between border-b border-black/5 dark:border-white/5 pb-1">
           <div className="min-w-0 pr-2">
             <h2 id="studio-left-menu-title" className="text-xs font-semibold tracking-tight truncate">
-              {projectName || 'Drawing Canvas'}
+              Project
             </h2>
-            <span className={`block text-[10px] ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
-              Project & Files
+            <span className={`block text-[10px] truncate ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
+              {projectName || 'Project & Files'}
             </span>
           </div>
           <button
@@ -169,6 +172,19 @@ export const StudioTopLeftMenu: React.FC<StudioTopLeftMenuProps> = ({
               }}
               isLight={isLight}
               chevron
+            />
+          )}
+
+          {onSaveProject && (
+            <ActionRow
+              icon={Save}
+              label="Save Project"
+              hint="Quick save changes to storage"
+              onClick={() => {
+                onClose();
+                onSaveProject();
+              }}
+              isLight={isLight}
             />
           )}
 
@@ -204,7 +220,7 @@ export const StudioTopLeftMenu: React.FC<StudioTopLeftMenuProps> = ({
             <ActionRow
               icon={Settings}
               label="Preferences"
-              hint="Stylus, dock placement, storage & sound"
+              hint="Studio theme, UI scale, stylus & input"
               onClick={() => {
                 onClose();
                 onOpenSettings();

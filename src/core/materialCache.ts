@@ -70,10 +70,9 @@ export class MaterialCache {
 
     const seq = settings.strokeSequenceIndex ?? 0;
     const seqTier = seq % 500;
-    // Gentle slope factor (-0.75) prevents extreme glancing angle slope blowup (ribbon slicing/disappearing).
-    // polyOffsetUnits provides the consistent depth spacing between successive strokes.
-    const polyOffsetFactor = -0.75;
-    const polyOffsetUnits = -2.0 - seqTier * 0.04;
+    // Increased normal polygon offset eliminates z-fighting and bisection on planar grids or colliders when orbiting.
+    const polyOffsetFactor = -1.0;
+    const polyOffsetUnits = -4.0 - seqTier * 0.04;
 
     // Strict isolation key
     const key = `${matType}|${shaderKey}|${matcapKey}|${validColor}|o${effectiveOpacity.toFixed(3)}|r${(settings.roughness ?? 0.35).toFixed(2)}|m${(settings.metalness ?? 0.15).toFixed(2)}|e${(settings.emissiveIntensity ?? 0).toFixed(2)}|${modeKey}|${stencilKey}|sq${seqTier}|p_${patType}_${patScale}_${patInt}_${patAng}_${patContr}|b_${layerBlendMode}`;

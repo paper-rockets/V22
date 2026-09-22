@@ -30,6 +30,7 @@ export interface Option3SphereNavigatorProps {
   onToggleProjection?: () => void;
   transformMode?: 'move' | 'rotate' | 'look' | 'scale';
   onTransformModeChange?: (mode: 'move' | 'rotate' | 'look' | 'scale') => void;
+  drawerOpen?: boolean;
 }
 
 interface TargetItem {
@@ -97,7 +98,19 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
   onToggleProjection,
   transformMode,
   onTransformModeChange,
+  drawerOpen = false,
 }: Option3SphereNavigatorProps) => {
+  const [isInteracting, setIsInteracting] = useState<boolean>(false);
+  const idleTimerRef = useRef<number | null>(null);
+
+  const markInteraction = useCallback(() => {
+    setIsInteracting(true);
+    if (idleTimerRef.current) window.clearTimeout(idleTimerRef.current);
+    idleTimerRef.current = window.setTimeout(() => {
+      setIsInteracting(false);
+    }, 2500);
+  }, []);
+
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
   const [modeMenuOpen, setModeMenuOpen] = useState<boolean>(false);
   const [isListOpen, setIsListOpen] = useState<boolean>(false);
@@ -543,14 +556,21 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
   const handles = useCallback((m: ReturnType<typeof metrics>) => {
     const out: any[] = [];
     const axes = axesRef.current || PRO_AXES;
+    const isOrtho = projectionMode === 'orthographic';
     axes.forEach((a, i) => {
       const d = axisDir(a);
-      out.push({ a, i, sign: 1, dir: d, p: project(d, m) });
+      const p1 = project(d, m);
+      if (!(isOrtho && Math.abs(p1.depth) > 0.90)) {
+        out.push({ a, i, sign: 1, dir: d, p: p1 });
+      }
       const n = d.clone().negate();
-      out.push({ a, i, sign: -1, dir: n, p: project(n, m) });
+      const p2 = project(n, m);
+      if (!(isOrtho && Math.abs(p2.depth) > 0.90)) {
+        out.push({ a, i, sign: -1, dir: n, p: p2 });
+      }
     });
     return out;
-  }, [project]);
+  }, [project, projectionMode]);
 
   const labelFont = (ctx: CanvasRenderingContext2D, text: string, r: number) => {
     let size = r * 0.66;
@@ -1695,6 +1715,10 @@ export const Option3SphereNavigator: React.FC<Option3SphereNavigatorProps> = ({
       data-menu={isMenuOpen ? 'open' : 'closed'}
       data-corner="bl"
       data-mode={mode}
+      data-active={isInteracting || isMenuOpen || modeMenuOpen ? 'true' : 'false'}
+      data-drawer-open={drawerOpen ? 'true' : 'false'}
+      onPointerEnter={markInteraction}
+      onPointerDown={markInteraction}
     >
       <div className="nv-dock" id="nv-dock" ref={dockRef}>
         <canvas className="nv-canvas" id="nv-canvas" ref={canvasRef}></canvas>

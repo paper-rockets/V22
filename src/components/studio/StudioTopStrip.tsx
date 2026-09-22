@@ -6,6 +6,10 @@ import {
   Check,
   Box,
   ChevronDown,
+  Sparkles,
+  Download,
+  Sun,
+  Grid,
 } from 'lucide-react';
 import { toggleSheet } from './panelStore';
 import { StudioTopMoreMenu } from './StudioTopMoreMenu';
@@ -14,6 +18,7 @@ import { AutoSaveStatus } from '../AutoSaveToast';
 import type { NavigatorLayout } from '../TransformNavigator/JoystickNavigator';
 
 interface StudioTopStripProps {
+  onOpenDemos?: () => void;
   projectName: string;
   autoSaveStatus?: AutoSaveStatus;
   lastSavedTime?: Date | null;
@@ -25,10 +30,14 @@ interface StudioTopStripProps {
   theme?: 'light' | 'dark';
   onOpenIllumination?: () => void;
   onOpenSessions?: () => void;
+  onSaveProject?: () => void;
   onOpenExport?: () => void;
   onToggleTheme?: () => void;
   showGrid?: boolean;
   onToggleGrid?: () => void;
+  showPlane?: boolean;
+  onTogglePlane?: () => void;
+  onOpenRenderSettings?: () => void;
   navigatorStyle?: NavigatorLayout;
   onNavigatorStyleChange?: (style: NavigatorLayout) => void;
   isGizmoActive?: boolean;
@@ -48,6 +57,7 @@ interface StudioTopStripProps {
 }
 
 export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
+  onOpenDemos,
   projectName,
   autoSaveStatus,
   lastSavedTime,
@@ -59,10 +69,14 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
   theme = 'dark',
   onOpenIllumination,
   onOpenSessions,
+  onSaveProject,
   onOpenExport,
   onToggleTheme,
   showGrid = true,
   onToggleGrid,
+  showPlane = false,
+  onTogglePlane,
+  onOpenRenderSettings,
   navigatorStyle,
   onNavigatorStyleChange,
   isGizmoActive,
@@ -243,39 +257,70 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
             <span>Retry save</span>
           </button>
         )}
+
+        {/* Direct Export action for Top-Left System zone */}
+        {onOpenExport && (
+          <button
+            type="button"
+            onClick={onOpenExport}
+            className={`hidden sm:inline-flex items-center gap-1.5 h-8 px-2.5 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
+              theme === 'light'
+                ? 'border-black/10 bg-black/[0.04] hover:bg-black/[0.08] text-neutral-800'
+                : 'border-white/15 bg-white/[0.06] hover:bg-white/12 text-neutral-200'
+            }`}
+            title="Export 3D Model or Image"
+            aria-label="Export"
+          >
+            <Download className="w-3.5 h-3.5" strokeWidth={2} />
+            <span>Export</span>
+          </button>
+        )}
       </div>
 
-      {/* Top Right: Undo, Redo, and Unified Menu */}
-      <nav className="flex items-center gap-0.5 sm:gap-1 pointer-events-auto shrink-0 py-0.5" aria-label="History and studio actions">
-        <button
-          type="button"
-          onClick={onUndo}
-          disabled={!canUndo}
-          className={`${button} disabled:opacity-25`}
-          aria-label="Undo"
-          title="Undo"
-        >
-          <Undo2 className="w-[18px] h-[18px] sm:w-[21px] sm:h-[21px]" strokeWidth={1.7} />
-        </button>
-        <button
-          type="button"
-          onClick={onRedo}
-          disabled={!canRedo}
-          className={`${button} disabled:opacity-25`}
-          aria-label="Redo"
-          title="Redo"
-        >
-          <Redo2 className="w-[18px] h-[18px] sm:w-[21px] sm:h-[21px]" strokeWidth={1.7} />
-        </button>
+      {/* Top Right (Scene & Environment): Ground grid, lighting, and scene settings */}
+      <nav className="flex items-center gap-0.5 sm:gap-1 pointer-events-auto shrink-0 py-0.5" aria-label="Scene and environment actions">
+        {onOpenDemos && (
+          <button
+            type="button"
+            onClick={onOpenDemos}
+            className={`${button} text-blue-400 hover:text-blue-300`}
+            aria-label="Interactive AI Demonstrations"
+            title="Demonstrations"
+          >
+            <Sparkles className="w-[18px] h-[18px] sm:w-[21px] sm:h-[21px]" strokeWidth={1.7} />
+          </button>
+        )}
+        {onToggleGrid && (
+          <button
+            type="button"
+            onClick={onToggleGrid}
+            className={`${button} ${showGrid ? (theme === 'light' ? 'bg-black/10 text-neutral-950 font-bold' : 'bg-white/15 text-white') : 'opacity-60'}`}
+            aria-label="Toggle ground grid"
+            title={showGrid ? 'Ground grid: Visible' : 'Ground grid: Hidden'}
+          >
+            <Grid className="w-[18px] h-[18px] sm:w-[20px] sm:h-[20px]" strokeWidth={1.7} />
+          </button>
+        )}
+        {onOpenIllumination && (
+          <button
+            type="button"
+            onClick={onOpenIllumination}
+            className={`${button} text-amber-400 hover:text-amber-300`}
+            aria-label="Studio Illumination"
+            title="Studio Illumination & Lighting"
+          >
+            <Sun className="w-[18px] h-[18px] sm:w-[21px] sm:h-[21px]" strokeWidth={1.7} />
+          </button>
+        )}
         <button
           type="button"
           onClick={handleOpenMore}
           className={`${button} ${moreOpen ? (theme === 'light' ? 'bg-black/10' : 'bg-white/15') : ''}`}
-          aria-label="Menu"
+          aria-label="Scene & Environment settings"
           aria-haspopup="dialog"
           aria-expanded={moreOpen}
           aria-controls="studio-top-more-menu"
-          title="Menu"
+          title="Scene & Environment"
         >
           <Menu className="h-5 w-5" strokeWidth={1.7} />
         </button>
@@ -287,6 +332,7 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
         onClose={closeLeftMenu}
         projectName={projectName}
         onOpenSessions={onOpenSessions}
+        onSaveProject={onSaveProject}
         onOpenExport={onOpenExport}
         onClearCanvas={onClearCanvas}
         onOpenSettings={openSettings}
@@ -298,9 +344,11 @@ export const StudioTopStrip: React.FC<StudioTopStripProps> = ({
         isFullscreen={isFsActive}
         onClose={closeMore}
         onOpenIllumination={onOpenIllumination}
-        onToggleTheme={onToggleTheme}
         showGrid={showGrid}
         onToggleGrid={onToggleGrid}
+        showPlane={showPlane}
+        onTogglePlane={onTogglePlane}
+        onOpenRenderSettings={onOpenRenderSettings}
         onToggleFullscreen={handleToggleFullscreen}
         isGizmoActive={isGizmoActive}
         onToggleGizmo={onToggleGizmo}

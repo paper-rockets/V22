@@ -5,31 +5,18 @@ import {
   Gauge,
   Compass,
   Hand,
-  Box,
   HardDrive,
   ShieldCheck,
   Shield,
   RotateCcw,
   Sliders,
   Volume2,
-  Grid,
-  Layers,
-  Download,
-  Glasses,
-  Image,
-  Smartphone,
-  Check,
   ChevronRight,
   ChevronDown,
   PanelLeft,
   EyeOff,
-  Trash2,
-  Droplets,
-  Palette,
-  MoveDiagonal2,
 } from 'lucide-react';
 import { StudioSheet } from './StudioSheet';
-import { closeSheet } from './panelStore';
 import { haptics } from '../../utils/haptics';
 import { StorageEstimateInfo, AutoSaveMetaInfo } from '../../utils/storagePermission';
 import {
@@ -179,7 +166,7 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
 }) => {
   const isLight = theme === 'light';
   const [internalSound, setInternalSound] = useState<boolean>(() => haptics.getAudioFeedbackEnabled());
-  const [showMore, setShowMore] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [dockPreferences, setDockPreferences] = useState(readStudioDockPreferences);
 
   const effectiveSound = soundEnabled !== undefined ? soundEnabled : internalSound;
@@ -208,416 +195,232 @@ export const StudioSettingsSheet: React.FC<StudioSettingsSheetProps> = ({
           : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
     }`;
 
-  const actionBtn = `min-h-[44px] px-3.5 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 border transition-all active:scale-98 cursor-pointer ${
-    isLight
-      ? 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-800'
-      : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-neutral-200'
-  }`;
-
   return (
     <StudioSheet id="settings" title="Preferences" theme={theme} tall>
-      <div className="paperrocket-preferences">
-      {/* 1. STUDIO */}
-      <SectionHeader title="Studio" isLight={isLight} />
+      <div className="paperrocket-preferences space-y-0.5">
+        {/* 1. INTERFACE */}
+        <SectionHeader title="Interface" isLight={isLight} />
 
-      <Row icon={isLight ? Sun : Moon} label="Studio Theme" hint="Light or dark look for the app" isLight={isLight}>
-        <div className="flex gap-1 w-40">
-          <button
-            type="button"
-            onClick={() => {
-              haptics.trigger('light');
-              onSetTheme('light');
-            }}
-            className={pill(isLight)}
-          >
-            <Sun className="w-4 h-4" /> Light
-          </button>
-          <button
-            type="button"
-            onClick={() => {
-              haptics.trigger('light');
-              onSetTheme('dark');
-            }}
-            className={pill(!isLight)}
-          >
-            <Moon className="w-4 h-4" /> Dark
-          </button>
-        </div>
-      </Row>
-
-      {onUiScaleChange && (
-        <Row icon={Sliders} label="UI Scale" hint={`Interface size (${Math.round(uiScale * 100)}%)`} isLight={isLight}>
-          <div className="paperrocket-stepper flex items-center gap-1">
+        <Row icon={isLight ? Sun : Moon} label="Studio Theme" hint="Light or dark look for the app" isLight={isLight}>
+          <div className="flex gap-1 w-40">
             <button
               type="button"
-              aria-label="Decrease UI scale"
               onClick={() => {
                 haptics.trigger('light');
-                onUiScaleChange(Math.max(0.7, Math.round((uiScale - 0.1) * 10) / 10));
+                onSetTheme('light');
               }}
-              className={`min-h-[44px] min-w-[44px] px-2 rounded-lg border text-sm font-bold flex items-center justify-center transition-colors ${
-                isLight ? 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-800' : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white'
-              }`}
+              className={pill(isLight)}
             >
-              -
+              <Sun className="w-4 h-4" /> Light
             </button>
             <button
               type="button"
-              title="Reset to 100%"
-              aria-label={`UI scale ${Math.round(uiScale * 100)}%, tap to reset to 100%`}
               onClick={() => {
                 haptics.trigger('light');
-                onUiScaleChange(1.0);
+                onSetTheme('dark');
               }}
-              className={`min-h-[44px] px-3 rounded-lg border text-xs font-mono font-bold flex items-center justify-center transition-colors ${
-                isLight ? 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-700' : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-neutral-300'
-              }`}
+              className={pill(!isLight)}
             >
-              {Math.round(uiScale * 100)}%
-            </button>
-            <button
-              type="button"
-              aria-label="Increase UI scale"
-              onClick={() => {
-                haptics.trigger('light');
-                onUiScaleChange(Math.min(1.5, Math.round((uiScale + 0.1) * 10) / 10));
-              }}
-              className={`min-h-[44px] min-w-[44px] px-2 rounded-lg border text-sm font-bold flex items-center justify-center transition-colors ${
-                isLight ? 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-800' : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white'
-              }`}
-            >
-              +
+              <Moon className="w-4 h-4" /> Dark
             </button>
           </div>
         </Row>
-      )}
 
-
-
-      <Row icon={Hand} label="Touch Input Drawing" hint="Enable touch drawing when stylus is unavailable" isLight={isLight}>
-        <Toggle on={fingerDraw} onChange={onToggleFingerDraw} label="Touch Input Drawing" isLight={isLight} />
-      </Row>
-
-      <Row icon={PanelLeft} label="Tool Dock" hint="Responsive placement, or pin it to an edge" isLight={isLight}>
-        <div className="grid w-40 grid-cols-3 gap-1">
-          {(['auto', 'left', 'right'] as StudioDockPosition[]).map((position) => (
-            <button
-              key={position}
-              type="button"
-              onClick={() => {
-                haptics.trigger('light');
-                updateDockPreferences({ position });
-              }}
-              className={`min-h-[40px] rounded-lg px-1 text-[10px] font-bold capitalize transition-colors ${
-                dockPreferences.position === position
-                  ? isLight ? 'bg-neutral-900 text-white' : 'bg-white text-zinc-950'
-                  : isLight ? 'bg-neutral-100 text-neutral-600' : 'bg-neutral-800 text-neutral-300'
-              }`}
-              aria-pressed={dockPreferences.position === position}
-            >
-              {position}
-            </button>
-          ))}
-        </div>
-      </Row>
-
-      <Row icon={EyeOff} label="Auto-hide Tool Dock" hint="Reveal it from the small edge handle" isLight={isLight}>
-        <Toggle
-          on={dockPreferences.autoHide}
-          onChange={(autoHide) => updateDockPreferences({ autoHide })}
-          label="Auto-hide Tool Dock"
-          isLight={isLight}
-        />
-      </Row>
-
-      {onToggleDisableContextMenu && (
-        <Row icon={Compass} label="Radial Quick Menu" hint="Stylus side button or mouse right-click" isLight={isLight}>
-          <Toggle on={!disableContextMenu} onChange={() => onToggleDisableContextMenu()} label="Radial Quick Menu" isLight={isLight} />
-        </Row>
-      )}
-
-            <Row icon={Volume2} label="Tactile Sound" hint="Auditory clicks and vibration feedback" isLight={isLight}>
-        <Toggle on={effectiveSound} onChange={handleToggleSoundFeedback} label="Tactile Sound" isLight={isLight} />
-      </Row>
-
-      {/* 2. SCENE */}
-      <SectionHeader title="Scene" isLight={isLight} />
-
-      {onCanvasFormatChange && (
-        <Row icon={Box} label="Canvas size" hint="Resize the drawing surface without clearing artwork" isLight={isLight}>
-          <div className="grid w-36 grid-cols-3 gap-1" role="group" aria-label="Canvas size presets">
-            {([
-              ['portrait', 'Portrait'],
-              ['square', 'Square'],
-              ['landscape', 'Wide'],
-            ] as const).map(([format, label]) => (
+        {onUiScaleChange && (
+          <Row icon={Sliders} label="UI Scale" hint={`Interface size (${Math.round(uiScale * 100)}%)`} isLight={isLight}>
+            <div className="paperrocket-stepper flex items-center gap-1">
               <button
-                key={format}
+                type="button"
+                aria-label="Decrease UI scale"
+                onClick={() => {
+                  haptics.trigger('light');
+                  onUiScaleChange(Math.max(0.7, Math.round((uiScale - 0.1) * 10) / 10));
+                }}
+                className={`min-h-[44px] min-w-[44px] px-2 rounded-lg border text-sm font-bold flex items-center justify-center transition-colors ${
+                  isLight ? 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-800' : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white'
+                }`}
+              >
+                -
+              </button>
+              <button
+                type="button"
+                title="Reset to 100%"
+                aria-label={`UI scale ${Math.round(uiScale * 100)}%, tap to reset to 100%`}
+                onClick={() => {
+                  haptics.trigger('light');
+                  onUiScaleChange(1.0);
+                }}
+                className={`min-h-[44px] px-3 rounded-lg border text-xs font-mono font-bold flex items-center justify-center transition-colors ${
+                  isLight ? 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-700' : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-neutral-300'
+                }`}
+              >
+                {Math.round(uiScale * 100)}%
+              </button>
+              <button
+                type="button"
+                aria-label="Increase UI scale"
+                onClick={() => {
+                  haptics.trigger('light');
+                  onUiScaleChange(Math.min(1.5, Math.round((uiScale + 0.1) * 10) / 10));
+                }}
+                className={`min-h-[44px] min-w-[44px] px-2 rounded-lg border text-sm font-bold flex items-center justify-center transition-colors ${
+                  isLight ? 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-800' : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-white'
+                }`}
+              >
+                +
+              </button>
+            </div>
+          </Row>
+        )}
+
+        {/* 2. INPUT */}
+        <SectionHeader title="Input" isLight={isLight} />
+
+        <Row icon={Hand} label="Touch Input Drawing" hint="Enable touch drawing when stylus is unavailable" isLight={isLight}>
+          <Toggle on={fingerDraw} onChange={onToggleFingerDraw} label="Touch Input Drawing" isLight={isLight} />
+        </Row>
+
+        {onToggleDisableContextMenu && (
+          <Row icon={Compass} label="Radial Quick Menu" hint="Stylus side button or mouse right-click" isLight={isLight}>
+            <Toggle on={!disableContextMenu} onChange={() => onToggleDisableContextMenu()} label="Radial Quick Menu" isLight={isLight} />
+          </Row>
+        )}
+
+        {/* 3. TOOL DOCK */}
+        <SectionHeader title="Tool Dock" isLight={isLight} />
+
+        <Row icon={PanelLeft} label="Tool Dock" hint="Responsive placement, or pin it to an edge" isLight={isLight}>
+          <div className="grid w-40 grid-cols-3 gap-1">
+            {(['auto', 'left', 'right'] as StudioDockPosition[]).map((position) => (
+              <button
+                key={position}
                 type="button"
                 onClick={() => {
                   haptics.trigger('light');
-                  onCanvasFormatChange(format);
+                  updateDockPreferences({ position });
                 }}
-                className={`min-h-[40px] rounded-lg px-1 text-[10px] font-bold transition-colors ${
-                  canvasFormat === format
+                className={`min-h-[40px] rounded-lg px-1 text-[10px] font-bold capitalize transition-colors ${
+                  dockPreferences.position === position
                     ? isLight ? 'bg-neutral-900 text-white' : 'bg-white text-zinc-950'
-                    : isLight ? 'bg-neutral-100 text-neutral-600 hover:bg-neutral-200' : 'bg-neutral-800 text-neutral-300 hover:bg-neutral-700'
+                    : isLight ? 'bg-neutral-100 text-neutral-600' : 'bg-neutral-800 text-neutral-300'
                 }`}
-                aria-pressed={canvasFormat === format}
+                aria-pressed={dockPreferences.position === position}
               >
-                {label}
+                {position}
               </button>
             ))}
           </div>
         </Row>
-      )}
 
-      {onCanvasSizeChange && (
-        <div className={`border-b py-3 ${isLight ? 'border-neutral-200' : 'border-neutral-800'}`}>
-          <div className="mb-2 flex items-center gap-2">
-            <MoveDiagonal2 className="h-4 w-4 opacity-75" />
-            <div className="text-xs font-bold">Manual size</div>
-            <div className="ml-auto text-[10px] font-semibold tabular-nums opacity-60">
-              {canvasWidth.toFixed(1)} × {canvasHeight.toFixed(1)}
-            </div>
-          </div>
-          <div className="grid grid-cols-[18px_1fr] items-center gap-x-2 gap-y-1.5">
-            <label htmlFor="canvas-width" className="text-[10px] font-bold opacity-60">W</label>
-            <input
-              id="canvas-width"
-              type="range"
-              min="1"
-              max="8"
-              step="0.1"
-              value={canvasWidth}
-              onChange={(event) => onCanvasSizeChange(Number(event.target.value), canvasHeight)}
-              onPointerUp={() => haptics.trigger('light')}
-              className="h-8 w-full cursor-ew-resize accent-sky-500"
-              aria-label="Canvas width"
-            />
-            <label htmlFor="canvas-height" className="text-[10px] font-bold opacity-60">H</label>
-            <input
-              id="canvas-height"
-              type="range"
-              min="1"
-              max="8"
-              step="0.1"
-              value={canvasHeight}
-              onChange={(event) => onCanvasSizeChange(canvasWidth, Number(event.target.value))}
-              onPointerUp={() => haptics.trigger('light')}
-              className="h-8 w-full cursor-ns-resize accent-sky-500"
-              aria-label="Canvas height"
-            />
-          </div>
-        </div>
-      )}
-
-      {onCanvasColorChange && (
-        <Row icon={Palette} label="Canvas color" hint="Preview the drawing surface color as you choose" isLight={isLight}>
-          <label className={`flex min-h-[44px] items-center gap-2 rounded-lg border px-2.5 cursor-pointer ${
-            isLight ? 'border-neutral-300 bg-neutral-100' : 'border-neutral-700 bg-neutral-800'
-          }`}>
-            <input
-              type="color"
-              value={canvasColor}
-              onInput={(event) => onCanvasColorChange((event.target as HTMLInputElement).value)}
-              onChange={(event) => onCanvasColorChange(event.target.value)}
-              className="h-7 w-9 cursor-pointer border-0 bg-transparent p-0"
-              aria-label="Canvas background color"
-            />
-            <span className="text-[10px] font-bold tabular-nums">{canvasColor.toUpperCase()}</span>
-          </label>
+        <Row icon={EyeOff} label="Auto-hide Tool Dock" hint="Reveal it from the small edge handle" isLight={isLight}>
+          <Toggle
+            on={dockPreferences.autoHide}
+            onChange={(autoHide) => updateDockPreferences({ autoHide })}
+            label="Auto-hide Tool Dock"
+            isLight={isLight}
+          />
         </Row>
-      )}
 
-      {onCanvasTransparencyChange && (
-        <Row icon={Droplets} label="Canvas transparency" hint="Let the 3D scene show through the drawing surface" isLight={isLight}>
-          <div className="w-40">
-            <div className="mb-1 flex justify-between text-[10px] font-semibold tabular-nums opacity-65">
-              <span>Opaque</span>
-              <span>{Math.round(canvasTransparency)}%</span>
-            </div>
-            <input
-              type="range"
-              min="0"
-              max="100"
-              step="5"
-              value={canvasTransparency}
-              onChange={(event) => onCanvasTransparencyChange(Number(event.target.value))}
-              onPointerUp={() => haptics.trigger('light')}
-              className="h-8 w-full cursor-pointer accent-sky-500"
-              aria-label="Canvas transparency"
-            />
-          </div>
+        {/* 4. FEEDBACK */}
+        <SectionHeader title="Feedback" isLight={isLight} />
+
+        <Row icon={Volume2} label="Tactile Sound" hint="Auditory clicks and vibration feedback" isLight={isLight}>
+          <Toggle on={effectiveSound} onChange={handleToggleSoundFeedback} label="Tactile Sound" isLight={isLight} />
         </Row>
-      )}
 
-      {onClearCanvas && (
-        <Row icon={Trash2} label="Clear canvas" hint="Remove every line, while keeping the canvas and layers" isLight={isLight}>
+        {/* 5. ADVANCED (Tiny collapsed section) */}
+        <div className="pt-2">
           <button
             type="button"
             onClick={() => {
-              closeSheet();
-              onClearCanvas();
+              haptics.trigger('light');
+              setShowAdvanced((value) => !value);
             }}
-            className="min-h-[44px] rounded-lg border border-red-500/35 px-3 text-xs font-bold text-red-600 transition-colors hover:bg-red-500/10 dark:text-red-300"
+            className={`paperrocket-settings-more w-full min-h-[46px] flex items-center gap-2.5 border-b text-left transition-colors cursor-pointer ${
+              isLight ? 'border-neutral-200 hover:bg-black/[0.025]' : 'border-neutral-800 hover:bg-white/[0.025]'
+            }`}
+            aria-expanded={showAdvanced}
           >
-            Clear canvas
+            {showAdvanced ? <ChevronDown className="w-4 h-4 opacity-70" /> : <ChevronRight className="w-4 h-4 opacity-70" />}
+            <span className="flex-1 text-sm font-bold">Advanced</span>
+            <span className="text-xs text-neutral-400">{showAdvanced ? 'Hide advanced settings' : 'Storage & diagnostics'}</span>
           </button>
-        </Row>
-      )}
 
-      {onToggleGrid && (
-        <Row icon={Grid} label="Ground Grid" hint="Display reference 3D ground plane grid" isLight={isLight}>
-          <Toggle on={showGrid} onChange={() => onToggleGrid()} label="Ground Grid" isLight={isLight} />
-        </Row>
-      )}
+          {showAdvanced && (
+            <div className="pt-1">
+              <Row
+                icon={HardDrive}
+                label="Storage & Autosave"
+                hint={
+                  isStoragePersistent
+                    ? `Protected against eviction • ${storageEstimate?.formattedUsage || '0 MB'} used`
+                    : `Standard browser storage • ${storageEstimate?.formattedUsage || '0 MB'} used`
+                }
+                isLight={isLight}
+              >
+                <div className="flex items-center gap-2">
+                  {isStoragePersistent ? (
+                    <div
+                      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border ${
+                        isLight
+                          ? 'bg-neutral-100 border-neutral-300 text-neutral-800'
+                          : 'bg-white/10 border-white/20 text-white'
+                      }`}
+                      title="Browser storage permission granted: protected against automatic cache eviction"
+                    >
+                      <ShieldCheck className="w-4 h-4 text-current" />
+                      <span>Protected</span>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (onRequestStoragePermission) {
+                          await onRequestStoragePermission();
+                          haptics.trigger('success');
+                        }
+                      }}
+                      className={`min-h-[44px] flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all active:scale-95 cursor-pointer ${
+                        isLight
+                          ? 'bg-neutral-900 border-neutral-900 text-white hover:bg-neutral-800'
+                          : 'bg-white border-white text-zinc-950 hover:bg-neutral-200'
+                      }`}
+                      title="Request browser storage permission so projects are protected from browser cache clearance"
+                    >
+                      <Shield className="w-4 h-4 text-current" />
+                      <span>Protect Storage</span>
+                    </button>
+                  )}
 
-      {/* Accordion toggle: More settings / Fewer settings */}
-      <button
-        type="button"
-        onClick={() => {
-          haptics.trigger('light');
-          setShowMore((value) => !value);
-        }}
-        className={`paperrocket-settings-more w-full min-h-[46px] flex items-center gap-2.5 border-b text-left transition-colors ${
-          isLight ? 'border-neutral-200 hover:bg-black/[0.025]' : 'border-neutral-800 hover:bg-white/[0.025]'
-        }`}
-        aria-expanded={showMore}
-      >
-        {showMore ? <ChevronDown className="w-5 h-5 opacity-70" /> : <ChevronRight className="w-5 h-5 opacity-70" />}
-        <span className="flex-1 text-sm font-bold">{showMore ? 'Fewer settings' : 'More settings'}</span>
-        <span className="text-xs text-neutral-400">{showMore ? 'Hide details' : 'Scene, export, storage & Pro'}</span>
-      </button>
-
-      {/* Advanced Settings Block (Contiguous, revealed directly beneath the toggle) */}
-      {showMore && (
-        <>
-          {onTogglePlane && (
-            <Row icon={Layers} label="Drawing Plane" hint="The flat surface you draw lines on" isLight={isLight}>
-              <Toggle on={showPlane} onChange={() => onTogglePlane()} label="Drawing Plane" isLight={isLight} />
-            </Row>
-          )}
-
-          {onOpenRenderSettings && (
-            <Row icon={Sliders} label="Picture Quality" hint="How good your drawing looks, plus glow" isLight={isLight}>
-              <button type="button" onClick={onOpenRenderSettings} className={actionBtn}>
-                <Sliders className="w-4 h-4" />
-                <span>Picture Quality</span>
-              </button>
-            </Row>
-          )}
-
-          {/* 3. SHARE & EXPORT */}
-          <SectionHeader title="Share & Export" isLight={isLight} />
-
-          {onOpenExport && (
-            <Row icon={Download} label="Export 3D Artwork" hint="Save model as GLB, OBJ, STL, or image capture" isLight={isLight}>
-              <button type="button" onClick={onOpenExport} className={actionBtn}>
-                <Download className="w-4 h-4" />
-                <span>Export</span>
-              </button>
-            </Row>
-          )}
-
-          {onOpenARViewer && (
-            <Row icon={Glasses} label="View in AR" hint="Experience model in real space with augmented reality" isLight={isLight}>
-              <button type="button" onClick={onOpenARViewer} className={actionBtn}>
-                <Glasses className="w-4 h-4" />
-                <span>View in AR</span>
-              </button>
-            </Row>
-          )}
-
-          {/* 4. REFERENCE IMAGES */}
-          {onOpenClipboard && (
-            <>
-              <SectionHeader title="Reference Images" isLight={isLight} />
-              <Row icon={Image} label="Floating Board" hint="Pin 2D concept art and blueprint photos on screen" isLight={isLight}>
-                <button type="button" onClick={onOpenClipboard} className={actionBtn}>
-                  <Image className="w-4 h-4" />
-                  <span>Open Board</span>
-                </button>
-              </Row>
-            </>
-          )}
-
-          {/* 5. STORAGE & DIAGNOSTICS */}
-          <SectionHeader title="Storage & Diagnostics" isLight={isLight} />
-
-          <Row
-            icon={HardDrive}
-            label="Storage & Autosave"
-            hint={
-              isStoragePersistent
-                ? `Protected against eviction • ${storageEstimate?.formattedUsage || '0 MB'} used`
-                : `Standard browser storage • ${storageEstimate?.formattedUsage || '0 MB'} used`
-            }
-            isLight={isLight}
-          >
-            <div className="flex items-center gap-2">
-              {isStoragePersistent ? (
-                <div
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border ${
-                    isLight
-                      ? 'bg-neutral-100 border-neutral-300 text-neutral-800'
-                      : 'bg-white/10 border-white/20 text-white'
-                  }`}
-                  title="Browser storage permission granted: protected against automatic cache eviction"
-                >
-                  <ShieldCheck className="w-4 h-4 text-current" />
-                  <span>Protected</span>
+                  {autoSaveMeta?.exists && onRestoreAutoSave && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        onRestoreAutoSave();
+                        haptics.trigger('success');
+                      }}
+                      className={`min-h-[44px] flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all active:scale-95 cursor-pointer ${
+                        isLight
+                          ? 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-800'
+                          : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-neutral-200'
+                      }`}
+                      title={`Restore project from ${autoSaveMeta.formattedDate || 'autosave'}`}
+                    >
+                      <RotateCcw className="w-3.5 h-3.5 text-current" />
+                      <span>Restore</span>
+                    </button>
+                  )}
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={async () => {
-                    if (onRequestStoragePermission) {
-                      await onRequestStoragePermission();
-                      haptics.trigger('success');
-                    }
-                  }}
-                  className={`min-h-[44px] flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all active:scale-95 cursor-pointer ${
-                    isLight
-                      ? 'bg-neutral-900 border-neutral-900 text-white hover:bg-neutral-800'
-                      : 'bg-white border-white text-zinc-950 hover:bg-neutral-200'
-                  }`}
-                  title="Request browser storage permission so projects are protected from browser cache clearance"
-                >
-                  <Shield className="w-4 h-4 text-current" />
-                  <span>Protect Storage</span>
-                </button>
-              )}
+              </Row>
 
-              {autoSaveMeta?.exists && onRestoreAutoSave && (
-                <button
-                  type="button"
-                  onClick={() => {
-                    onRestoreAutoSave();
-                    haptics.trigger('success');
-                  }}
-                  className={`min-h-[44px] flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs font-semibold border transition-all active:scale-95 cursor-pointer ${
-                    isLight
-                      ? 'bg-neutral-100 hover:bg-neutral-200 border-neutral-300 text-neutral-800'
-                      : 'bg-neutral-800 hover:bg-neutral-700 border-neutral-700 text-neutral-200'
-                  }`}
-                  title={`Restore project from ${autoSaveMeta.formattedDate || 'autosave'}`}
-                >
-                  <RotateCcw className="w-3.5 h-3.5 text-current" />
-                  <span>Restore</span>
-                </button>
+              {onToggleStats && (
+                <Row icon={Gauge} label="Performance Diagnostics" hint="Display real-time frame rate & engine latency" isLight={isLight}>
+                  <Toggle on={showStats} onChange={onToggleStats} label="Performance Diagnostics" isLight={isLight} />
+                </Row>
               )}
             </div>
-          </Row>
-
-          {onToggleStats && (
-            <Row icon={Gauge} label="Performance Diagnostics" hint="Display real-time frame rate & engine latency" isLight={isLight}>
-              <Toggle on={showStats} onChange={onToggleStats} label="Performance Diagnostics" isLight={isLight} />
-            </Row>
           )}
-        </>
-      )}
-
+        </div>
       </div>
     </StudioSheet>
   );

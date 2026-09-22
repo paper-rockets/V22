@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { StudioEngine } from '../core/studioEngine';
-import { Download, Camera, Image, Box, X, Check, Loader2, FolderHeart, Video, RotateCw, Film, Square } from 'lucide-react';
+import { Download, Camera, Image, Box, X, Check, Loader2, FolderHeart, Video, RotateCw, Film, Square, Glasses } from 'lucide-react';
 import { ModelStorage } from '../core/modelStorage';
 import { Saved3DModel } from '../types';
 
@@ -12,6 +12,7 @@ interface ExportModalProps {
   onClose: () => void;
   activeModelName: string;
   theme?: 'light' | 'dark';
+  onOpenARViewer?: () => void;
 }
 
 export const ExportModal: React.FC<ExportModalProps> = ({
@@ -19,6 +20,7 @@ export const ExportModal: React.FC<ExportModalProps> = ({
   onClose,
   activeModelName,
   theme = 'dark',
+  onOpenARViewer,
 }) => {
   const isLight = theme === 'light';
   const [exporting, setExporting] = useState<string | null>(null);
@@ -450,6 +452,40 @@ export const ExportModal: React.FC<ExportModalProps> = ({
               <Download className={`w-4 h-4 transition-colors ${isLight ? 'text-neutral-400 group-hover:text-neutral-900' : 'text-neutral-500 group-hover:text-neutral-200'}`} />
             )}
           </div>
+
+          {/* View in AR Option */}
+          {onOpenARViewer && (
+            <div
+              onClick={() => {
+                onClose();
+                onOpenARViewer();
+              }}
+              className={`flex items-center justify-between p-4 rounded-2xl border transition-all cursor-pointer group ${
+                isLight
+                  ? 'bg-[#f4f0e9]/80 hover:bg-[#ede8e0] border-black/10'
+                  : 'bg-neutral-950/50 hover:bg-neutral-800/60 border-neutral-800'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <div className={`p-2.5 rounded-xl transition-all ${
+                  isLight ? 'bg-black/5 text-neutral-900 group-hover:bg-neutral-900 group-hover:text-white' : 'bg-white/10 text-white group-hover:bg-white group-hover:text-zinc-950'
+                }`}>
+                  <Glasses className="w-5 h-5" />
+                </div>
+                <div className="flex flex-col text-left">
+                  <span className={`text-sm font-semibold transition-colors ${
+                    isLight ? 'text-neutral-900 group-hover:text-neutral-900' : 'text-neutral-100 group-hover:text-white'
+                  }`}>
+                    View in AR
+                  </span>
+                  <span className={`text-xs ${isLight ? 'text-neutral-500' : 'text-neutral-400'}`}>
+                    Experience model in real space with augmented reality
+                  </span>
+                </div>
+              </div>
+              <Glasses className={`w-4 h-4 transition-colors ${isLight ? 'text-neutral-400 group-hover:text-neutral-900' : 'text-neutral-500 group-hover:text-neutral-200'}`} />
+            </div>
+          )}
 
           {/* Section Divider: Video & Animation Studio */}
           <div className="pt-2 pb-1">

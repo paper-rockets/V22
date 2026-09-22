@@ -58,6 +58,7 @@ import {
 import { AppModalHost } from './components/modals/AppModalHost';
 import { NumpadModal } from './components/NumpadModal';
 import { useAppShortcuts } from './hooks/useAppShortcuts';
+import { CURATED_BRUSHES, applyCuratedBrush } from './presets/curatedBrushes';
 import { useAppAutoSave } from './hooks/useAppAutoSave';
 import { haptics } from './utils/haptics';
 import { setGlobalSoundEnabled } from './utils/audio';
@@ -76,6 +77,13 @@ import {
   SavedProjectSession,
   ActiveGuideReference,
 } from './types';
+import { DemoRunner } from './automation/demoRunner';
+import { VisualPointer } from './automation/visualPointer';
+import { DemoCenterModal } from './automation/DemoCenterModal';
+import { DemoFloatingBar } from './automation/DemoFloatingBar';
+import { DemoScene, DeviceTarget, PointerVisualState } from './automation/types';
+import { ALL_DEMOS } from './automation/demos';
+import { getCurrentDeviceTarget } from './automation/uiMap';
 
 const DEFAULT_BRUSH_SETTINGS: BrushSettings = {
   // With the default 1.5× ribbon width this reads as 10 in the brush-size UI.
@@ -341,6 +349,52 @@ export function App() {
       });
     }
   }, []);
+
+  // Interactive AI Demonstration System
+  const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
+  const [activeDemoScene, setActiveDemoScene] = useState<DemoScene | null>(null);
+  const [demoTargetDevice, setDemoTargetDevice] = useState<DeviceTarget>(() => getCurrentDeviceTarget());
+  const [isDemoPaused, setIsDemoPaused] = useState(false);
+  const [demoStepInfo, setDemoStepInfo] = useState<{ step: number; total: number; desc?: string }>({ step: 0, total: 0 });
+  const [pointerVisualState, setPointerVisualState] = useState<PointerVisualState>({
+    visible: false,
+    x: 600,
+    y: 400,
+    isDown: false,
+    isDragging: false,
+    pointerType: 'mouse',
+    ripple: false,
+    rippleKey: 0,
+    secondaryTouch: null,
+    callout: null,
+  });
+  const demoRunnerRef = useRef<DemoRunner | null>(null);
+
+  // Fullscreen state
+  const [isFullscreen, setIsFullscreen] = useState(() => {
+    if (typeof document === 'undefined') return false;
+    return Boolean(document.fullscreenElement);
+  });
+
+  const toggleFullscreen = useCallback(async () => {
+    if (typeof document === 'undefined') return;
+    const doc = document as any;
+    const docEl = document.documentElement as any;
+    try {
+      if (!document.fullscreenElement) {
+        if (docEl.requestFullscreen) await docEl.requestFullscreen();
+        else if (docEl.webkitRequestFullscreen) await docEl.webkitRequestFullscreen();
+        setIsFullscreen(true);
+      } else {
+        if (doc.exitFullscreen) await doc.exitFullscreen();
+        else if (doc.webkitExitFullscreen) await doc.webkitExitFullscreen();
+        setIsFullscreen(false);
+      }
+    } catch (e) {
+      console.warn('Fullscreen toggle:', e);
+    }
+  }, []);
+
   const [lightingPreset, setLightingPreset] = useState<LightingPreset>('clay_neutral');
   const [gizmoMode, setGizmoMode] = useState<GizmoMode>(() => {
     try {
@@ -1048,6 +1102,110 @@ export function App() {
     return () => window.removeEventListener('MODELS_CHANGED', handleModelsChanged);
   }, [engine]);
 
+  const brushSettingsRef = useRef(brushSettings);
+  brushSettingsRef.current = brushSettings;
+  const activeLayerRef = useRef(activeLayer);
+  activeLayerRef.current = activeLayer;
+  const symmetryRef = useRef(symmetry);
+  symmetryRef.current = symmetry;
+
+  /** Lets go of everything. Used when leaving the Select tool. */
+  const handleClearSelection = useCallback(() => {
+    engine?.setSelectedStrokes([]);
+    engine?.setActiveSelectedModel(null);
+    if (autoSelect) setTargetScope('none');
+  }, [engine, autoSelect]);
+
+  /**
+   * Switching away from Select lets go of the selection, so the frame and the
+   * action bar do not hang around over a drawing that is being worked on.
+   */
+  const handleSetTool = useCallback((next: ToolType) => {
+    setTool((prev) => {
+      if ((prev === 'select' || prev === 'pointer') && next !== 'select' && next !== 'pointer') {
+        queueMicrotask(handleClearSelection);
+      }
+      return next;
+    });
+  }, [handleClearSelection]);
+
+  useEffect(() => {
+    const handleAutoTargetSurface = () => {
+      const conformalBrush = CURATED_BRUSHES.find((b) => b.id === 'conformal_bead');
+      if (conformalBrush) {
+        setBrushSettings((prev) => applyCuratedBrush(conformalBrush, prev));
+        handleSetTool('brush');
+      }
+    };
+    window.addEventListener('remix3d:auto-target-surface', handleAutoTargetSurface);
+    return () => window.removeEventListener('remix3d:auto-target-surface', handleAutoTargetSurface);
+  }, [handleSetTool]);
+
+  const handlePlayDemo = useCallback((scene: DemoScene, target: DeviceTarget): Promise<void> => {
+    if (!engine) return Promise.resolve();
+    setDemoTargetDevice(target);
+    setActiveDemoScene(scene);
+    setIsDemoPaused(false);
+    setDemoStepInfo({ step: 1, total: scene.steps.length, desc: scene.title });
+
+    const runner = new DemoRunner({
+      engine,
+      setTool: (t) => handleSetTool(t),
+      setBrushSettings: (fn) => setBrushSettings(fn),
+      getBrushSettings: () => brushSettingsRef.current,
+      getActiveLayer: () => activeLayerRef.current,
+      getSymmetry: () => symmetryRef.current,
+      onUpdatePointer: (st) => setPointerVisualState(st),
+      onStepChange: (step, total, desc) => setDemoStepInfo({ step, total, desc }),
+      onSceneComplete: () => {
+        setActiveDemoScene(null);
+        setIsDemoPaused(false);
+      },
+      deviceTarget: target,
+    });
+
+    demoRunnerRef.current = runner;
+    return runner.playScene(scene);
+  }, [engine, handleSetTool]);
+
+  useEffect(() => {
+    (window as any).__REMIX_PLAY_DEMO__ = async (idOrNumber: string | number, target: DeviceTarget = 'desktop') => {
+      const demo = ALL_DEMOS.find((d) => d.id === idOrNumber || d.number === idOrNumber);
+      if (!demo) {
+        console.error('Demo not found:', idOrNumber);
+        return;
+      }
+      return handlePlayDemo(demo, target);
+    };
+    (window as any).__REMIX_ALL_DEMOS__ = ALL_DEMOS;
+  }, [handlePlayDemo]);
+
+  const handleStopDemo = useCallback(() => {
+    if (demoRunnerRef.current) {
+      demoRunnerRef.current.stop();
+      demoRunnerRef.current = null;
+    }
+    setActiveDemoScene(null);
+    setIsDemoPaused(false);
+  }, []);
+
+  const handleTogglePauseDemo = useCallback(() => {
+    if (!demoRunnerRef.current) return;
+    if (isDemoPaused) {
+      demoRunnerRef.current.resume();
+      setIsDemoPaused(false);
+    } else {
+      demoRunnerRef.current.pause();
+      setIsDemoPaused(true);
+    }
+  }, [isDemoPaused]);
+
+  const handleSkipDemoStep = useCallback(() => {
+    if (demoRunnerRef.current) {
+      demoRunnerRef.current.skip();
+    }
+  }, []);
+
   const handleSelectModel = useCallback((modelId: string | null) => {
     setActiveModelId(modelId);
     if (engine) {
@@ -1082,25 +1240,6 @@ export function App() {
     } catch {}
   }, []);
 
-  /** Lets go of everything. Used when leaving the Select tool. */
-  const handleClearSelection = useCallback(() => {
-    engine?.setSelectedStrokes([]);
-    engine?.setActiveSelectedModel(null);
-    if (autoSelect) setTargetScope('none');
-  }, [engine, autoSelect]);
-
-  /**
-   * Switching away from Select lets go of the selection, so the frame and the
-   * action bar do not hang around over a drawing that is being worked on.
-   */
-  const handleSetTool = useCallback((next: ToolType) => {
-    setTool((prev) => {
-      if ((prev === 'select' || prev === 'pointer') && next !== 'select' && next !== 'pointer') {
-        queueMicrotask(handleClearSelection);
-      }
-      return next;
-    });
-  }, [handleClearSelection]);
 
   const handleSelectTargetScope = useCallback((scope: TransformTargetScope) => {
     setTargetScope(scope);
@@ -1759,10 +1898,12 @@ export function App() {
         theme={theme}
         onStylusDetected={setIsStylusDetected}
         onOpenNumpad={setNumpadTarget}
+        onOpenLoft={() => setIsLoftModalOpen(true)}
       />
 
       {/* Top Strip (Studio Workspace Surface) */}
       <StudioTopStrip
+        onOpenDemos={() => setIsDemoModalOpen(true)}
         projectName={activeModelName}
         autoSaveStatus={autoSaveStatus}
         lastSavedTime={lastSavedTime}
@@ -1774,10 +1915,14 @@ export function App() {
         theme={theme}
         onOpenIllumination={() => setIsIlluminationOpen(true)}
         onOpenSessions={() => setIsSessionModalOpen(true)}
+        onSaveProject={triggerAutoSave}
         onOpenExport={() => setIsExportOpen(true)}
         onToggleTheme={handleToggleTheme}
         showGrid={showGrid}
         onToggleGrid={handleToggleGrid}
+        showPlane={showPlane}
+        onTogglePlane={handleTogglePlane}
+        onOpenRenderSettings={() => setIsRenderSettingsOpen(true)}
         navigatorStyle={navigatorStyle}
         onNavigatorStyleChange={handleNavigatorStyleChange}
         isGizmoActive={gizmoMode !== 'Hidden' && activeController !== 'hidden' && showStudioNavigator}
@@ -1833,10 +1978,16 @@ export function App() {
       <ProShell
         isModalActive={Boolean(isNonColorModalActive)}
         theme={theme}
-            engine={engine}
-            tool={tool}
-            setTool={handleSetTool}
-            brushSettings={brushSettings}
+        engine={engine}
+        tool={tool}
+        setTool={handleSetTool}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        canUndo={canUndo}
+        canRedo={canRedo}
+        fingerDraw={fingerPenMode}
+        onToggleFingerDraw={setFingerPenMode}
+        brushSettings={brushSettings}
             setBrushSettings={setBrushSettings}
             isGizmoActive={gizmoMode !== 'Hidden' && activeController !== 'hidden' && showStudioNavigator}
             onToggleGizmo={handleToggleGizmo}
@@ -1908,6 +2059,10 @@ export function App() {
               closeSheet();
               setIsCustomMirrorOpen(true);
             }}
+            onOpenClipboard={() => {
+              closeSheet();
+              setIsClipboardOpen(true);
+            }}
             onOpenDecimate={() => {
               closeSheet();
               setIsDecimateOpen(true);
@@ -1932,7 +2087,7 @@ export function App() {
         brushSettings={brushSettings}
         activeGuide={activeGuide}
         theme={theme}
-        hidden={Boolean(isAnyModalActive || openSheet !== null)}
+        hidden={Boolean(isAnyModalActive || openSheet !== null || activeDemoScene !== null)}
       />
 
       {/* FPS & Input Lag Diagnostics Counter */}
@@ -1956,7 +2111,7 @@ export function App() {
 
       {/* 3D Navigation Controller: Option 3 Sphere Navigator */}
       {gizmoMode !== 'Hidden' && activeController !== 'hidden' && showStudioNavigator &&
-        !isAnyModalActive && !isColorStudioOpen && !studioShelfOpen && (
+        !isAnyModalActive && (
           navigatorStyle === 'sphere' ? (
             <Option3SphereNavigator
               engine={engine}
@@ -1978,6 +2133,7 @@ export function App() {
               onToggleProjection={handleToggleProjection}
               transformMode={navigatorTransformMode}
               onTransformModeChange={setNavigatorTransformMode}
+              drawerOpen={Boolean(isColorStudioOpen || studioShelfOpen)}
             />
           ) : (
             <JoystickNavigator
@@ -2103,29 +2259,6 @@ export function App() {
         onToggleDisableContextMenu={handleToggleDisableContextMenu}
         soundEnabled={isSoundEnabled}
         onToggleSound={handleToggleSound}
-        showGrid={showGrid}
-        onToggleGrid={handleToggleGrid}
-        showPlane={showPlane}
-        onTogglePlane={handleTogglePlane}
-        canvasFormat={canvasFormat}
-        onCanvasFormatChange={handleCanvasFormatChange}
-        canvasWidth={canvasWidth}
-        canvasHeight={canvasHeight}
-        onCanvasSizeChange={handleCanvasSizeChange}
-        canvasTransparency={Math.round((1 - canvasOpacity) * 100)}
-        onCanvasTransparencyChange={handleCanvasTransparencyChange}
-        canvasColor={canvasColor}
-        onCanvasColorChange={handleCanvasColorChange}
-        onClearCanvas={handleClearCanvas}
-        modelDisplayMode={modelDisplayMode}
-        onSetModelDisplayMode={(mode) => {
-          setModelDisplayMode(mode);
-          engine?.setModelDisplayMode(mode);
-        }}
-        onOpenRenderSettings={() => setIsRenderSettingsOpen(true)}
-        onOpenExport={() => setIsExportOpen(true)}
-        onOpenARViewer={() => setIsARViewerOpen(true)}
-        onOpenClipboard={() => setIsClipboardOpen(true)}
         isStoragePersistent={isStoragePersistent}
         onRequestStoragePermission={handleRequestStoragePermission}
         storageEstimate={storageEstimate}
@@ -2167,6 +2300,32 @@ export function App() {
         target={numpadTarget}
         onClose={() => setNumpadTarget(null)}
         theme={theme === 'light' ? 'light' : 'dark'}
+      />
+
+      {/* Interactive AI Demonstration System Components */}
+      <VisualPointer state={pointerVisualState} deviceTarget={demoTargetDevice} />
+
+      {activeDemoScene && (
+        <DemoFloatingBar
+          title={activeDemoScene.title}
+          stepText={`Step ${demoStepInfo.step} of ${demoStepInfo.total}`}
+          isPaused={isDemoPaused}
+          onTogglePause={handleTogglePauseDemo}
+          onSkip={handleSkipDemoStep}
+          onStop={handleStopDemo}
+          isFullscreen={isFullscreen}
+          onToggleFullscreen={toggleFullscreen}
+        />
+      )}
+
+      <DemoCenterModal
+        isOpen={isDemoModalOpen}
+        onClose={() => setIsDemoModalOpen(false)}
+        onPlayScene={handlePlayDemo}
+        currentDeviceTarget={demoTargetDevice}
+        onDeviceTargetChange={setDemoTargetDevice}
+        isFullscreen={isFullscreen}
+        onToggleFullscreen={toggleFullscreen}
       />
 
       </div>

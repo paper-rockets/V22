@@ -1594,6 +1594,12 @@ export class StudioEngine {
     this.activeModelName = name;
     this.notifySelectionTargetChanged();
 
+    try {
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('remix3d:auto-target-surface', { detail: { name, id: obj.uuid } }));
+      }
+    } catch (_) {}
+
     // Record into unified history
     this.historyUndoStack.push({
       kind: 'primitive',
@@ -3903,6 +3909,17 @@ export class StudioEngine {
     this.notifyModelsChanged();
   }
 
+  public setDrawingPlaneVisible(visible: boolean): void {
+    const existing = this.modelRoot.getObjectByName('DrawingPlaneCanvas');
+    if (existing) {
+      existing.visible = visible;
+    }
+    if (this.drawingPlaneMesh) {
+      this.drawingPlaneMesh.visible = visible;
+    }
+    this.markDirty();
+  }
+
   /**
    * Spawns a sleek, double-sided 3D drawing plane on canvas load,
    * allowing instant sketching and brush stroke adhesion without requiring imported meshes.
@@ -4297,6 +4314,33 @@ export class StudioEngine {
 
   public setTargetPosition(x: number, y: number, z: number): void {
     this.cameraController.setTargetPosition(x, y, z);
+  }
+
+  /**
+   * Raycast against 3D models and strokes to find the nearest world-space surface point.
+   */
+  public raycastWorldPoint(screenX: number, screenY: number): THREE.Vector3 | null {
+    // 1. Raycast 3D model meshes
+    const hit = this.raycastModel(screenX, screenY);
+    if (hit && hit.point) {
+      return hit.point.clone();
+    }
+    // 2. Raycast stroke meshes
+    const coords = new THREE.Vector2(screenX, screenY);
+    this.raycaster.setFromCamera(coords, this.camera);
+    const strokeMeshes: THREE.Mesh[] = [];
+    this.strokes.forEach(({ meshes }) => {
+      for (const m of meshes) {
+        strokeMeshes.push(m);
+      }
+    });
+    if (strokeMeshes.length > 0) {
+      const intersects = this.raycaster.intersectObjects(strokeMeshes, true);
+      if (intersects.length > 0) {
+        return intersects[0].point.clone();
+      }
+    }
+    return null;
   }
 
   // ==========================================
