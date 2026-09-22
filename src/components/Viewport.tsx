@@ -149,7 +149,12 @@ export const Viewport: React.FC<ViewportProps> = ({
   const [isLassoVisible, setIsLassoVisible] = useState(false);
   const lassoPathRef = useRef<SVGPolylineElement | null>(null);
   const wheelTransformTimerRef = useRef<number | null>(null);
-  const [isOrbiting, setIsOrbiting] = useState<boolean>(false);
+  const [isOrbiting, setIsOrbitingState] = useState<boolean>(false);
+  const isOrbitingRef = useRef<boolean>(false);
+  const setIsOrbiting = useCallback((val: boolean) => {
+    isOrbitingRef.current = val;
+    setIsOrbitingState(val);
+  }, []);
   const [touchDist, setTouchDist] = useState<number | null>(null);
   const [isStylusDetected, setIsStylusDetected] = useState<boolean>(() => {
     try {
@@ -331,8 +336,6 @@ export const Viewport: React.FC<ViewportProps> = ({
   const threeFingerStartTime = useRef<number>(0);
   const threeFingerInitialFov = useRef<number>(45);
   const lastToastFovRef = useRef<number>(-1);
-  const touchHoldTimerRef = useRef<number | null>(null);
-  const touchHoldStartPosRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
   const lastThreeFingerTapTimeRef = useRef<number>(0);
 
   const showGestureToast = (title: string, subtitle?: string) => {
@@ -918,7 +921,6 @@ export const Viewport: React.FC<ViewportProps> = ({
   const handlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
     if (isRadialMenuOpen) return;
     e.preventDefault();
-    if ((window as any).__NAVIGATOR_ACTIVE__ && e.pointerType !== 'pen') return;
     refreshRect();
     const engine = engineRef.current;
     if (!engine) return;
@@ -1100,10 +1102,6 @@ export const Viewport: React.FC<ViewportProps> = ({
 
       // 3-Finger Gesture: track start coordinates for dynamic FOV / Projection shift
       if (touchCount === 3) {
-        if (touchHoldTimerRef.current) {
-          window.clearTimeout(touchHoldTimerRef.current);
-          touchHoldTimerRef.current = null;
-        }
         if (isPointerDown.current) {
           isPointerDown.current = false;
           engine.cancelStroke();
@@ -1118,10 +1116,6 @@ export const Viewport: React.FC<ViewportProps> = ({
 
       // 2-Finger Multi-Touch: Pinch Zoom & Pan
       if (touchCount === 2) {
-        if (touchHoldTimerRef.current) {
-          window.clearTimeout(touchHoldTimerRef.current);
-          touchHoldTimerRef.current = null;
-        }
         if (isPointerDown.current) {
           isPointerDown.current = false;
           engine.cancelStroke();
@@ -1148,10 +1142,6 @@ export const Viewport: React.FC<ViewportProps> = ({
         const allowFingerDraw = fingerPenMode && !isStylusDetected;
 
         if (allowFingerDraw) {
-          if (touchHoldTimerRef.current) {
-            window.clearTimeout(touchHoldTimerRef.current);
-            touchHoldTimerRef.current = null;
-          }
           isPointerDown.current = true;
           strokeStartTime.current = performance.now();
           lastNormalizedPos.current.x = coords.x;
@@ -1164,26 +1154,6 @@ export const Viewport: React.FC<ViewportProps> = ({
           setIsOrbiting(true);
           lastPointerPos.current.x = e.clientX;
           lastPointerPos.current.y = e.clientY;
-
-          // 1-Finger 500ms press-and-hold: anchor orbit target & DoF focal plane to touched geometry
-          if (touchHoldTimerRef.current) {
-            window.clearTimeout(touchHoldTimerRef.current);
-            touchHoldTimerRef.current = null;
-          }
-          touchHoldStartPosRef.current = { x: e.clientX, y: e.clientY };
-          const holdCoordsX = coords.x;
-          const holdCoordsY = coords.y;
-          touchHoldTimerRef.current = window.setTimeout(() => {
-            if (engineRef.current) {
-              const hitPt = engineRef.current.raycastWorldPoint(holdCoordsX, holdCoordsY);
-              if (hitPt) {
-                engineRef.current.setTargetPosition(hitPt.x, hitPt.y, hitPt.z);
-                triggerHaptic(45);
-                showGestureToast('Target Anchored', 'Orbit target & focal plane set to surface');
-              }
-            }
-            touchHoldTimerRef.current = null;
-          }, 500);
         }
       }
       return;
@@ -1273,10 +1243,9 @@ export const Viewport: React.FC<ViewportProps> = ({
 
   const handlePointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
     e.preventDefault();
-    if ((window as any).__NAVIGATOR_ACTIVE__ && e.pointerType !== 'pen') return;
     const engine = engineRef.current;
     if (!engine) return;
-    if (isSelectTool && !isOrbiting && handleSelectPointerMove(e, engine)) return;
+    if (isSelectTool && !isOrbitingRef.current && handleSelectPointerMove(e, engine)) return;
 
     // Track 2D screen coordinates for cursor reticle preview (DOM-based, zero React re-renders)
     if (cursorGroupRef.current && (tool === 'brush' || tool === 'eraser') && !rulerDrag?.active) {
@@ -1475,17 +1444,7 @@ export const Viewport: React.FC<ViewportProps> = ({
           lastNormalizedPos.current.y = coords.y;
           lastPointerPos.current.x = e.clientX;
           lastPointerPos.current.y = e.clientY;
-        } else if (isOrbiting) {
-          if (touchHoldTimerRef.current) {
-            const moveDist = Math.hypot(
-              e.clientX - touchHoldStartPosRef.current.x,
-              e.clientY - touchHoldStartPosRef.current.y
-            );
-            if (moveDist > 8) {
-              window.clearTimeout(touchHoldTimerRef.current);
-              touchHoldTimerRef.current = null;
-            }
-          }
+        } else if (isOrbitingRef.current) {
           const deltaX = e.clientX - lastPointerPos.current.x;
           const deltaY = e.clientY - lastPointerPos.current.y;
           if (isPanMode || cameraInteracting) {
@@ -1505,7 +1464,7 @@ export const Viewport: React.FC<ViewportProps> = ({
     // -----------------------------------------------------------------------
     if (e.pointerType === 'mouse') {
       const coords = getNormalizedCoords(e);
-      if (isOrbiting) {
+      if (isOrbitingRef.current) {
         const deltaX = e.clientX - lastPointerPos.current.x;
         const deltaY = e.clientY - lastPointerPos.current.y;
 
@@ -1635,11 +1594,6 @@ export const Viewport: React.FC<ViewportProps> = ({
             newMode === 'orthographic' ? 'Things stay the same size far away' : 'Far things look smaller'
           );
         }
-      }
-
-      if (touchHoldTimerRef.current) {
-        window.clearTimeout(touchHoldTimerRef.current);
-        touchHoldTimerRef.current = null;
       }
 
       touchPointersRef.current.delete(e.pointerId);
